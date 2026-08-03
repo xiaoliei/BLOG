@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLOG_OS // VOXEL ARCHIVE</title>
+  <meta name="description" content="Minecraft 体素 · 赛博科技风格个人博客 — BLOG_OS">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <canvas id="stars"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: BOOT</div>
+
+  <main class="landing-stage">
+    <div class="landing-bootline">[ LOADING VOXEL EARTH // 体素地球 ]</div>
+
+    <div class="earth-wrap">
+      <div class="earth-glow"></div>
+      <canvas id="earth3d"></canvas>
+      <div class="float-cube" aria-hidden="true"></div>
+    </div>
+
+    <div class="landing-clock">
+      <div class="time" data-clock>--:--</div>
+      <div class="date" data-date>----/--/-- ---</div>
+    </div>
+
+    <div class="landing-hint">▸ CLICK ANYWHERE / SCROLL TO ENTER // 点击任意处进入 ◂</div>
+  </main>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+  <div id="boot"></div>
+
+  <script type="module" src="js/landing.js"></script>
+</body>
+</html>

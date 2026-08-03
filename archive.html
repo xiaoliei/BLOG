@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARCHIVE // BLOG_OS</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: ARCHIVE</div>
+
+  <main class="app">
+    <div class="archive-grid">
+      <!-- 左栏：文章列表 -->
+      <section class="col">
+        <div class="panel panel-scroll doc-list">
+          <div class="panel-head">
+            <span>▚ ARTICLE_INDEX // 文章存档</span>
+            <span class="led"></span>
+          </div>
+          <div id="doc-list"></div>
+        </div>
+      </section>
+
+      <!-- 中栏：3D 体素集群 -->
+      <section class="col">
+        <div class="panel viewer">
+          <canvas id="viewer3d"></canvas>
+          <div class="viewer-label" id="viewer-label">VX_CLUSTER // <b>MATERIALS</b>.SERIES_04</div>
+          <div class="viewer-reticle" aria-hidden="true"></div>
+          <div class="viewer-stats" id="viewer-stats">LOADING MODEL…</div>
+          <div class="viewer-axis"><span class="ax-x">X</span> <span class="ax-y">Y</span> <span class="ax-z">Z</span> · 0.0012 rad/f</div>
+        </div>
+      </section>
+
+      <!-- 右栏：属性 + 数据流 -->
+      <section class="col col-right">
+        <div class="panel">
+          <div class="panel-head">
+            <span>◈ SPECIMEN_PROPERTIES</span>
+            <span class="led amber"></span>
+          </div>
+          <div class="props-body" id="props-body"></div>
+        </div>
+        <div class="panel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+          <div class="panel-head">
+            <span>⇄ DATA_STREAM // 终端日志</span>
+            <span id="stream-count" style="color:var(--accent);">0000 EVENTS</span>
+          </div>
+          <div class="stream-body" id="stream-body"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 底部导航 -->
+  <nav class="bottom-nav">
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-nav="a" data-label="ARTICLE"><span class="key">A</span> ARTICLE 文章</div>
+      <div class="nav-tab" data-nav="r" data-label="REPOSITORIES"><span class="key">R</span> REPOSITORIES 代码</div>
+      <div class="nav-tab" data-nav="m" data-label="MINECRAFT"><span class="key">M</span> MINECRAFT 我的世界</div>
+      <div class="nav-tab" data-nav="c" data-label="CONTACT"><span class="key">C</span> CONTACT 联系</div>
+    </div>
+    <div class="nav-right">
+      <span class="sys-clock" data-clock>--:--</span>
+      <span data-coords></span>
+    </div>
+  </nav>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item sb-up"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+  <div id="boot"></div>
+
+  <script type="module" src="js/archive.js"></script>
+</body>
+</html>

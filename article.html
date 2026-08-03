@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DOC // BLOG_OS</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: DOC_READ</div>
+
+  <main class="app">
+    <div class="archive-grid">
+      <!-- 左栏：文章内容 -->
+      <section class="col">
+        <div class="panel doc-panel">
+          <div class="panel-head">
+            <span>▤ DOCUMENT_VIEW // 文档阅读</span>
+            <span class="led"></span>
+          </div>
+          <div class="doc-body" id="doc-body">
+            <div class="breadcrumb">
+              <span id="crumb-archive">ARCHIVE</span>
+              <span class="sep">/</span>
+              <span id="crumb-series">MATERIALS</span>
+              <span class="sep">/</span>
+              <span class="here" id="crumb-id">CU_04</span>
+            </div>
+            <div class="doc-title-block">
+              <h1 id="doc-title"></h1>
+              <div class="doc-meta-line">
+                <span><span class="k">AUTHOR</span> <span class="v" id="doc-author"></span></span>
+                <span><span class="k">DATE</span> <span class="v" id="doc-date"></span></span>
+                <span><span class="k">REF</span> <span class="ref" id="doc-ref"></span></span>
+                <span><span class="k">TAGS</span> <span id="doc-tags" style="display:inline-flex; gap:5px;"></span></span>
+              </div>
+            </div>
+            <!-- 正文与代码块由 JS 注入 -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 中栏：3D 方块 -->
+      <section class="col">
+        <div class="panel viewer">
+          <canvas id="viewer3d"></canvas>
+          <div class="viewer-label" id="viewer-label">SPECIMEN // <b>CU_04</b> MATERIALS</div>
+          <div class="viewer-reticle" aria-hidden="true"></div>
+          <div class="viewer-stats" id="viewer-stats">LOADING MODEL…</div>
+          <div class="viewer-axis"><span class="ax-x">X</span> <span class="ax-y">Y</span> <span class="ax-z">Z</span> · 0.0016 rad/f</div>
+        </div>
+      </section>
+
+      <!-- 右栏：属性 + 导航辅助 -->
+      <section class="col col-right">
+        <div class="panel">
+          <div class="panel-head">
+            <span>◈ SPECIMEN_PROPERTIES</span>
+            <span class="led amber"></span>
+          </div>
+          <div class="props-body" id="props-body"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <span>⌘ NAV_ASSIST // 导航辅助</span>
+            <span id="assist-index" style="color:var(--accent);">01/05</span>
+          </div>
+          <div class="assist-body">
+            <div class="assist-row"><span class="kbd">1</span><span>PREVIOUS DOCUMENT · <b id="assist-prev" style="color:var(--text);"></b></span></div>
+            <div class="assist-row"><span class="kbd">2</span><span>NEXT DOCUMENT · <b id="assist-next" style="color:var(--text);"></b></span></div>
+            <div class="assist-row"><span class="kbd esc">ESC</span><span>EXIT TO ARCHIVE</span></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 底部导航 -->
+  <nav class="bottom-nav">
+    <div class="nav-tabs">
+      <div class="nav-tab active" data-nav="a" data-label="ARTICLE"><span class="key">A</span> ARTICLE 文章</div>
+      <div class="nav-tab" data-nav="r" data-label="REPOSITORIES"><span class="key">R</span> REPOSITORIES 代码</div>
+      <div class="nav-tab" data-nav="m" data-label="MINECRAFT"><span class="key">M</span> MINECRAFT 我的世界</div>
+      <div class="nav-tab" data-nav="c" data-label="CONTACT"><span class="key">C</span> CONTACT 联系</div>
+    </div>
+    <div class="nav-right">
+      <span class="sys-clock" data-clock>--:--</span>
+      <span data-coords></span>
+    </div>
+  </nav>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item sb-up"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+  <div id="boot"></div>
+
+  <script type="module" src="js/article.js"></script>
+</body>
+</html>
