@@ -91,6 +91,16 @@ function analyzeShot(file, region) {
   console.log('DEBUG clock html:', clockHtml);
   const stars = await page.$eval('#stars', (el) => el.width > 0 && el.height > 0).catch(() => false);
   report('index: starfield canvas sized', stars);
+  const moon = await page.evaluate(() => {
+    const el = document.querySelector('.float-cube');
+    if (!el) return 'missing';
+    const r = el.getBoundingClientRect();
+    const size = Math.round(r.width);
+    return `${size}x${Math.round(r.height)}@${Math.round(r.left)},${Math.round(r.top)}`;
+  });
+  report('index: moon at earth top-left', /^\d{2}x\d{2}@/.test(moon), moon);
+  const sky = await page.evaluate(() => getComputedStyle(document.body).backgroundImage.includes('radial-gradient'));
+  report('index: deep blue radial sky', sky);
   const gl = await page.evaluate(() => {
     const c = document.getElementById('earth3d');
     return `${c && c.width > 0 ? 'sized' : 'empty'}:${c ? c.width : 0}x${c ? c.height : 0}`;

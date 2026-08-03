@@ -46,6 +46,15 @@ body {
   flex-direction: column;
 }
 
+/* 启动页：深邃蓝色星空（参考稿的径向渐变夜空） */
+body.landing {
+  background: radial-gradient(circle at center, #10203d 0%, #0a1424 45%, #030712 100%);
+}
+
+body.landing .grid-bg {
+  display: none;
+}
+
 ::selection { background: var(--accent); color: #0A101A; }
 
 /* ---------- global background layers ---------- */
@@ -340,6 +349,8 @@ body {
 #stars {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
 }
 
@@ -385,27 +396,44 @@ body {
 .float-cube {
   position: absolute;
   z-index: 4;
-  left: -34px;
-  top: -18px;
-  width: 34px;
-  height: 34px;
-  background: linear-gradient(135deg, rgba(26, 188, 156, 0.28), rgba(26, 188, 156, 0.05));
-  border: 1px solid rgba(26, 188, 156, 0.7);
-  box-shadow: 0 0 14px rgba(26, 188, 156, 0.45), inset 0 0 10px rgba(26, 188, 156, 0.25);
-  transform: rotate(12deg);
-  animation: cube-float 5.5s ease-in-out infinite;
+  left: -12%;
+  top: -12%;
+  width: 18px;
+  height: 18px;
+  background: rgba(200, 215, 230, 0.92);
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, 0.45),
+    0 0 28px rgba(190, 215, 240, 0.28);
+  transform: rotate(8deg);
+  animation: moon-float 4s ease-in-out infinite;
+}
+
+/* 像素陨石坑，强化"体素月球"的质感 */
+.float-cube::before,
+.float-cube::after {
+  content: '';
+  position: absolute;
+  background: rgba(120, 140, 162, 0.55);
 }
 
 .float-cube::before {
-  content: '';
-  position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(26, 188, 156, 0.45);
+  width: 5px;
+  height: 5px;
+  left: 3px;
+  top: 4px;
 }
 
-@keyframes cube-float {
-  0%, 100% { transform: translateY(0) rotate(12deg); }
-  50% { transform: translateY(-16px) rotate(22deg); }
+.float-cube::after {
+  width: 3px;
+  height: 3px;
+  right: 3px;
+  bottom: 3px;
+  background: rgba(140, 160, 182, 0.5);
+}
+
+@keyframes moon-float {
+  0%, 100% { transform: translateY(0) rotate(8deg); }
+  50% { transform: translateY(-12px) rotate(4deg); }
 }
 
 .landing-clock {

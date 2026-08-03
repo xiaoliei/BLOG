@@ -7,21 +7,21 @@ export function startStars(canvas) {
   let raf = 0;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const COLORS = ['#CFE4FF', '#9FB8E0', '#1ABC9C', '#EAF2FB', '#E67E22'];
+  // 参考稿风格：白色系为主的呼吸闪烁星点，少量青蓝点缀
+  const COLORS = ['#FFFFFF', '#EAF2FB', '#D6E4F5', '#C9DCF2', '#1ABC9C'];
 
-  function makeStar(initial) {
+  function makeStar() {
     return {
       x: Math.random(),
       y: Math.random(),
-      r: 0.4 + Math.random() * 1.25,
+      r: Math.random() * 1.2 + 0.5,           // 0.5 ~ 1.7
       phase: Math.random() * Math.PI * 2,
-      speed: 0.4 + Math.random() * 1.6,
-      color: COLORS[Math.floor(Math.random() * (initial ? COLORS.length : COLORS.length - 1))],
-      drift: 0.002 + Math.random() * 0.006,
+      speed: 0.8 + Math.random() * 1.6,       // 呼吸闪烁角速度 rad/s（周期约 2.6~7.8s，接近参考稿节奏）
+      color: COLORS[Math.floor(Math.random() * COLORS.length)],
     };
   }
 
-  const stars = Array.from({ length: 210 }, () => makeStar(true));
+  const stars = Array.from({ length: 300 }, () => makeStar());
   let shooting = null;
 
   function resize() {
@@ -49,21 +49,16 @@ export function startStars(canvas) {
     ctx.clearRect(0, 0, w, h);
 
     for (const s of stars) {
-      const tw = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(sec * s.speed + s.phase));
-      s.y += s.drift * 0.01;
-      if (s.y > 1.02) s.y = -0.02;
-      ctx.globalAlpha = tw * 0.85;
+      // 呼吸闪烁：alpha 在 0 ~ 1 之间平滑起伏
+      const tw = Math.abs(Math.sin(sec * s.speed + s.phase));
+      ctx.globalAlpha = 0.08 + tw * 0.9;
       ctx.fillStyle = s.color;
       ctx.beginPath();
       ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
       ctx.fill();
-      // 主星周围 1 像素辉光
-      ctx.globalAlpha = tw * 0.18;
-      ctx.fillRect(s.x * w - s.r * 2.4, s.y * h - 0.5, s.r * 4.8, 1);
-      ctx.fillRect(s.x * w - 0.5, s.y * h - s.r * 2.4, 1, s.r * 4.8);
     }
 
-    // 偶尔的流星
+    // 偶尔的白色流星（点缀）
     if (sec - lastShoot > 6 + Math.random() * 5 && !shooting) {
       spawnShooting();
       lastShoot = sec;
