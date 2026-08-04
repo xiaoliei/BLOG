@@ -332,10 +332,13 @@
   right: 14px;
   bottom: 14px;
   z-index: 22;
-  background: rgba(11, 19, 32, 0.88);
-  border: 2px solid rgba(102, 138, 178, 0.38);
-  padding: 5px;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  /* 羊皮纸贴图垫底：保留贴图自身的透明层，裂纹区直接透出后方世界 */
+  background-color: transparent;
+  background-image: url('/Map.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  padding: 26px 26px 18px;
 }
 
 .world-minimap canvas {
@@ -346,11 +349,12 @@
 .world-minimap-label {
   display: block;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 6px;
   font-family: var(--font-pixel);
   font-size: 7px;
-  color: var(--dim);
+  color: #6B4F2A;
   letter-spacing: 2px;
+  text-shadow: 1px 1px 0 rgba(255, 244, 214, 0.65);
 }
 
 /* ---------- 图例 ---------- */
