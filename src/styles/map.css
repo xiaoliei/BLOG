@@ -1,0 +1,489 @@
+/* ============================================================
+   方块大陆 · 世界地图主页
+   ============================================================ */
+
+.map-host {
+  position: fixed;
+  inset: 0;
+}
+
+.map-host.hidden {
+  display: none;
+}
+
+.world-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  font-family: var(--font-terminal);
+  font-size: 16px;
+}
+
+.world-root:active {
+  cursor: grabbing;
+}
+
+.world-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.world-terrain,
+.world-fog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  image-rendering: pixelated;
+}
+
+/* ---------- 地标 ---------- */
+.landmark {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  z-index: 5;
+}
+
+.landmark-icon {
+  position: relative;
+  display: block;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
+  transition: transform 180ms ease-out, filter 180ms ease-out;
+  image-rendering: pixelated;
+}
+
+.landmark:hover .landmark-icon,
+.landmark:focus-visible .landmark-icon {
+  transform: translateY(-4px) scale(1.08);
+  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 8px var(--lm-accent, var(--accent)));
+}
+
+.landmark:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.landmark--visited .landmark-icon {
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 6px var(--lm-accent, var(--accent)));
+}
+
+.landmark-name {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--text-bright);
+  background: rgba(10, 16, 26, 0.82);
+  border: 2px solid rgba(102, 138, 178, 0.28);
+  padding: 4px 8px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  transition: border-color 180ms ease, color 180ms ease;
+}
+
+.landmark:hover .landmark-name,
+.landmark--visited .landmark-name {
+  border-color: var(--lm-accent, var(--accent));
+}
+
+.landmark-unknown {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #0A101A;
+  background: var(--lm-accent, var(--accent));
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.landmark-check {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0A101A;
+  background: var(--lm-accent, var(--accent));
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.landmark-tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  background: var(--panel-solid);
+  border: 2px solid rgba(102, 138, 178, 0.42);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 9px 11px;
+  text-align: left;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.landmark-tip b {
+  display: block;
+  font-size: 13px;
+  color: var(--text-bright);
+}
+
+.landmark-tip em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--lm-accent, var(--accent));
+  margin-top: 2px;
+}
+
+.landmark-tip small {
+  display: block;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.55;
+  margin-top: 5px;
+}
+
+.landmark-tip small.landmark-tip-action {
+  color: var(--lm-accent, var(--accent));
+  margin-top: 7px;
+  border-top: 1px dashed rgba(102, 138, 178, 0.25);
+  padding-top: 6px;
+}
+
+/* ---------- 玩家 ---------- */
+.world-player {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 6;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.world-player-name {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: #fff;
+  background: rgba(10, 16, 26, 0.75);
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+.world-player--walking .world-player-name {
+  color: var(--accent);
+}
+
+/* ---------- HUD ---------- */
+.world-hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.world-hud-top > * {
+  pointer-events: auto;
+}
+
+.hud-title-main {
+  display: block;
+  font-family: var(--font-pixel);
+  font-size: 13px;
+  color: var(--accent);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+.hud-title-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.4px;
+}
+
+.hud-coords {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(11, 19, 32, 0.8);
+  border: 1px solid var(--line-strong);
+  padding: 7px 12px;
+  font-size: 12px;
+  color: var(--text);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.hud-coords span {
+  white-space: nowrap;
+}
+
+.hud-coords .hud-biome {
+  color: var(--ok);
+}
+
+.hud-coords .hud-explored {
+  color: var(--cyan);
+}
+
+.hud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hud-btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(11, 19, 32, 0.85);
+  border: 2px solid rgba(102, 138, 178, 0.35);
+  padding: 7px 11px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.hud-btn:hover,
+.hud-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--text-bright);
+  outline: none;
+}
+
+.hud-btn--reboot:hover,
+.hud-btn--reboot:focus-visible {
+  border-color: var(--danger);
+}
+
+.world-hud-help {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 20;
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--dim);
+  background: rgba(11, 19, 32, 0.72);
+  border-left: 3px solid var(--accent);
+  padding: 7px 11px;
+  pointer-events: none;
+}
+
+.world-walk-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--text-bright);
+  background: var(--panel-solid);
+  border: 2px solid rgba(230, 126, 34, 0.5);
+  padding: 8px 14px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.world-walk-hint b {
+  color: var(--accent);
+}
+
+/* ---------- 小地图 ---------- */
+.world-minimap {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 22;
+  background: rgba(11, 19, 32, 0.88);
+  border: 2px solid rgba(102, 138, 178, 0.38);
+  padding: 5px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+}
+
+.world-minimap canvas {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.world-minimap-label {
+  display: block;
+  text-align: center;
+  margin-top: 4px;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--dim);
+  letter-spacing: 2px;
+}
+
+/* ---------- 图例 ---------- */
+.world-legend {
+  position: absolute;
+  right: 14px;
+  top: 64px;
+  width: 250px;
+  max-height: calc(100% - 150px);
+  overflow-y: auto;
+  z-index: 26;
+  background: var(--panel-solid);
+  border: 2px solid rgba(102, 138, 178, 0.42);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 13px 14px;
+}
+
+.world-legend h3 {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.world-legend h4 {
+  font-size: 11px;
+  color: var(--accent);
+  margin: 8px 0 4px;
+}
+
+.world-legend ul {
+  list-style: none;
+}
+
+.world-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text);
+  padding: 2.5px 0;
+}
+
+.world-legend li i {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.world-legend li i.legend-icon {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.world-legend li em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.legend-note p {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.6;
+}
+
+.legend-note b {
+  color: var(--accent);
+}
+
+.world-legend .hud-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* ---------- 扫描线 ---------- */
+.world-scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+  opacity: 0.22;
+}
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 860px) {
+  .hud-coords .hud-explored,
+  .hud-coords .hud-biome {
+    display: none;
+  }
+
+  .world-hud-help {
+    display: none;
+  }
+
+  .hud-title-sub {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .world-hud-top {
+    flex-wrap: wrap;
+    padding: 10px;
+  }
+
+  .hud-actions .hud-btn {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+
+  .world-minimap {
+    transform: scale(0.82);
+    transform-origin: right bottom;
+  }
+
+  .world-legend {
+    width: calc(100% - 20px);
+    right: 10px;
+    top: 92px;
+  }
+
+  .landmark-tip {
+    width: 170px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landmark-icon,
+  .landmark-name {
+    transition: none;
+  }
+}

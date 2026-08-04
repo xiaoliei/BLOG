@@ -19,6 +19,42 @@ npm run preview    # 预览生产构建
 - Three.js（npm 依赖，替代 demo 中 1.2MB 的本地 vendor 文件）
 - 原生 CSS（按作用域拆分三个文件，无预处理器）
 
+## 页面结构
+
+```
+┌ 启动页 LandingPage（星空 + 3D 头颅 + 开机动画）
+│     点击进入（BootOverlay 打印日志）
+▼
+┌ 世界地图 WorldMap（主页 / 文章索引）
+│     2D 俯视像素大陆：地形、迷雾、地标
+│     点击任意处，小人直行前往；点击地标 → 方块式场景切换
+▼
+┌ 地标场景 SceneView（模块详情页）
+      8 个地标 = 8 个博客模块，文章列表 + 传送点 + 战利品箱
+```
+
+视图通过 URL hash 驱动，支持深链与浏览器前进/后退：
+
+- `/#world` 世界地图主页
+- `/#scene/<地标id>` 直达某地标场景（如 `/#scene/castle`）
+
+## 世界地图（方块大陆）
+
+主页是一张 64×64 格的确定性像素大陆（种子固定，每次生成一致），包含：
+
+- 生物群系：海洋 / 河流 / 沙滩 / 平原 / 森林 / 山地 / 雪原 / 沙漠
+- 8 个地标：橡木镇、幽语图书馆、石峰城堡、迷雾森林营地、深红矿洞、
+  珊瑚灯塔、烈焰工坊、旧日遗迹，各自对应一个博客模块
+- 自由移动：点击地图任意位置，玩家角色即沿直线直行前往（点地标则
+  在到达后触发方块式场景切换动画）
+- 迷雾探索：出生点与已访问地标周围被点亮，探索进度显示在 HUD 并
+  保存在 `localStorage`（`blogos-overworld-v1`），可用“重置探索”清空
+- HUD：坐标 / 群系 / 探索率、小地图、图例、平移缩放提示
+
+操作：点击任意处让小人直行前往，拖拽或 WASD 平移，滚轮或 `+`/`-` 缩放，
+`R` 回出生点，`L` 开图例，`Esc` 取消移动。`prefers-reduced-motion` 下移动
+与迷雾直接完成。
+
 ## 目录结构
 
 ```
@@ -28,12 +64,17 @@ npm run preview    # 预览生产构建
 │   └── models/mc_head.glb      # 启动页 3D 头颅模型
 └── src/
     ├── main.jsx                # React 入口
-    ├── App.jsx                 # 应用根组件（当前仅挂载启动页）
-    ├── config/site.js          # 站点文案 / 版本 / 进入地址 / 开机动画文案
+    ├── App.jsx                 # 应用根组件（启动页 / 地图 / 场景 三态路由）
+    ├── config/
+    │   ├── site.js             # 站点文案 / 版本 / 开机动画文案
+    │   └── world.js            # 世界配置：地标 / 连接关系 / 文章数据 / 调色板
     ├── hooks/useSystemClock.js # 时钟、坐标漂移、网络速率（每秒刷新）
     ├── lib/
     │   ├── scene.js            # Three.js 场景辅助（渲染器 / 相机 / GLB 加载）
-    │   └── stars.js            # 2D 星空粒子控制器
+    │   ├── stars.js            # 2D 星空粒子控制器
+    │   ├── rand.js             # 确定性随机 / 值噪声 / fBm
+    │   ├── terrain.js          # 世界地形生成（群系 + 河流 + 装饰）
+    │   └── sprites.js          # 像素精灵定义（字符串网格 → SVG/Canvas）
     ├── components/landing/
     │   ├── LandingPage.jsx     # 启动页编排 + 进入交互（点击/滚动/按键）
     │   ├── HeadViewer.jsx      # 3D 头颅场景 + 像素月球（自包含，含资源清理）
@@ -43,10 +84,19 @@ npm run preview    # 预览生产构建
     │   ├── LandingClock.jsx    # 大号数字时钟 + 日期
     │   ├── StatusBar.jsx       # 底部系统状态栏
     │   └── BootOverlay.jsx     # 开机动画（逐行打印后跳转）
+    ├── components/map/
+    │   ├── WorldMap.jsx        # 世界地图主页（地形/迷雾/寻路/HUD）
+    │   ├── Minimap.jsx         # 右下角小地图
+    │   └── PixelSprite.jsx     # 像素图标 SVG 渲染
+    ├── components/scenes/
+    │   └── SceneView.jsx       # 地标场景详情页（文章列表）
+    ├── components/SceneTransition.jsx # 方块式场景切换动画
     └── styles/
         ├── tokens.css          # 设计令牌（颜色 / 字体 / 尺寸变量）
         ├── base.css            # 全局重置与布局
-        └── landing.css         # 启动页专属样式
+        ├── landing.css         # 启动页专属样式
+        ├── map.css             # 世界地图样式
+        └── scene.css           # 场景页 + 切换动画样式
 ```
 
 ## 从 demo 迁移了什么 / 排除了什么
@@ -73,8 +123,11 @@ npm run preview    # 预览生产构建
 - 新增页面组件后，在 `App.jsx` 引入路由即可（如 react-router），
   启动页 `LandingPage` 无需改动。
 - 启动页"点击进入"的目标地址集中在 `src/config/site.js` 的
-  `ENTER_DESTINATION`，文章列表页设计完成后改成正式路由（当前默认 `/archive`）。
+  `BOOT_LINES` 文案中；进入后的世界地图主页由 `App.jsx` 的 hash 路由接管
+  （`#world` / `#scene/<id>`）。
 - 站点文案、版本号、开机动画台词也全部在 `src/config/site.js` 中维护。
+- 地标、连接关系与文章数据集中在 `src/config/world.js`，新增地标只需
+  添加一条配置（含 `posts`），地图与场景页会自动渲染。
 - 3D 场景的相机 / 灯光 / 模型加载逻辑全部封装在 `HeadViewer` 内，
   卸载时会停止渲染循环并释放 WebGL 资源。
 
@@ -85,4 +138,6 @@ npm run preview    # 预览生产构建
 - 桌面端（1440×900）与移动端（390×844）均正常渲染，无控制台错误
 - 3D 头颅像素渲染与非背景色占比与 demo 截图数值一致（背景 RGB 完全相同）
 - 时钟 / 日期 / 坐标漂移 / 网络速率 / HUD / 状态栏均在刷新
-- 点击进入 → 开机动画逐行打印 → 约 2.1s 后跳转 `/archive`
+- 点击进入 → 开机动画逐行打印 → 进入 `#world` 世界地图
+- 世界地图 28 项端到端断言全部通过：地形 / 迷雾 / 8 地标 / 直行移动 /
+  场景切换 / 深链 / 移动端 / 减弱动态偏好 / 无控制台错误

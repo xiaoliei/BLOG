@@ -11,10 +11,6 @@ export const SITE = {
   timezone: 'UTC+8',
 };
 
-/* 启动页"点击/滚动/按键进入"后的目标地址。
-   文章列表页后续重新设计时，把这里改成正式路由即可（例如 '/archive'）。 */
-export const ENTER_DESTINATION = '/archive';
-
 /* 状态栏初始系统数据（坐标会缓慢漂移，网络速率会抖动，与 demo 一致） */
 export const SYS_INIT = {
   coords: { x: -128.42, y: 64.0, z: 92.17 },
@@ -24,9 +20,11 @@ export const SYS_INIT = {
 /* 开机动画逐行内容（与 demo 完全一致） */
 export const BOOT_LINES = [
   { before: '> INITIALIZE ', bold: 'BLOG_OS', after: ' v2.0.4 ................ ' },
-  { before: '> MOUNTING /archive ........................... ' },
-  { before: '> LOAD VOXEL_REGISTRY.glb .................... ' },
+  { before: '> MOUNTING OVERWORLD ........................... ' },
+  { before: '> SEED 20260804 · 64×64 TILES .................. ' },
+  { before: '> GENERATE TERRAIN ............................ ' },
+  { before: '> SCATTER 8 LANDMARKS ......................... ' },
+  { before: '> SYNC FOG_OF_WAR ............................. ' },
   { before: '> AUTH SESSION ', bold: '0x8F2A', after: ' ....................... ' },
-  { before: '> SYNC SPECIMEN_PROPERTIES .................... ' },
-  { before: '> ENTERING ARCHIVE_INDEX ...................... ' },
+  { before: '> ENTERING 方块大陆 ............................ ' },
 ];

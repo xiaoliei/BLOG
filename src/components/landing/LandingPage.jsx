@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BOOT_LINES, ENTER_DESTINATION, SITE } from '../../config/site';
+import { BOOT_LINES, SITE } from '../../config/site';
 import { useSystemClock } from '../../hooks/useSystemClock';
 import BootOverlay from './BootOverlay.jsx';
 import HeadViewer from './HeadViewer.jsx';
@@ -11,7 +11,7 @@ import StatusBar from './StatusBar.jsx';
 
 const ENTER_KEYS = ['Enter', ' ', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
 
-export default function LandingPage() {
+export default function LandingPage({ onComplete }) {
   const clock = useSystemClock();
   const [booting, setBooting] = useState(false);
 
@@ -48,7 +48,7 @@ export default function LandingPage() {
 
       <StatusBar {...clock} />
 
-      {booting && <BootOverlay lines={BOOT_LINES} destination={ENTER_DESTINATION} />}
+      {booting && <BootOverlay lines={BOOT_LINES} onComplete={onComplete} />}
     </div>
   );
 }

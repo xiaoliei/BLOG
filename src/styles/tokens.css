@@ -23,6 +23,7 @@
   --ok: #2ECC71;
   --warn: #F1C40F;
   --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  --font-terminal: 'VT323', 'JetBrains Mono', Consolas, monospace;
   --font-pixel: 'Press Start 2P', 'JetBrains Mono', Consolas, monospace;
   --status-h: 26px;
   --nav-h: 48px;
