@@ -10,11 +10,16 @@ const SWAP_GAP = 40;
 const UNCOVER_MS = 380;
 
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
+const initialSceneId = initialHash.startsWith('#scene/')
+  ? initialHash.slice('#scene/'.length)
+  : null;
 
 export default function App() {
-  const [view, setView] = useState(initialHash.startsWith('#world') ? 'map' : 'landing');
+  const [view, setView] = useState(
+    initialHash.startsWith('#world') || (initialSceneId && getLandmark(initialSceneId)) ? 'map' : 'landing'
+  );
   const [sceneId, setSceneId] = useState(
-    initialHash.startsWith('#scene/') ? initialHash.slice('#scene/'.length) : null
+    initialSceneId && getLandmark(initialSceneId) ? initialSceneId : null
   );
   const [trans, setTrans] = useState(null); // { phase, accent, label }
   const viewRef = useRef(view);
