@@ -152,6 +152,7 @@ renderer.setAnimationLoop(() => {
   /* 地球与月球共用同一相位：同时到极限、同时停止、同时反向 */
   const phase = Math.sin(t * 0.9);
   headPivot.rotation.z = HEAD_ROLL + phase * 0.04;
+  syncMoonPosition(); // 每帧跟随头颅角重新定位，摆动时也不会重叠
   const moonAmp = moonEl.offsetWidth * 0.2; // 浮动幅度随月球尺寸缩放
   moonEl.style.transform = `rotate(8deg) translateY(${(phase * -moonAmp).toFixed(2)}px)`;
   renderer.render(scene, camera);
