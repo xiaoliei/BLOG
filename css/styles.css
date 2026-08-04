@@ -371,7 +371,7 @@ body.landing .grid-bg {
   aspect-ratio: 1;
 }
 
-#earth3d {
+#head3d {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -383,7 +383,7 @@ body.landing .grid-bg {
   position: absolute;
   inset: -12%;
   z-index: 1;
-  background: radial-gradient(circle, rgba(26, 188, 156, 0.22) 0%, rgba(26, 188, 156, 0.07) 45%, transparent 70%);
+  background: radial-gradient(circle, rgba(26, 188, 156, 0.15) 0%, rgba(26, 188, 156, 0.05) 45%, transparent 70%);
   filter: blur(2px);
   animation: glow-pulse 5s ease-in-out infinite;
 }
@@ -398,14 +398,13 @@ body.landing .grid-bg {
   z-index: 4;
   left: -12%;
   top: -12%;
-  width: 18px;
-  height: 18px;
+  width: 5%; /* 随页面宽度（.earth-wrap）自适应缩放 */
+  aspect-ratio: 1;
   background: rgba(200, 215, 230, 0.92);
   box-shadow:
     0 0 12px rgba(255, 255, 255, 0.45),
     0 0 28px rgba(190, 215, 240, 0.28);
   transform: rotate(8deg);
-  animation: moon-float 4s ease-in-out infinite;
 }
 
 /* 像素陨石坑，强化"体素月球"的质感 */
@@ -417,23 +416,18 @@ body.landing .grid-bg {
 }
 
 .float-cube::before {
-  width: 5px;
-  height: 5px;
-  left: 3px;
-  top: 4px;
+  width: 28%;
+  height: 28%;
+  left: 16%;
+  top: 22%;
 }
 
 .float-cube::after {
-  width: 3px;
-  height: 3px;
-  right: 3px;
-  bottom: 3px;
+  width: 16%;
+  height: 16%;
+  right: 16%;
+  bottom: 16%;
   background: rgba(140, 160, 182, 0.5);
-}
-
-@keyframes moon-float {
-  0%, 100% { transform: translateY(0) rotate(8deg); }
-  50% { transform: translateY(-12px) rotate(4deg); }
 }
 
 .landing-clock {

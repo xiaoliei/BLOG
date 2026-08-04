@@ -4,7 +4,7 @@
  * Pure-Node glTF 2.0 (binary .glb) writer — no npm dependencies.
  *
  * Models produced:
- *   assets/models/earth.glb     - voxelized Minecraft-style Earth (landing page)
+ *   assets/models/earth.glb     - voxelized Minecraft-style Earth (legacy; landing now uses mc_head.glb)
  *   assets/models/cluster.glb   - materials voxel cluster (archive page)
  *   assets/models/cu_block.glb  - oxidized copper block (detail)
  *   assets/models/iron_block.glb

@@ -98,11 +98,11 @@ function analyzeShot(file, region) {
     const size = Math.round(r.width);
     return `${size}x${Math.round(r.height)}@${Math.round(r.left)},${Math.round(r.top)}`;
   });
-  report('index: moon at earth top-left', /^\d{2}x\d{2}@/.test(moon), moon);
+  report('index: moon at head top-left', /^\d{2}x\d{2}@/.test(moon), moon);
   const sky = await page.evaluate(() => getComputedStyle(document.body).backgroundImage.includes('radial-gradient'));
   report('index: deep blue radial sky', sky);
   const gl = await page.evaluate(() => {
-    const c = document.getElementById('earth3d');
+    const c = document.getElementById('head3d');
     return `${c && c.width > 0 ? 'sized' : 'empty'}:${c ? c.width : 0}x${c ? c.height : 0}`;
   });
   report('index: renderer sized canvas', gl.startsWith('sized'), gl);

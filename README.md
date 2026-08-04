@@ -6,7 +6,7 @@
 
 | 页面 | 文件 | 说明 |
 | --- | --- | --- |
-| 启动页 | `index.html` | 深蓝径向渐变夜空 + 300 颗呼吸闪烁星点 + 缓慢往复旋转的体素地球 + 左上角像素月球 + 数字时钟；点击 / 滚动 / 任意键进入主页 |
+| 启动页 | `index.html` | 深蓝径向渐变夜空 + 300 颗呼吸闪烁星点 + 缓慢往复旋转的 Minecraft 头颅（mcheads.ru 地球头皮肤）+ 左上角像素月球 + 数字时钟；点击 / 滚动 / 任意键进入主页 |
 | 主控台 | `archive.html` | 三栏：文章列表 / 3D 体素材料集群（慢自转）/ 属性面板 + 终端数据流 |
 | 文章详情 | `article.html?id=CU_04` | 三栏：面包屑 + 正文 + 高亮代码块 / 具体方块 3D + 橙色线框 / 属性 + NAV_ASSIST 快捷键 |
 
@@ -34,13 +34,21 @@ node scripts/verify.mjs
 
 ## 重新生成 3D 模型
 
-所有 `.glb` 由零依赖 Node 脚本生成（体素化地球、材料集群、5 种方块）：
+所有 `.glb` 由零依赖 Node 脚本生成（Minecraft 头颅、体素化地球、材料集群、5 种方块）：
 
 ```bash
 node scripts/generate-models.js
+node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 assets/models/mc_head.glb
 ```
 
 输出到 `assets/models/`。Three.js 与 GLTFLoader 已本地化于 `vendor/`，离线可用。
+
+## 头颅贴图来源
+
+`mjha_head/` 中的 `skin.png` 爬取自 [mcheads.ru 地球头页面](https://mcheads.ru/en/decoration/mjha)（页面 3D 视图所用的 64×64 皮肤贴图，与 Mojang 官方纹理一致）。`generate-head.js` 按 Minecraft 头颅标准 UV 布局将其嵌入 `assets/models/mc_head.glb`：
+
+- **两层结构**：底层头（8×8×8）+ 帽子叠加层（8.5×8.5×8.5，使用 hat 区域 UV，`alphaMode: MASK`），与 skinview3d 的两层头部渲染一致；
+- **NEAREST 采样**：与 skinview3d 一致，不生成 mipmap，保证放大后像素锐利、不模糊。
 
 ## 目录
 
