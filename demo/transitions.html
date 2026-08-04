@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRANSITION SCHEMES // BLOG_OS</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/transition.css">
+</head>
+<body class="transition-page">
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">MODULE <i>TRANSITION</i> // 页面跳转过场方案</div>
+  <div class="hud-corner hud-bl"><a href="index.html">◂ 返回启动页</a> &nbsp;·&nbsp; <a href="pickaxe-tower.html">层级加载</a></div>
+
+  <main class="overview-stage">
+    <div class="overview-title">STONE_PICKAXE_TOWER // 过场动画方案</div>
+    <div class="overview-sub">5 种方案均以 3D 模型承载「加载」与「离场」，点击卡片进入演示（加载完成后自动跳转到目标页）</div>
+
+    <div class="scheme-grid">
+      <a class="scheme-card" href="transition-a.html">
+        <div class="sc-head"><span class="sc-name">SCHEME A // 逐层搭建 / 拆除</span><span class="sc-perf">性能 <b>轻</b></span></div>
+        <div class="sc-desc">加载时塔从底部一层层向上生长；完成时从顶部逐层拆除，目标页随之淡入。最贴体素语义，复用现有分层资产。</div>
+        <div class="sc-tags"><span class="sc-tag">LAYER_GROW</span><span class="sc-tag">TEARDOWN</span><span class="sc-tag">3D</span></div>
+        <div class="sc-go">▶ 进入演示</div>
+      </a>
+
+      <a class="scheme-card" href="transition-b.html">
+        <div class="sc-head"><span class="sc-name">SCHEME B // 扫描聚能</span><span class="sc-perf">性能 <b>轻-中</b></span></div>
+        <div class="sc-desc">全息塔 + 激光扫描框从底部扫到顶部，扫过的部分实体化；完成后能量环向中心收束成光点。</div>
+        <div class="sc-tags"><span class="sc-tag">HOLOGRAM</span><span class="sc-tag">SCAN_FRAME</span><span class="sc-tag">3D</span></div>
+        <div class="sc-go">▶ 进入演示</div>
+      </a>
+
+      <a class="scheme-card" href="transition-c.html">
+        <div class="sc-head"><span class="sc-name">SCHEME C // 方块聚合 / 飞散</span><span class="sc-perf">性能 <b>轻-中</b></span></div>
+        <div class="sc-desc">模型按体素拆成 192 个独立闭合方块（保留原始贴图），聚合时方块飞入自旋、按序拼接成原模型；离场时方块再次飞散。</div>
+        <div class="sc-tags"><span class="sc-tag">POINTS</span><span class="sc-tag">GPU</span><span class="sc-tag">HIGH_END</span></div>
+        <div class="sc-go">▶ 进入演示</div>
+      </a>
+
+      <a class="scheme-card" href="transition-d.html">
+        <div class="sc-head"><span class="sc-name">SCHEME D // 错位对齐 / 坠落</span><span class="sc-perf">性能 <b>轻</b></span></div>
+        <div class="sc-desc">18 层全息错位抖动，加载时逐层对齐归位；离场时各层向下跌落淡出。全息投影自检感。</div>
+        <div class="sc-tags"><span class="sc-tag">HOLOGRAM</span><span class="sc-tag">ALIGN</span><span class="sc-tag">FALL</span></div>
+        <div class="sc-go">▶ 进入演示</div>
+      </a>
+
+      <a class="scheme-card" href="transition-e.html">
+        <div class="sc-head"><span class="sc-name">SCHEME E // 纯 CSS 定妆照</span><span class="sc-perf">性能 <b>极轻</b></span></div>
+        <div class="sc-desc">不跑 WebGL：预渲染透明塔图做 CSS 悬浮 + 扫描线 + 缩放模糊离场，任何设备可用，无加载成本。</div>
+        <div class="sc-tags"><span class="sc-tag">CSS_ONLY</span><span class="sc-tag">FALLBACK</span><span class="sc-tag">LOW_END</span></div>
+        <div class="sc-go">▶ 进入演示</div>
+      </a>
+    </div>
+  </main>
+
+  <div id="toast"></div>
+</body>
+</html>

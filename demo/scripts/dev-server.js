@@ -4,11 +4,12 @@
  * 用法: node scripts/dev-server.js [port]
  */
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = Number(process.argv[2]) || 8000;
 
 const MIME = {
@@ -58,4 +59,5 @@ server.listen(PORT, () => {
   console.log(`  index   → http://localhost:${PORT}/index.html`);
   console.log(`  archive → http://localhost:${PORT}/archive.html`);
   console.log(`  article → http://localhost:${PORT}/article.html?id=CU_04`);
+  console.log(`  tower   → http://localhost:${PORT}/pickaxe-tower.html`);
 });

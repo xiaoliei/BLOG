@@ -9,6 +9,8 @@
 | 启动页 | `index.html` | 深蓝径向渐变夜空 + 300 颗呼吸闪烁星点 + 缓慢往复旋转的 Minecraft 头颅（mcheads.ru 地球头皮肤）+ 左上角像素月球 + 数字时钟；点击 / 滚动 / 任意键进入主页 |
 | 主控台 | `archive.html` | 三栏：文章列表 / 3D 体素材料集群（慢自转）/ 属性面板 + 终端数据流 |
 | 文章详情 | `article.html?id=CU_04` | 三栏：面包屑 + 正文 + 高亮代码块 / 具体方块 3D + 橙色线框 / 属性 + NAV_ASSIST 快捷键 |
+| 层级加载 | `pickaxe-tower.html` | 全屏 3D：`stone_pickaxe_tower.glb` 按体素方块行（每层 1 格）从下到上逐层构建（向上生长 + 淡入 + 辉光过渡，无过冲无尖刺），OrbitControls 旋转 / 缩放，进度面板 + REPLAY 重播 |
+| 过场方案 | `transitions.html` | 5 种页面跳转过场动画方案 A–E（逐层搭建/拆除、扫描聚能、粒子聚合/坍缩、错位对齐/坠落、纯 CSS 定妆照），每个方案都是「点击 → 加载动画 → 自动跳转目标页」的完整闭环 |
 
 底部导航：`A` 文章 / `R` 代码 / `M` 我的世界 / `C` 联系（后三个为占位模块，会弹出 `MODULE_NOT_FOUND`）。
 
@@ -31,6 +33,20 @@ node scripts/verify.mjs
 ```
 
 `preview/` 目录保存了三页面的无头渲染截图，可快速查看整体效果。
+
+## 过场动画方案（transitions.html）
+
+方案总览页 `transitions.html` 汇总 5 种基于 `stone_pickaxe_tower.glb` 的跳转过场，各自独立成页：
+
+| 方案 | 页面 | 加载动画 | 离场动画 | 性能 |
+| --- | --- | --- | --- | --- |
+| A 逐层搭建/拆除 | `transition-a.html` | 18 层从下到上生长 | 从顶部逐层拆除 | 轻 |
+| B 扫描聚能 | `transition-b.html` | 全息塔 + 激光扫描框实体化 | 能量向中心收束 | 轻-中 |
+| C 独立方块聚合/坍缩 | `transition-c.html` | 192 个独立方块飞入自旋，拼接成完整实体塔 | 方块再次飞散 | 轻-中 |
+| D 错位对齐/坠落 | `transition-d.html` | 全息层错位逐层对齐 | 各层向下坠落 | 轻 |
+| E 纯 CSS 定妆照 | `transition-e.html` | CSS 悬浮 + 扫描线 | 缩放 + 模糊淡出 | 极轻 |
+
+共享数据层 `js/tower-layers.js` 负责 GLB 加载、按体素行切层、顶点粒子数据与贴图像素采样；`js/transition-common.js` 提供场景/灯光/缓动/进度 UI 与跳转状态机。方案 E 使用 `assets/tower_still.png`（无头渲染的透明塔图），完全不创建 WebGL。
 
 ## 重新生成 3D 模型
 
@@ -55,14 +71,22 @@ node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 as
 ```
 ├── index.html / archive.html / article.html
 ├── css/styles.css              # 主题、网格、面板、HUD、响应式
+├── css/transition.css          # 过场方案共享样式（面板、进度、卡片、目标页）
 ├── js/
 │   ├── data.js                 # 文章档案（正文、属性、代码）
 │   ├── common.js               # 时钟 / 坐标 / 网络 / boot / 导航
 │   ├── scene.js                # Three.js 场景、灯光、线框、GLB 加载
 │   ├── stars.js                # 启动页星空粒子
 │   ├── highlight.js            # GLSL / C++ 代码高亮
-│   ├── landing.js / archive.js / article.js
+│   ├── landing.js / archive.js / article.js / pickaxe-tower.js
+│   ├── tower-layers.js          # 体素 GLB 加载 + 切层 + 粒子数据
+│   ├── transition-common.js     # 过场共享：场景/灯光/缓动/进度状态机
+│   └── transition-a.js … e.js   # 5 种过场方案
 ├── assets/models/*.glb         # 体素模型
-├── vendor/                     # three.module.js + GLTFLoader
+├── assets/tower_still.png      # 方案 E 透明定妆照
+├── transitions.html / transition-target.html / transition-a.html … e.html
+├── vendor/                     # three.module.js + GLTFLoader + OrbitControls
 └── scripts/                    # 模型生成器 + 静态服务器
 ```
+
+`assets/models/stone_pickaxe_tower.glb` 为 `public/models/stone_pickaxe_tower.glb` 的副本（demo 服务器以 `demo/` 为根，无法直接引用仓库根目录）。

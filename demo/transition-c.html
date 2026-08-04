@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCHEME C // 粒子聚合/坍缩 — BLOG_OS</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/transition.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/" } }
+  </script>
+</head>
+<body class="transition-page">
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SCHEME <i>C</i> // 方块聚合 / 飞散</div>
+  <div class="hud-corner hud-bl"><a href="transitions.html">◂ 方案总览</a></div>
+
+  <main class="viewer-stage">
+    <canvas id="canvas3d"></canvas>
+    <section class="panel transition-panel">
+      <div class="panel-head"><span>◈ SCHEME C // 独立方块聚合 / 飞散</span><span class="led"></span></div>
+      <div class="t-title">STONE_PICKAXE_TOWER</div>
+      <div class="t-meta"><span id="progress-state">STANDBY</span><span id="progress-pct">0%</span></div>
+      <div class="layer-bar"><div id="progress-fill"></div></div>
+      <div class="t-text" id="progress-text">192 方块就绪 // 点击开始跳转</div>
+      <button class="btn-jump" id="btn-jump">▶ 开始跳转</button>
+    </section>
+  </main>
+
+  <div class="viewer-hint">加载 = 方块飞入拼接 &nbsp;·&nbsp; 离场 = 方块飞散</div>
+  <div id="toast"></div>
+  <script type="module" src="js/transition-c.js"></script>
+</body>
+</html>
