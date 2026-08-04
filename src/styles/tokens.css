@@ -1,0 +1,29 @@
+/* ============================================================
+   BLOG_OS 设计令牌
+   Palette: #0A101A bg | #E67E22 copper | #1ABC9C cyan
+   ============================================================ */
+
+:root {
+  --bg: #0A101A;
+  --bg-2: #0C1420;
+  --bg-3: #101B2C;
+  --panel: rgba(11, 19, 32, 0.78);
+  --panel-solid: #0D1524;
+  --line: rgba(102, 138, 178, 0.18);
+  --line-strong: rgba(102, 138, 178, 0.38);
+  --accent: #E67E22;
+  --accent-soft: rgba(230, 126, 34, 0.22);
+  --cyan: #1ABC9C;
+  --cyan-soft: rgba(26, 188, 156, 0.16);
+  --text: #C9D4E2;
+  --text-bright: #EAF2FB;
+  --dim: #5F718A;
+  --faint: #3A4A60;
+  --danger: #E74C3C;
+  --ok: #2ECC71;
+  --warn: #F1C40F;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  --font-pixel: 'Press Start 2P', 'JetBrains Mono', Consolas, monospace;
+  --status-h: 26px;
+  --nav-h: 48px;
+}

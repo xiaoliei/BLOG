@@ -1,0 +1,350 @@
+/* ============================================================
+   BLOG_OS 启动页（landing）样式
+   视觉与交互效果与 demo 保持一致，仅包含启动页所需组件。
+   ============================================================ */
+
+/* 页面根容器：深蓝径向渐变夜空，纵向撑满视口 */
+.landing-root {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(circle at center, #10203d 0%, #0a1424 45%, #030712 100%);
+}
+
+/* ---------- 全局背景层 ---------- */
+
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.022) 0px,
+    rgba(255, 255, 255, 0.022) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 899;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(2, 6, 12, 0.55) 100%);
+}
+
+/* ---------- HUD 角标 ---------- */
+
+.hud-corner {
+  position: fixed;
+  z-index: 50;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+  pointer-events: none;
+  text-transform: uppercase;
+  line-height: 1.6;
+}
+
+.hud-corner b {
+  color: var(--cyan);
+  font-weight: 500;
+}
+
+.hud-corner i {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.hud-tl {
+  top: 12px;
+  left: 16px;
+}
+
+.hud-tr {
+  top: 12px;
+  right: 16px;
+  text-align: right;
+}
+
+/* ---------- 状态栏 ---------- */
+
+.status-bar {
+  position: relative;
+  z-index: 61;
+  height: var(--status-h);
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  background: #070D16;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  padding: 0 12px;
+  gap: 18px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.status-bar .sb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-bar .sb-item .lb {
+  color: var(--faint);
+}
+
+.status-bar .sb-item .vl {
+  color: var(--text);
+}
+
+.status-bar .net-state.online {
+  color: var(--ok);
+}
+
+.status-bar .net-state.offline {
+  color: var(--danger);
+}
+
+.status-bar .sb-coords {
+  margin-left: auto;
+}
+
+.status-bar .sb-coords .c {
+  color: var(--cyan);
+}
+
+/* ---------- 开机动画 ---------- */
+
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: #050A12;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 9vw;
+  font-size: 13px;
+  color: var(--text);
+}
+
+#boot.on {
+  display: flex;
+}
+
+#boot .boot-line {
+  margin: 3px 0;
+  letter-spacing: 1px;
+  animation: boot-line-in 0.2s ease-out both;
+}
+
+@keyframes boot-line-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+#boot .boot-line b {
+  color: var(--cyan);
+  font-weight: 500;
+}
+
+#boot .boot-line .ok {
+  color: var(--ok);
+}
+
+/* ---------- 星空 ---------- */
+
+#stars {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* ---------- 舞台 ---------- */
+
+.landing-stage {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-bootline {
+  position: absolute;
+  z-index: 6;
+  top: calc(var(--status-h) + 26px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--faint);
+  text-transform: uppercase;
+}
+
+.landing-hint {
+  position: absolute;
+  z-index: 6;
+  bottom: calc(var(--status-h) + 30px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--faint);
+  text-transform: uppercase;
+  animation: hint-pulse 3.2s ease-in-out infinite;
+  white-space: nowrap;
+  user-select: none;
+}
+
+@keyframes hint-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- 3D 头颅与像素月球 ---------- */
+
+.earth-wrap {
+  position: relative;
+  width: min(46vh, 46vw, 480px);
+  aspect-ratio: 1;
+}
+
+#head3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.earth-glow {
+  position: absolute;
+  inset: -12%;
+  z-index: 1;
+  background: radial-gradient(circle, rgba(26, 188, 156, 0.15) 0%, rgba(26, 188, 156, 0.05) 45%, transparent 70%);
+  filter: blur(2px);
+  animation: glow-pulse 5s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+.float-cube {
+  position: absolute;
+  z-index: 4;
+  left: -12%;
+  top: -12%;
+  width: 5%; /* 随页面宽度（.earth-wrap）自适应缩放 */
+  aspect-ratio: 1;
+  background: rgba(200, 215, 230, 0.92);
+  box-shadow:
+    0 0 12px rgba(255, 255, 255, 0.45),
+    0 0 28px rgba(190, 215, 240, 0.28);
+  transform: rotate(8deg);
+}
+
+/* 像素陨石坑，强化"体素月球"的质感 */
+.float-cube::before,
+.float-cube::after {
+  content: '';
+  position: absolute;
+  background: rgba(120, 140, 162, 0.55);
+}
+
+.float-cube::before {
+  width: 28%;
+  height: 28%;
+  left: 16%;
+  top: 22%;
+}
+
+.float-cube::after {
+  width: 16%;
+  height: 16%;
+  right: 16%;
+  bottom: 16%;
+  background: rgba(140, 160, 182, 0.5);
+}
+
+/* ---------- 时钟 ---------- */
+
+.landing-clock {
+  position: relative;
+  z-index: 5;
+  margin-top: 26px;
+  text-align: center;
+  user-select: none;
+}
+
+.landing-clock .time {
+  font-family: var(--font-mono);
+  font-size: clamp(34px, 7vh, 58px);
+  font-weight: 500;
+  letter-spacing: 6px;
+  color: var(--text-bright);
+  text-shadow: 0 0 18px rgba(26, 188, 156, 0.35), 0 0 40px rgba(26, 188, 156, 0.15);
+}
+
+.landing-clock .time .colon {
+  color: var(--accent);
+  animation: led-blink 1s infinite;
+}
+
+@keyframes led-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.landing-clock .date {
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 640px) {
+  .status-bar .sb-coords {
+    display: none;
+  }
+}
