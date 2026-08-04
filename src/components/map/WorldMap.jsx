@@ -10,6 +10,7 @@ import { T, generateWorld, tileAt } from '../../lib/terrain.js';
 import { drawSprite, spriteVariant } from '../../lib/sprites.js';
 import { FLOWER_COLORS, ORE_COLORS, ROCK_COLORS } from '../../lib/sprites.js';
 import { hash2 } from '../../lib/rand.js';
+import { buildNearestGrid, landmarkCenter, voronoiCell } from '../../lib/voronoi.js';
 import Minimap from './Minimap.jsx';
 import PixelSprite from './PixelSprite.jsx';
 
@@ -67,6 +68,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   stateRef.current = { view, visited, playerPos, walking };
 
   const revealsRef = useRef([]); // { x, y, r, target, done }
+  const cellRevealsRef = useRef([]); // { id, progress, done } 地标 Voronoi 单元
+  const cellPolyCacheRef = useRef({});
   const animRef = useRef(null);
   const walkRef = useRef(null);
   const startWalkRef = useRef(null);
@@ -75,28 +78,46 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const reducedMotion = useRef(
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+  const nearestGrid = useMemo(buildNearestGrid, []);
 
   /* ---------- 迷雾面积计算 ---------- */
   const computeExplored = useCallback(() => {
     const reveals = revealsRef.current.filter((r) => !r.done || r.r > 0);
+    const visited = stateRef.current.visited;
     let count = 0;
     for (let y = 0; y < WORLD.tilesY; y += 1) {
       for (let x = 0; x < WORLD.tilesX; x += 1) {
-        const px = (x + 0.5) * TS;
-        const py = (y + 0.5) * TS;
-        let inside = false;
-        for (let i = 0; i < reveals.length; i += 1) {
-          const dx = px - reveals[i].x;
-          const dy = py - reveals[i].y;
-          if (dx * dx + dy * dy <= reveals[i].r * reveals[i].r) {
-            inside = true;
-            break;
+        const li = nearestGrid[y * WORLD.tilesX + x];
+        const lm = LANDMARKS[li];
+        let inside = lm.id === 'spawn-town' || visited.has(lm.id);
+        if (!inside) {
+          const px = (x + 0.5) * TS;
+          const py = (y + 0.5) * TS;
+          for (let i = 0; i < reveals.length; i += 1) {
+            const dx = px - reveals[i].x;
+            const dy = py - reveals[i].y;
+            if (dx * dx + dy * dy <= reveals[i].r * reveals[i].r) {
+              inside = true;
+              break;
+            }
           }
         }
         if (inside) count += 1;
       }
     }
     setExplored(Math.round((count / (WORLD.tilesX * WORLD.tilesY)) * 100));
+  }, [nearestGrid]);
+
+  /* 地标 Voronoi 单元多边形（缓存） */
+  const getCellPolygon = useCallback((id) => {
+    const cache = cellPolyCacheRef.current;
+    if (!cache[id]) {
+      const lm = LANDMARKS.find((l) => l.id === id);
+      const center = landmarkCenter(lm);
+      const others = LANDMARKS.filter((l) => l.id !== id).map(landmarkCenter);
+      cache[id] = voronoiCell(center, others, { x0: 0, y0: 0, x1: WORLD_W, y1: WORLD_H });
+    }
+    return cache[id];
   }, []);
 
   /* ---------- 迷雾渲染 ---------- */
@@ -110,6 +131,17 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'destination-out';
+    // 地标 Voronoi 单元：两地标之间点亮一半距离；边界处点亮到地图边缘
+    for (const cv of cellRevealsRef.current) {
+      if (cv.progress <= 0) continue;
+      const poly = getCellPolygon(cv.id);
+      ctx.fillStyle = `rgba(0,0,0,${Math.min(cv.progress, 1)})`;
+      ctx.beginPath();
+      poly.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.fill();
+    }
+    // 行走沿途小圈
     for (const rv of revealsRef.current) {
       const g = ctx.createRadialGradient(rv.x, rv.y, 0, rv.x, rv.y, Math.max(rv.r, 1));
       g.addColorStop(0, 'rgba(0,0,0,1)');
@@ -121,9 +153,9 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       ctx.fill();
     }
     ctx.globalCompositeOperation = 'source-over';
-  }, []);
+  }, [getCellPolygon]);
 
-  /* 迷雾展开动画循环 */
+  /* 迷雾展开动画循环（地标单元淡入 + 沿途小圈扩散） */
   const startFogLoop = useCallback(() => {
     if (animRef.current) return;
     let last = performance.now();
@@ -138,6 +170,15 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
           busy = true;
         } else if (!rv.done) {
           rv.done = true;
+          busy = true;
+        }
+      }
+      for (const cv of cellRevealsRef.current) {
+        if (cv.progress < 1) {
+          cv.progress = Math.min(1, cv.progress + dt * 1.6);
+          busy = true;
+        } else if (!cv.done) {
+          cv.done = true;
           busy = true;
         }
       }
@@ -166,6 +207,26 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       }
       revealsRef.current.push({ x, y, r: 0, target, done: false });
       startFogLoop();
+    },
+    [computeExplored, drawFog, startFogLoop]
+  );
+
+  /* 探索完地标后：点亮它的 Voronoi 区域 */
+  const revealCell = useCallback(
+    (id) => {
+      if (cellRevealsRef.current.some((c) => c.id === id)) return;
+      cellRevealsRef.current.push({
+        id,
+        progress: reducedMotion.current ? 1 : 0,
+        done: reducedMotion.current,
+      });
+      if (reducedMotion.current) {
+        drawFog();
+        computeExplored();
+        setRevealTick((t) => t + 1);
+      } else {
+        startFogLoop();
+      }
     },
     [computeExplored, drawFog, startFogLoop]
   );
@@ -249,20 +310,11 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       const spawn = LANDMARKS[0];
       const sx = (spawn.x + 0.5) * TS;
       const sy = (spawn.y + 0.5) * TS;
-      // 出生点已探索
-      revealsRef.current.push({
-        x: sx,
-        y: sy,
-        r: reducedMotion.current ? 280 : 0,
-        target: 280,
-        done: reducedMotion.current,
-      });
-      drawFog();
-      computeExplored();
-      // 已访问地标直接点亮
+      // 出生点视为已探索：点亮橡木镇的 Voronoi 区域
+      revealCell('spawn-town');
+      // 已访问地标按地标间距离点亮对应区域
       loadVisited().forEach((id) => {
-        const lm = LANDMARKS.find((l) => l.id === id);
-        if (lm) revealAt((lm.x + 0.5) * TS, (lm.y + 0.5) * TS, 230);
+        if (id !== 'spawn-town') revealCell(id);
       });
       // 初始相机
       const scale = Math.min(Math.max(viewport.w / (WORLD.tilesX * TS), 0.72), 1.3);
@@ -353,7 +405,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
   const finishArrival = useCallback(
     (landmark) => {
-      revealAt((landmark.x + 0.5) * TS, (landmark.y + 0.5) * TS, 250);
+      // 探索完地标：点亮它到邻近地标一半距离的区域（边界处点亮到地图边缘）
+      revealCell(landmark.id);
       setVisited((prev) => {
         const next = new Set(prev);
         next.add(landmark.id);
@@ -363,7 +416,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       // 停顿一下，让玩家“到达”的感觉出来，再切换场景
       window.setTimeout(() => onEnterScene(landmark.id), 420);
     },
-    [onEnterScene, revealAt]
+    [onEnterScene, revealCell]
   );
 
   const cancelWalk = useCallback(() => {
@@ -521,10 +574,10 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       /* ignore */
     }
     revealsRef.current = [];
+    cellRevealsRef.current = [];
     setVisited(new Set());
-    const spawn = LANDMARKS[0];
-    revealAt((spawn.x + 0.5) * TS, (spawn.y + 0.5) * TS, 280);
-  }, [revealAt]);
+    revealCell('spawn-town');
+  }, [revealCell]);
 
   const tileX = Math.floor(playerPos.x / TS);
   const tileZ = Math.floor(playerPos.y / TS);
