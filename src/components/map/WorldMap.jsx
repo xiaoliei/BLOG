@@ -72,6 +72,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const cellPolyCacheRef = useRef({});
   const animRef = useRef(null);
   const walkRef = useRef(null);
+  const arrivalTimerRef = useRef(null);
   const startWalkRef = useRef(null);
   const panRef = useRef(null);
   const initializedRef = useRef(false);
@@ -414,18 +415,31 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
         return next;
       });
       // 停顿一下，让玩家“到达”的感觉出来，再切换场景
-      window.setTimeout(() => onEnterScene(landmark.id), 420);
+      if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current);
+      arrivalTimerRef.current = window.setTimeout(() => {
+        arrivalTimerRef.current = null;
+        onEnterScene(landmark.id);
+      }, 420);
     },
     [onEnterScene, revealCell]
   );
 
-  const cancelWalk = useCallback(() => {
+  /* 停止当前移动：取消动画、清除待触发的“进入场景”计时器 */
+  const stopWalking = useCallback(() => {
     if (walkRef.current) {
       cancelAnimationFrame(walkRef.current);
       walkRef.current = null;
     }
+    if (arrivalTimerRef.current) {
+      clearTimeout(arrivalTimerRef.current);
+      arrivalTimerRef.current = null;
+    }
     setWalking(null);
   }, []);
+
+  const cancelWalk = useCallback(() => {
+    stopWalking();
+  }, [stopWalking]);
 
   /* ---------- 键盘 ---------- */
   useEffect(() => {
@@ -470,7 +484,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   /* ---------- 玩家寻路 ---------- */
   const startWalk = useCallback(
     (target) => {
-      if (stateRef.current.walking) return;
+      // 移动中点击新位置：取消当前移动，从当前位置改往新目的地
+      stopWalking();
       const from = stateRef.current.playerPos;
       const to = target.id
         ? { x: (target.x + 0.5) * TS, y: (target.y + 0.5) * TS }
@@ -517,7 +532,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       };
       walkRef.current = requestAnimationFrame(step);
     },
-    [finishArrival, revealAt]
+    [finishArrival, revealAt, stopWalking]
   );
   startWalkRef.current = startWalk;
 
@@ -560,8 +575,10 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     () => () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
       if (walkRef.current) cancelAnimationFrame(walkRef.current);
+      if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current);
       animRef.current = null;
       walkRef.current = null;
+      arrivalTimerRef.current = null;
     },
     []
   );
@@ -679,7 +696,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       {walking && (
         <div className="world-walk-hint">
           <PixelSprite name="player" size={22} />
-          正在前往 <b>{walking.name}</b>…（按 Esc 取消）
+          正在前往 <b>{walking.name}</b>…（按 Esc 取消 · 点击他处改道）
         </div>
       )}
 
