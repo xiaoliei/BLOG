@@ -27,4 +27,24 @@
   --font-pixel: 'Press Start 2P', 'JetBrains Mono', Consolas, monospace;
   --status-h: 26px;
   --nav-h: 48px;
+
+  /* Bedrock 风格按钮（参考 zh.minecraft.wiki 基岩版按钮贴图） */
+  --btn-border: #131313;
+  --btn-face: #C6C6C6;
+  --btn-face-hi: #F7F7F7;   /* 上/左高光 */
+  --btn-face-lo: #656465;   /* 下/右阴影 */
+  --btn-text: #1B1B1B;
+  --btn-hover-border: #FFFFFF;
+  --btn-hover-face: #218306;
+  --btn-hover-hi: #17CD07;
+  --btn-hover-lo: #004E00;
+  --btn-hover-text: #FFFFFF;
+  --btn-pressed-face: #8B8B8B; /* 按下（无悬停） */
+  --btn-pressed-hi: #DFDFDF;
+  --btn-pressed-lo: #5B5A5B;
+  --btn-disabled-face: #757575;
+  --btn-disabled-text: #3A3A3A;
+  --btn-danger-face: #B02E26;
+  --btn-danger-hi: #FF6B5E;
+  --btn-danger-lo: #5C1B17;
 }

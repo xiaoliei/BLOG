@@ -712,11 +712,19 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
           <span className="hud-explored">探索 {explored}%</span>
         </div>
         <div className="hud-actions">
-          <button type="button" className="hud-btn" onClick={() => setLegendOpen((o) => !o)} aria-pressed={legendOpen}>
+          <button type="button" className="mc-btn" onClick={() => setLegendOpen((o) => !o)} aria-pressed={legendOpen}>
             图例
           </button>
-          <button type="button" className="hud-btn" onClick={resetProgress}>重置探索</button>
-          <button type="button" className="hud-btn hud-btn--reboot" onClick={onReboot}>重启</button>
+          <button
+            type="button"
+            className="mc-btn"
+            onClick={resetProgress}
+            disabled={visited.size === 0}
+            data-disabled-msg="还没有探索记录"
+          >
+            重置探索
+          </button>
+          <button type="button" className="mc-btn mc-btn--danger" onClick={onReboot}>重启</button>
         </div>
       </header>
 
@@ -759,7 +767,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
               </li>
             ))}
           </ul>
-          <button type="button" className="hud-btn" onClick={() => setClockMenuOpen(false)}>关闭</button>
+          <button type="button" className="mc-btn" onClick={() => setClockMenuOpen(false)}>关闭</button>
         </aside>
       )}
 
@@ -819,7 +827,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
             <h4>迷雾</h4>
             <p>未探索区域被迷雾笼罩，靠近后会点亮。<b>?</b> 标记为未探索地标。探索进度会保存在本地。</p>
           </div>
-          <button type="button" className="hud-btn" onClick={() => setLegendOpen(false)}>关闭</button>
+          <button type="button" className="mc-btn" onClick={() => setLegendOpen(false)}>关闭</button>
         </aside>
       )}
 

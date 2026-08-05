@@ -22,7 +22,7 @@ export default function SceneView({ landmark, onBack }) {
   return (
     <div className={`scene-root scene--${landmark.biome}`} style={{ '--accent': landmark.accent, '--accent-dark': landmark.accentDark }}>
       <header className="scene-bar">
-        <button type="button" className="scene-back" onClick={onBack}>
+        <button type="button" className="mc-btn scene-back" onClick={onBack}>
           <span aria-hidden="true">◄</span> 返回地图
         </button>
         <div className="scene-bar-meta">
@@ -70,7 +70,7 @@ export default function SceneView({ landmark, onBack }) {
                   </div>
                   <button
                     type="button"
-                    className="post-read"
+                    className="mc-btn post-read"
                     title="文章详情页为占位链接"
                     onClick={() => window.alert('文章详情页为占位链接，将在后续版本接入。')}
                   >
@@ -95,7 +95,7 @@ export default function SceneView({ landmark, onBack }) {
                   </li>
                 ))}
               </ul>
-              <button type="button" className="scene-panel-btn" onClick={onBack}>
+              <button type="button" className="mc-btn scene-panel-btn" onClick={onBack}>
                 回到地图前往 →
               </button>
             </div>

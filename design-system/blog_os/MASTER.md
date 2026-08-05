@@ -65,35 +65,23 @@
 
 ### Buttons
 
-```css
-/* Primary Button */
-.btn-primary {
-  background: #2563EB;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+**实现类：`.mc-btn`（见 `src/styles/base.css`），令牌见 `src/styles/tokens.css`（`--btn-*`）**
 
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+Bedrock 版像素按钮，五种交互状态：
 
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #18181B;
-  border: 2px solid #18181B;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
+| 状态 | 触发 | 外观 |
+|------|------|------|
+| 正常 | 默认 | 灰面 `#C6C6C6` + 深色 `#131313` 2px 描边 + 左上高光 `#F7F7F7` / 右下阴影 `#656465` |
+| 悬停 | `:hover` | 绿面 `#218306` + 白色描边 + 亮绿高光 `#17CD07` / 深绿阴影 `#004E00` |
+| 焦点 | `:focus-visible` | 悬停外观 + 白色虚线焦点环（`outline: 2px dashed #FFF`） |
+| 按下 | `:active` | 悬停中：绿色倒置棱角 + 下移 1px；键盘/触屏：灰面 `#8B8B8B` 倒置棱角 |
+| 禁用 | `:disabled` | 平面灰 `#757575`，无棱角，`cursor: not-allowed` |
+
+- 禁用按钮配合 `data-disabled-msg` 显示提示气泡（悬停 / 触屏可见），对应
+  “禁用，触碰时显示提示”贴图。
+- 危险操作（如“重启”）使用 `.mc-btn--danger`：悬停 / 按下时红色面
+  `#B02E26`，高光 `#FF6B5E` / 阴影 `#5C1B17`。
+- 所有状态用 90ms `steps()` 过渡，模拟贴图瞬间切换的像素感。
 
 ### Cards
 
