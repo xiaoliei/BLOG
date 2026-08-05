@@ -61,11 +61,12 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const [explored, setExplored] = useState(0);
   const [revealTick, setRevealTick] = useState(0);
   const [legendOpen, setLegendOpen] = useState(false);
+  const [clockMenuOpen, setClockMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(null);
   const [terrainReady, setTerrainReady] = useState(false);
 
-  const stateRef = useRef({ view, visited, playerPos, walking });
-  stateRef.current = { view, visited, playerPos, walking };
+  const stateRef = useRef({ view, visited, playerPos, walking, clockMenuOpen });
+  stateRef.current = { view, visited, playerPos, walking, clockMenuOpen };
 
   const revealsRef = useRef([]); // { x, y, r, target, done }
   const cellRevealsRef = useRef([]); // { id, progress, done } 地标 Voronoi 单元
@@ -358,6 +359,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     (e) => {
       if (!active) return;
       if (e.target.closest('button, a, [data-nopan]')) return;
+      if (stateRef.current.clockMenuOpen) setClockMenuOpen(false);
       panRef.current = { startX: e.clientX, startY: e.clientY, ox: stateRef.current.view.ox, oy: stateRef.current.view.oy, moved: false };
       e.currentTarget.setPointerCapture(e.pointerId);
     },
@@ -473,8 +475,9 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
         });
       } else if (e.key === 'l' || e.key === 'L') {
         setLegendOpen((o) => !o);
-      } else if (e.key === 'Escape' && stateRef.current.walking) {
-        cancelWalk();
+      } else if (e.key === 'Escape') {
+        if (stateRef.current.clockMenuOpen) setClockMenuOpen(false);
+        else if (stateRef.current.walking) cancelWalk();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -535,6 +538,34 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     [finishArrival, revealAt, stopWalking]
   );
   startWalkRef.current = startWalk;
+
+  /* ---------- 时钟传送：直达地标并打开对应模块页 ---------- */
+  const jumpToLandmark = useCallback(
+    (lm) => {
+      stopWalking();
+      const x = (lm.x + 0.5) * TS;
+      const y = (lm.y + 0.5) * TS;
+      setPlayerPos({ x, y });
+      revealCell(lm.id);
+      setVisited((prev) => {
+        const next = new Set(prev);
+        next.add(lm.id);
+        saveVisited(next);
+        return next;
+      });
+      // 相机立即居中到落点
+      setView((v) => {
+        const r = viewportRef.current?.getBoundingClientRect?.();
+        const w = r && r.width > 0 ? r.width : viewport.w;
+        const h = r && r.height > 0 ? r.height : viewport.h;
+        return clampView({ ...v, ox: w / 2 - x * v.scale, oy: h / 2 - y * v.scale });
+      });
+      setClockMenuOpen(false);
+      // 停顿一下让玩家看清落点，再进入对应模块页
+      window.setTimeout(() => onEnterScene(lm.id), 320);
+    },
+    [clampView, onEnterScene, revealCell, stopWalking, viewport]
+  );
 
   /* ---------- 相机跟随玩家（行走时） ---------- */
   useEffect(() => {
@@ -692,6 +723,45 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       <div className="world-hud-help">
         <span>拖拽平移</span><span>滚轮 / + - 缩放</span><span>WASD 移动视角</span><span>R 回出生点</span>
       </div>
+
+      <button
+        type="button"
+        className={`world-clock${clockMenuOpen ? ' world-clock--open' : ''}`}
+        data-nopan
+        onClick={() => setClockMenuOpen((o) => !o)}
+        aria-expanded={clockMenuOpen}
+        aria-label="地标传送菜单"
+        title="时钟传送 // 直接前往任意模块"
+      >
+        <img src="/Clock.gif" alt="时钟传送" />
+      </button>
+
+      {clockMenuOpen && (
+        <aside className="clock-menu" data-nopan aria-label="地标传送菜单">
+          <h3>时钟传送 // TELEPORT</h3>
+          <p className="clock-menu-tip">选择地标：立即抵达并打开对应模块页</p>
+          <ul className="clock-menu-list">
+            {LANDMARKS.map((lm) => (
+              <li key={lm.id}>
+                <button
+                  type="button"
+                  className="clock-menu-item"
+                  style={{ '--lm-accent': lm.accent }}
+                  onClick={() => jumpToLandmark(lm)}
+                >
+                  <PixelSprite name={lm.icon} size={26} />
+                  <span className="clock-menu-meta">
+                    <b>{lm.name}</b>
+                    <em>{lm.module}</em>
+                  </span>
+                  <i className="clock-menu-dot" style={{ background: lm.accent }} aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="hud-btn" onClick={() => setClockMenuOpen(false)}>关闭</button>
+        </aside>
+      )}
 
       {walking && (
         <div className="world-walk-hint">

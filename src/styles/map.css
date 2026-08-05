@@ -304,6 +304,121 @@
   pointer-events: none;
 }
 
+/* ---------- 时钟传送菜单 ---------- */
+.world-clock {
+  position: absolute;
+  left: 14px;
+  bottom: 54px;
+  z-index: 24;
+  display: block;
+  background: rgba(11, 19, 32, 0.82);
+  border: 2px solid rgba(102, 138, 178, 0.38);
+  padding: 4px;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.world-clock img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  image-rendering: pixelated;
+}
+
+.world-clock:hover,
+.world-clock:focus-visible,
+.world-clock--open {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.5);
+}
+
+.world-clock:focus-visible {
+  outline: none;
+}
+
+.clock-menu {
+  position: absolute;
+  left: 14px;
+  bottom: 126px;
+  z-index: 28;
+  width: 264px;
+  max-height: calc(100% - 190px);
+  overflow-y: auto;
+  background: var(--panel-solid);
+  border: 2px solid rgba(102, 138, 178, 0.42);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 12px 14px;
+}
+
+.clock-menu h3 {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+}
+
+.clock-menu-tip {
+  margin: 5px 0 9px;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.5;
+}
+
+.clock-menu-list {
+  list-style: none;
+  margin: 0 0 11px;
+}
+
+.clock-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(11, 19, 32, 0.72);
+  border: 2px solid rgba(102, 138, 178, 0.2);
+  padding: 7px 9px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.clock-menu-item:hover,
+.clock-menu-item:focus-visible {
+  border-color: var(--lm-accent, var(--accent));
+  background: rgba(16, 27, 44, 0.92);
+  outline: none;
+}
+
+.clock-menu-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.clock-menu-meta b {
+  font-size: 12px;
+  color: var(--text-bright);
+}
+
+.clock-menu-meta em {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--lm-accent, var(--accent));
+}
+
+.clock-menu-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 .world-walk-hint {
   position: absolute;
   left: 50%;
@@ -451,6 +566,15 @@
 
   .world-hud-help {
     display: none;
+  }
+
+  .world-clock {
+    bottom: 14px;
+  }
+
+  .clock-menu {
+    bottom: 78px;
+    max-height: calc(100% - 132px);
   }
 
   .hud-title-sub {
