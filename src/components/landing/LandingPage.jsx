@@ -40,10 +40,14 @@ export default function LandingPage({ onComplete }) {
       <HudCorners version={SITE.version} session={SITE.session} />
 
       <main className="landing-stage" onClick={enter} onPointerDown={enter}>
-        <div className="landing-bootline">[ LOADING VOXEL HEAD // 体素头颅 ]</div>
-        <HeadViewer />
-        <LandingClock time={clock.time} date={clock.date} />
-        <div className="landing-hint">▸ CLICK ANYWHERE / SCROLL TO ENTER // 点击任意处进入 ◂</div>
+        {!booting && (
+          <>
+            <div className="landing-bootline">[ LOADING VOXEL HEAD // 体素头颅 ]</div>
+            <HeadViewer />
+            <LandingClock time={clock.time} date={clock.date} />
+            <div className="landing-hint">▸ CLICK ANYWHERE / SCROLL TO ENTER // 点击任意处进入 ◂</div>
+          </>
+        )}
       </main>
 
       <StatusBar {...clock} />

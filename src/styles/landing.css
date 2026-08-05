@@ -121,28 +121,209 @@
   color: var(--cyan);
 }
 
-/* ---------- 开机动画 ---------- */
+/* ---------- 世界加载屏幕（开机动画） ---------- */
 
+/* 半透明遮罩：保留背景星空，仅轻微压暗保证前景可读 */
 #boot {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: #050A12;
+  background: radial-gradient(
+    circle at 50% 42%,
+    rgba(5, 10, 18, 0.58) 0%,
+    rgba(5, 10, 18, 0.78) 62%,
+    rgba(4, 8, 14, 0.92) 100%
+  );
   display: none;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 0 9vw;
-  font-size: 13px;
+  padding: 24px;
   color: var(--text);
+  animation: boot-fade-in 0.22s ease-out;
 }
 
 #boot.on {
   display: flex;
 }
 
-#boot .boot-line {
-  margin: 3px 0;
+#boot.fade {
+  opacity: 0;
+  transform: scale(1.045);
+  transition: opacity 0.42s ease, transform 0.42s ease;
+  pointer-events: none;
+}
+
+@keyframes boot-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.boot-panel {
+  position: relative;
+  width: min(560px, 94vw);
+  padding: 20px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(7, 13, 22, 0.88);
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    0 0 0 1px rgba(5, 10, 18, 0.6),
+    0 0 32px rgba(26, 188, 156, 0.1),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.boot-panel::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(102, 138, 178, 0.1);
+  pointer-events: none;
+}
+
+.boot-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.boot-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+
+.boot-meta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.boot-count {
+  font-size: 10px;
   letter-spacing: 1px;
+  color: var(--dim);
+}
+
+.boot-pct {
+  min-width: 46px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+/* 世界加载进度条：位于颜色图上方 */
+.boot-bar {
+  position: relative;
+  height: 8px;
+  background: #060B13;
+  border: 1px solid var(--line-strong);
+  overflow: hidden;
+}
+
+.boot-bar-fill {
+  position: relative;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan) 0%, #2FE0BE 45%, var(--accent) 100%);
+  box-shadow: 0 0 14px rgba(26, 188, 156, 0.55);
+}
+
+.boot-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 46%;
+  left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.38), transparent);
+  animation: boot-bar-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes boot-bar-shimmer {
+  0% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+/* 区块颜色图：每像素 = 一个 4×4 地块区块 */
+.boot-map-wrap {
+  position: relative;
+  align-self: center;
+}
+
+#chunkmap {
+  display: block;
+  width: min(224px, 58vw, 30vh);
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+  background: #070D16;
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    0 0 26px rgba(26, 188, 156, 0.12),
+    inset 0 0 28px rgba(0, 0, 0, 0.45);
+}
+
+.boot-map-label {
+  position: absolute;
+  left: 7px;
+  bottom: 5px;
+  z-index: 2;
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--faint);
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* 全部区块加载完成时的“世界落定”白闪 */
+.boot-map-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #EAF2FB;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-map-flash.on {
+  animation: boot-map-flash 0.26s ease-out forwards;
+}
+
+@keyframes boot-map-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.boot-lines {
+  width: 100%;
+  max-height: 30vh;
+  overflow: hidden;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 10px;
+  letter-spacing: 1px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+#boot .boot-line {
   animation: boot-line-in 0.2s ease-out both;
 }
 
