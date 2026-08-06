@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIRE_CUBE // 火焰动态方块 — BLOG_OS</title>
+  <meta name="description" content="BLOG_OS — 用 Fire.gif 组成田字格火焰动态方块 Demo（外壁四片 + 中心十字交叉）">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+  <style>
+    body.fire-page {
+      background: radial-gradient(circle at 50% 32%, #1a0d08 0%, #120b10 38%, #05070d 100%);
+    }
+
+    .viewer-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    #viewer3d {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+    }
+
+    /* 火焰方块信息面板 */
+    .fire-panel {
+      position: fixed;
+      top: 64px;
+      left: 18px;
+      z-index: 40;
+      width: 272px;
+      padding: 0 0 14px;
+    }
+
+    .fire-title {
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      color: var(--accent);
+      line-height: 1.8;
+      padding: 12px 16px 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .fire-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 4px 16px 10px;
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .fire-meta #fire-count { color: var(--text-bright); font-weight: 600; }
+    .fire-meta #fire-state { color: var(--cyan); }
+    .fire-meta #fire-state.done { color: var(--ok); }
+    .fire-meta #fire-state.error { color: var(--danger); }
+
+    /* 贴图实时预览：直接播放 Fire.gif 动画 */
+    .fire-preview {
+      margin: 0 16px 10px;
+      padding: 10px;
+      background: rgba(3, 7, 13, 0.75);
+      border: 1px solid rgba(102, 138, 178, 0.22);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .fire-preview img {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      background: #000;
+      box-shadow: 0 0 18px rgba(230, 126, 34, 0.38);
+    }
+
+    .fire-preview-label {
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      line-height: 1.8;
+    }
+
+    .fire-preview-label b {
+      display: block;
+      color: var(--text-bright);
+      font-weight: 500;
+      font-size: 11px;
+    }
+
+    .fire-stats {
+      padding: 0 16px 12px;
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1px;
+      line-height: 1.9;
+      min-height: 34px;
+    }
+
+    .fire-stats b { color: var(--cyan); font-weight: 500; }
+
+    .fire-btns {
+      display: flex;
+      gap: 8px;
+      margin: 0 16px;
+    }
+
+    .btn-fire {
+      padding: 8px 0;
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid rgba(26, 188, 156, 0.45);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      text-transform: uppercase;
+      white-space: nowrap;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+    }
+
+    .btn-fire.wide { flex: 1; }
+
+    .btn-fire:hover:not(:disabled) {
+      background: var(--cyan-soft);
+      border-color: var(--cyan);
+      color: var(--text-bright);
+    }
+
+    .btn-fire:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* 火焰面内倾角度滑杆 */
+    .fire-slider {
+      margin: 12px 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .fire-slider-label {
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .fire-slider input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .fire-slider input[type="range"]:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .fire-slider-value {
+      min-width: 38px;
+      text-align: right;
+      color: var(--text-bright);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    /* 底部操作提示 */
+    .viewer-hint {
+      position: fixed;
+      bottom: calc(var(--status-h) + 14px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .viewer-hint b { color: var(--cyan); font-weight: 500; }
+  </style>
+</head>
+<body class="fire-page">
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: FIRE_CUBE</div>
+  <div class="hud-corner hud-br" id="hud-status">FIRE_CUBE <i>STANDBY</i></div>
+
+  <main class="viewer-stage">
+    <canvas id="viewer3d"></canvas>
+
+    <section class="panel fire-panel">
+      <div class="panel-head">
+        <span>◈ FIRE_CUBE // 田字格火焰</span>
+        <span class="led"></span>
+      </div>
+      <div class="fire-title">FIRE_BLOCK // 田字格</div>
+      <div class="fire-meta">
+        <span id="fire-count">-- / --</span>
+        <span id="fire-state">STANDBY</span>
+      </div>
+      <div class="fire-preview">
+        <img id="fire-preview" src="assets/Fire.gif" alt="Fire.gif 动画贴图">
+        <div class="fire-preview-label">
+          TEXTURE // Fire.gif
+          <b>LIVE ANIMATION</b>
+        </div>
+      </div>
+      <div class="fire-stats" id="fire-stats">DECODING FIRE.GIF…</div>
+      <div class="fire-btns">
+        <button class="btn-fire wide" id="btn-rotate" disabled>AUTO_ROTATE: ON</button>
+      </div>
+      <div class="fire-slider">
+        <span class="fire-slider-label">TILT 内倾</span>
+        <input type="range" id="tilt-slider" min="0" max="30" step="1" value="12">
+        <span class="fire-slider-value" id="tilt-value">12°</span>
+      </div>
+    </section>
+  </main>
+
+  <div class="viewer-hint">DRAG <b>旋转视角</b> // WHEEL <b>缩放</b> // TILT <b>调节火焰内倾</b></div>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item sb-up"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="js/fire-cube.js"></script>
+</body>
+</html>

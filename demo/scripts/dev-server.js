@@ -60,4 +60,5 @@ server.listen(PORT, () => {
   console.log(`  archive → http://localhost:${PORT}/archive.html`);
   console.log(`  article → http://localhost:${PORT}/article.html?id=CU_04`);
   console.log(`  tower   → http://localhost:${PORT}/pickaxe-tower.html`);
+  console.log(`  fire    → http://localhost:${PORT}/fire-cube.html`);
 });

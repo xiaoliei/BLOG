@@ -10,6 +10,7 @@
 | 主控台 | `archive.html` | 三栏：文章列表 / 3D 体素材料集群（慢自转）/ 属性面板 + 终端数据流 |
 | 文章详情 | `article.html?id=CU_04` | 三栏：面包屑 + 正文 + 高亮代码块 / 具体方块 3D + 橙色线框 / 属性 + NAV_ASSIST 快捷键 |
 | 层级加载 | `pickaxe-tower.html` | 全屏 3D：`stone_pickaxe_tower.glb` 按体素方块行（每层 1 格）从下到上逐层构建（向上生长 + 淡入 + 辉光过渡，无过冲无尖刺），OrbitControls 旋转 / 缩放，进度面板 + REPLAY 重播 |
+| 火焰方块 | `fire-cube.html` | 全屏 3D：把 `Fire.gif` 逐帧解码为动画贴图，`前/后/左/右` 四片外壁 + 中心两片十字交叉组成俯视「田」字格的动态火焰方块；透明镂空无黑色底，外壁可绕底部铰链向内倾斜（0–30°），火苗明暗驱动点光闪烁 |
 | 过场方案 | `transitions.html` | 5 种页面跳转过场动画方案 A–E（逐层搭建/拆除、扫描聚能、粒子聚合/坍缩、错位对齐/坠落、纯 CSS 定妆照），每个方案都是「点击 → 加载动画 → 自动跳转目标页」的完整闭环 |
 
 底部导航：`A` 文章 / `R` 代码 / `M` 我的世界 / `C` 联系（后三个为占位模块，会弹出 `MODULE_NOT_FOUND`）。
@@ -76,6 +77,8 @@ node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 as
 │   ├── data.js                 # 文章档案（正文、属性、代码）
 │   ├── common.js               # 时钟 / 坐标 / 网络 / boot / 导航
 │   ├── scene.js                # Three.js 场景、灯光、线框、GLB 加载
+│   ├── gif-decoder.js          # 零依赖 GIF 解码器（逐帧 RGBA 合成，浏览器/Node 通用）
+│   ├── fire-cube.js            # 田字格火焰方块：Fire.gif 逐帧纹理 + 内倾控制
 │   ├── stars.js                # 启动页星空粒子
 │   ├── highlight.js            # GLSL / C++ 代码高亮
 │   ├── landing.js / archive.js / article.js / pickaxe-tower.js
@@ -83,6 +86,7 @@ node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 as
 │   ├── transition-common.js     # 过场共享：场景/灯光/缓动/进度状态机
 │   └── transition-a.js … e.js   # 5 种过场方案
 ├── assets/models/*.glb         # 体素模型
+├── assets/Fire.gif             # 火焰贴图（public/texture/Fire.gif 的副本，见下）
 ├── assets/tower_still.png      # 方案 E 透明定妆照
 ├── transitions.html / transition-target.html / transition-a.html … e.html
 ├── vendor/                     # three.module.js + GLTFLoader + OrbitControls
@@ -90,3 +94,5 @@ node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 as
 ```
 
 `assets/models/stone_pickaxe_tower.glb` 为 `public/models/stone_pickaxe_tower.glb` 的副本（demo 服务器以 `demo/` 为根，无法直接引用仓库根目录）。
+
+`assets/Fire.gif` 同理为 `public/texture/Fire.gif` 的副本，`fire-cube.html` 在浏览器内实时解码其 32 帧（32×32，每帧 50ms）作为火焰方块六个面的动画贴图。
