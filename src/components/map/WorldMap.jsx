@@ -109,8 +109,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const [view, setView] = useState({ ox: 0, oy: 0, scale: 1 });
   const [visited, setVisited] = useState(loadVisited);
   const [playerPos, setPlayerPos] = useState(() => ({
-    x: (46 + 0.5) * TS,
-    y: (30 + 0.5) * TS,
+    x: (WORLD.tilesX / 2 + 0.5) * TS,
+    y: (WORLD.tilesY / 2 + 0.5) * TS,
   }));
   const [walking, setWalking] = useState(null); // { id, name }
   const [explored, setExplored] = useState(0);
