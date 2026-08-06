@@ -22,6 +22,61 @@ const MAX_SCALE = 2.2;
 const WALK_SPEED = 210; // px/s
 const REVEAL_SPEED = 520; // px/s 迷雾展开速度
 
+/* ---------- 地块贴图：src → public/texture 下的贴图，tint → 主体叠加色 ---------- */
+const TILE_TEXTURE = {
+  [T.deepWater]: { src: '/texture/water.png', tint: '#3D57D6' },
+  [T.water]: { src: '/texture/water.png', tint: '#3D57D6' },
+  [T.river]: { src: '/texture/water.png', tint: '#3F76E4' },
+  [T.sand]: { src: '/texture/sand.png' },
+  [T.grass]: { src: '/texture/grass.png', tint: '#91bd59' },
+  [T.forest]: { src: '/texture/grass.png', tint: '#79c05a' },
+  [T.mountain]: { src: '/texture/stone.png' },
+  [T.snow]: { src: '/texture/snow.png' },
+  [T.desert]: { src: '/texture/sand.png' },
+};
+const TILE_TEXTURE_SRCS = [...new Set(Object.values(TILE_TEXTURE).map((t) => t.src))];
+
+const textureImageCache = new Map();
+
+function loadTextureImage(src) {
+  if (!textureImageCache.has(src)) {
+    textureImageCache.set(
+      src,
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`贴图加载失败: ${src}`));
+        img.src = src;
+      })
+    );
+  }
+  return textureImageCache.get(src);
+}
+
+const tileCanvasCache = new Map();
+
+/* 把 16×16 贴图放大成 32×32 地块；带 tint 时叠加主体色并保留纹理明暗 */
+function makeTileCanvas(img, tint) {
+  const key = `${img.src}|${tint || ''}`;
+  if (tileCanvasCache.has(key)) return tileCanvasCache.get(key);
+  const c = document.createElement('canvas');
+  c.width = TS;
+  c.height = TS;
+  const cctx = c.getContext('2d');
+  cctx.imageSmoothingEnabled = false;
+  cctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, TS, TS);
+  if (tint) {
+    cctx.globalCompositeOperation = 'source-atop';
+    cctx.globalAlpha = 0.75;
+    cctx.fillStyle = tint;
+    cctx.fillRect(0, 0, TS, TS);
+    cctx.globalAlpha = 1;
+    cctx.globalCompositeOperation = 'source-over';
+  }
+  tileCanvasCache.set(key, c);
+  return c;
+}
+
 function loadVisited() {
   try {
     const raw = localStorage.getItem(WORLD_STORAGE_KEY);
@@ -237,72 +292,92 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   useEffect(() => {
     const canvas = terrainRef.current;
     if (!canvas) return;
+    let cancelled = false;
     setTerrainReady(false);
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
-    for (let y = 0; y < WORLD.tilesY; y += 1) {
-      for (let x = 0; x < WORLD.tilesX; x += 1) {
-        const i = y * WORLD.tilesX + x;
-        const tile = world.tiles[i];
-        ctx.fillStyle = TILE_COLOR_CACHE[tile];
-        ctx.fillRect(x * TS, y * TS, TS, TS);
+    const drawTerrain = (tileImages) => {
+      for (let y = 0; y < WORLD.tilesY; y += 1) {
+        for (let x = 0; x < WORLD.tilesX; x += 1) {
+          const i = y * WORLD.tilesX + x;
+          const tile = world.tiles[i];
+          const tex = tileImages?.[tile];
+          if (tex) {
+            ctx.drawImage(tex, x * TS, y * TS);
+          } else {
+            // 纯色兜底（贴图加载完成前）
+            ctx.fillStyle = TILE_COLOR_CACHE[tile];
+            ctx.fillRect(x * TS, y * TS, TS, TS);
 
-        // 边缘阴影：右侧 / 下侧邻块更“低”时加深，形成微地形感
-        const r = world.tiles[i + 1] ?? tile;
-        const d = world.tiles[i + WORLD.tilesX] ?? tile;
-        if (r !== tile) {
-          ctx.fillStyle = 'rgba(10,16,26,0.16)';
-          ctx.fillRect((x + 1) * TS - 4, y * TS, 4, TS);
-        }
-        if (d !== tile) {
-          ctx.fillStyle = 'rgba(10,16,26,0.18)';
-          ctx.fillRect(x * TS, (y + 1) * TS - 4, TS, 4);
-        }
+            // 颗粒噪点
+            const h = hash2(x, y, WORLD.seed + 42);
+            ctx.fillStyle = 'rgba(255,255,255,0.07)';
+            for (let k = 0; k < 3; k += 1) {
+              const sx = x * TS + Math.floor(h * 97 * (k + 1)) % 26;
+              const sy = y * TS + Math.floor(h * 53 * (k + 1)) % 26;
+              ctx.fillRect(sx, sy, 3, 3);
+            }
+          }
 
-        // 颗粒噪点
-        const h = hash2(x, y, WORLD.seed + 42);
-        ctx.fillStyle = 'rgba(255,255,255,0.07)';
-        for (let k = 0; k < 3; k += 1) {
-          const sx = x * TS + Math.floor(h * 97 * (k + 1)) % 26;
-          const sy = y * TS + Math.floor(h * 53 * (k + 1)) % 26;
-          ctx.fillRect(sx, sy, 3, 3);
         }
       }
-    }
 
-    // 装饰物
-    for (const dec of world.decorations) {
-      const jx = (hash2(dec.x, dec.y, WORLD.seed + 7) - 0.5) * 8;
-      const jy = (hash2(dec.y, dec.x, WORLD.seed + 9) - 0.5) * 8;
-      const px = dec.x * TS + jx;
-      const py = dec.y * TS + jy;
-      if (dec.kind === 'flower') {
-        drawSprite(ctx, 'flower', px, py, 2.4, false, spriteVariant('flower', { Y: FLOWER_COLORS[dec.variant % FLOWER_COLORS.length] }));
-      } else if (dec.kind === 'rock') {
-        drawSprite(ctx, 'rock', px, py, 2.6, false, spriteVariant('rock', { G: ROCK_COLORS[dec.variant % ROCK_COLORS.length] }));
-      } else if (dec.kind === 'ore') {
-        drawSprite(ctx, 'ore', px, py, 2.6, false, spriteVariant('ore', { R: ORE_COLORS[dec.variant % ORE_COLORS.length] }));
-      } else if (dec.kind === 'lily') {
-        drawSprite(ctx, 'lily', px, py, 2.4);
-      } else if (dec.kind === 'boat') {
-        drawSprite(ctx, 'boat', px, py, 2.2);
-      } else if (dec.kind === 'campfire') {
-        drawSprite(ctx, 'campfire', px, py, 2.2);
-      } else {
-        drawSprite(ctx, dec.kind, px, py, 2.2);
+      // 装饰物
+      for (const dec of world.decorations) {
+        const jx = (hash2(dec.x, dec.y, WORLD.seed + 7) - 0.5) * 8;
+        const jy = (hash2(dec.y, dec.x, WORLD.seed + 9) - 0.5) * 8;
+        const px = dec.x * TS + jx;
+        const py = dec.y * TS + jy;
+        if (dec.kind === 'flower') {
+          drawSprite(ctx, 'flower', px, py, 2.4, false, spriteVariant('flower', { Y: FLOWER_COLORS[dec.variant % FLOWER_COLORS.length] }));
+        } else if (dec.kind === 'rock') {
+          drawSprite(ctx, 'rock', px, py, 2.6, false, spriteVariant('rock', { G: ROCK_COLORS[dec.variant % ROCK_COLORS.length] }));
+        } else if (dec.kind === 'ore') {
+          drawSprite(ctx, 'ore', px, py, 2.6, false, spriteVariant('ore', { R: ORE_COLORS[dec.variant % ORE_COLORS.length] }));
+        } else if (dec.kind === 'lily') {
+          drawSprite(ctx, 'lily', px, py, 2.4);
+        } else if (dec.kind === 'boat') {
+          drawSprite(ctx, 'boat', px, py, 2.2);
+        } else if (dec.kind === 'campfire') {
+          drawSprite(ctx, 'campfire', px, py, 2.2);
+        } else {
+          drawSprite(ctx, dec.kind, px, py, 2.2);
+        }
       }
-    }
 
-    // 出生点平台
-    const spawn = LANDMARKS[0];
-    ctx.fillStyle = '#C9B47A';
-    ctx.fillRect((spawn.x - 1.4) * TS, (spawn.y - 1.4) * TS, TS * 2.8, TS * 2.8);
-    ctx.fillStyle = 'rgba(255,255,255,0.16)';
-    for (let i = 0; i < 4; i += 1) {
-      ctx.fillRect((spawn.x - 1.2) * TS + i * 18, (spawn.y - 1.2) * TS + 6, 10, 3);
-    }
-    setTerrainReady(true);
+      // 出生点平台
+      const spawn = LANDMARKS[0];
+      ctx.fillStyle = '#C9B47A';
+      ctx.fillRect((spawn.x - 1.4) * TS, (spawn.y - 1.4) * TS, TS * 2.8, TS * 2.8);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)';
+      for (let i = 0; i < 4; i += 1) {
+        ctx.fillRect((spawn.x - 1.2) * TS + i * 18, (spawn.y - 1.2) * TS + 6, 10, 3);
+      }
+    };
+
+    // 先画纯色兜底，避免贴图加载期间空白
+    drawTerrain(null);
+
+    Promise.all(TILE_TEXTURE_SRCS.map(loadTextureImage))
+      .then((images) => {
+        if (cancelled) return;
+        const imageMap = Object.fromEntries(TILE_TEXTURE_SRCS.map((src, k) => [src, images[k]]));
+        const tileImages = {};
+        for (const [tile, cfg] of Object.entries(TILE_TEXTURE)) {
+          tileImages[tile] = makeTileCanvas(imageMap[cfg.src], cfg.tint);
+        }
+        drawTerrain(tileImages);
+        setTerrainReady(true);
+      })
+      .catch(() => {
+        // 贴图加载失败：保留纯色版本
+        if (!cancelled) setTerrainReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [world]);
 
   /* ---------- 初始化：出生点迷雾 + 相机 ---------- */
@@ -838,12 +913,12 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
 /* 地形颜色缓存（避免每帧字符串） */
 const TILE_COLOR_CACHE = {
-  [T.deepWater]: '#1E4D8F',
-  [T.water]: '#2E6FB2',
-  [T.river]: '#4E9BC8',
+  [T.deepWater]: '#3D57D6',
+  [T.water]: '#3D57D6',
+  [T.river]: '#3F76E4',
   [T.sand]: '#E4D18A',
-  [T.grass]: '#79B457',
-  [T.forest]: '#3F7D3E',
+  [T.grass]: '#91bd59',
+  [T.forest]: '#79c05a',
   [T.mountain]: '#8D9299',
   [T.snow]: '#E9EEF4',
   [T.desert]: '#E4C878',

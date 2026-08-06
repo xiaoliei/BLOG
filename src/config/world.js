@@ -13,13 +13,13 @@ export const WORLD = {
 
 /* 方块大陆调色板（在暗色 HUD 框架内保持明亮） */
 export const WORLD_COLORS = {
-  deepWater: '#1E4D8F',
-  water: '#2E6FB2',
-  shallow: '#4E9BC8',
+  deepWater: '#3D57D6',
+  water: '#3D57D6',
+  shallow: '#3F76E4',
   sand: '#E4D18A',
-  grass: '#79B457',
+  grass: '#91bd59',
   grassDark: '#5E9C47',
-  forest: '#3F7D3E',
+  forest: '#79c05a',
   forestDark: '#2F6633',
   stone: '#8D9299',
   stoneDark: '#6F747C',
