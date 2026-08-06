@@ -6,35 +6,23 @@
   position: fixed;
   inset: 0;
   overflow-y: auto;
-  background-color: #0A101A;
+  /* 与启动页一致：深蓝径向渐变夜空 */
+  background-color: #030712;
+  background-image: radial-gradient(circle at center, #10203d 0%, #0a1424 45%, #030712 100%);
   color: var(--text);
   font-family: var(--font-terminal);
   font-size: 16px;
 }
 
-.scene--grass {
-  background-image: radial-gradient(1200px 500px at 20% -10%, rgba(121, 180, 87, 0.14), transparent 60%),
-    radial-gradient(900px 500px at 85% 110%, rgba(230, 126, 34, 0.1), transparent 55%);
+/* 星空画布置于内容之下；内容区抬升以便交互和阅读 */
+.scene-root #stars {
+  z-index: 0;
 }
 
-.scene--forest {
-  background-image: radial-gradient(1100px 520px at 15% -5%, rgba(63, 125, 62, 0.22), transparent 60%),
-    radial-gradient(800px 500px at 90% 110%, rgba(46, 125, 50, 0.12), transparent 55%);
-}
-
-.scene--mountain {
-  background-image: radial-gradient(1100px 520px at 20% -5%, rgba(141, 146, 153, 0.16), transparent 60%),
-    radial-gradient(800px 500px at 90% 110%, rgba(230, 126, 34, 0.08), transparent 55%);
-}
-
-.scene--desert {
-  background-image: radial-gradient(1100px 520px at 15% -5%, rgba(228, 200, 120, 0.16), transparent 60%),
-    radial-gradient(800px 500px at 90% 110%, rgba(155, 89, 182, 0.1), transparent 55%);
-}
-
-.scene--coast {
-  background-image: radial-gradient(1100px 520px at 15% -5%, rgba(26, 188, 156, 0.16), transparent 60%),
-    radial-gradient(800px 500px at 90% 110%, rgba(30, 77, 143, 0.18), transparent 55%);
+.scene-body,
+.scene-foot {
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------- 顶栏 ---------- */

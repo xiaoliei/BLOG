@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { LANDMARKS, PATHS, WORLD } from '../../config/world.js';
 import PixelSprite from '../map/PixelSprite.jsx';
+import Starfield from '../landing/Starfield.jsx';
 
 export default function SceneView({ landmark, onBack }) {
   const related = useMemo(() => {
@@ -21,6 +22,7 @@ export default function SceneView({ landmark, onBack }) {
 
   return (
     <div className={`scene-root scene--${landmark.biome}`} style={{ '--accent': landmark.accent, '--accent-dark': landmark.accentDark }}>
+      <Starfield />
       <header className="scene-bar">
         <button type="button" className="mc-btn scene-back" onClick={onBack}>
           <span aria-hidden="true">◄</span> 返回地图
