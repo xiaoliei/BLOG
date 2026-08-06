@@ -22,6 +22,23 @@ const MAX_SCALE = 2.2;
 const WALK_SPEED = 210; // px/s
 const REVEAL_SPEED = 520; // px/s 迷雾展开速度
 
+/* 地标按钮（图标 + 名牌）与出生点平台会盖在画布上方；被覆盖的装饰物直接不绘制 */
+const LANDMARK_TILES = new Set();
+for (const lm of LANDMARKS) {
+  for (let dy = -2; dy <= 0; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      LANDMARK_TILES.add(`${lm.x + dx},${lm.y + dy}`);
+    }
+  }
+}
+// 出生点平台：2.8×2.8 格平台覆盖的格子
+const spawnTown = LANDMARKS[0];
+for (let dy = -1; dy <= 1; dy += 1) {
+  for (let dx = -1; dx <= 1; dx += 1) {
+    LANDMARK_TILES.add(`${spawnTown.x + dx},${spawnTown.y + dy}`);
+  }
+}
+
 /* ---------- 地块贴图：src → public/texture 下的贴图，tint → 主体叠加色 ---------- */
 const TILE_TEXTURE = {
   [T.deepWater]: { src: '/texture/water.png', tint: '#3D57D6' },
@@ -325,6 +342,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
       // 装饰物
       for (const dec of world.decorations) {
+        if (LANDMARK_TILES.has(`${dec.x},${dec.y}`)) continue;
         const jx = (hash2(dec.x, dec.y, WORLD.seed + 7) - 0.5) * 8;
         const jy = (hash2(dec.y, dec.x, WORLD.seed + 9) - 0.5) * 8;
         const px = dec.x * TS + jx;
