@@ -1,4 +1,4 @@
-import { initSystemClock, initNav, toast } from './common.js';
+import { initSystemClock, initNav } from './common.js';
 import { ARTICLES } from './data.js';
 import { makeRenderer, makeCamera, addLights, addFloorGrid, loadGLB, frameAround, measure, resize, THREE } from './scene.js';
 
@@ -177,7 +177,3 @@ renderer.setAnimationLoop(() => {
 renderList();
 select(0);
 
-/* 占位导航提示 */
-setTimeout(() => {
-  toast('<span class="t-code">ARCHIVE_INDEX</span> // 用 [1]-[5] 选择档案，[ENTER] 打开，[A/R/M/C] 切换模块');
-}, 1400);

@@ -41,7 +41,7 @@ export default function SceneView({ landmark, onBack }) {
             <img className="tower-still scene-hero-tower" src="/tower_still.png" alt="" draggable="false" />
           </div>
           <div className="scene-hero-text">
-            <span className="scene-tagline">{landmark.module} // MODULE</span>
+            <span className="scene-tagline">{landmark.module}</span>
             <h1>{landmark.name}</h1>
             <p>{landmark.blurb}</p>
             <div className="scene-stats">
@@ -54,7 +54,7 @@ export default function SceneView({ landmark, onBack }) {
 
         <div className="scene-grid">
           <section className="scene-posts" aria-label="文章列表">
-            <h2>冒险日志 // POSTS</h2>
+            <h2>冒险日志</h2>
             <div className="post-list">
               {landmark.posts.map((post, idx) => (
                 <article className="post-card" key={post.title}>
@@ -85,7 +85,7 @@ export default function SceneView({ landmark, onBack }) {
 
           <aside className="scene-side">
             <div className="scene-panel">
-              <h3>传送点 // WAYPOINTS</h3>
+              <h3>传送点</h3>
               <p>从这里出发可以到达：</p>
               <ul className="scene-routes">
                 {related.length === 0 && <li>（暂无相邻地标）</li>}
@@ -103,7 +103,7 @@ export default function SceneView({ landmark, onBack }) {
             </div>
 
             <div className="scene-panel">
-              <h3>战利品箱 // LOOT</h3>
+              <h3>战利品箱</h3>
               <ul className="scene-loot">
                 <li><span>文章</span><b>{landmark.posts.length}</b></li>
                 <li><span>标签</span><b>{new Set(landmark.posts.flatMap((p) => p.tags)).size}</b></li>

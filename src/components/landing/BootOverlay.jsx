@@ -3,7 +3,6 @@ import { LANDMARKS, WORLD } from '../../config/world.js';
 import { TILE_COLOR, generateWorld } from '../../lib/terrain.js';
 
 const FIRST_DELAY = 160;
-const LINE_DELAY = 190;
 const NAV_EXTRA = 700;
 
 /* 区块 = 4×4 地块，世界 64×64 → 16×16 颜色图（每像素 = 一个区块） */
@@ -82,14 +81,13 @@ function buildRings() {
 }
 
 /* 世界加载屏幕：颜色图（每像素 = 一个区块）+ 进度条 + 开机日志 */
-export default function BootOverlay({ lines, onComplete }) {
+export default function BootOverlay({ onComplete }) {
   const canvasRef = useRef(null);
   const barRef = useRef(null);
   const pctRef = useRef(null);
   const countRef = useRef(null);
   const doneRef = useRef(false);
   const [bootState, setBootState] = useState('loading'); // loading → flash → fade
-  const [shown, setShown] = useState(0);
 
   const world = useMemo(generateWorld, []);
   const chunkColors = useMemo(() => buildChunkColors(world), [world]);
@@ -101,16 +99,12 @@ export default function BootOverlay({ lines, onComplete }) {
     []
   );
 
-  const totalMs = FIRST_DELAY + lines.length * LINE_DELAY + NAV_EXTRA;
+  const totalMs = FIRST_DELAY + NAV_EXTRA;
   const flashAt = reducedMotion ? Infinity : totalMs;
   const fadeAt = reducedMotion ? 240 : totalMs + 320;
   const doneAt = fadeAt + 420;
 
   useEffect(() => {
-    const timers = lines.map((_, i) =>
-      setTimeout(() => setShown(i + 1), FIRST_DELAY + i * LINE_DELAY)
-    );
-
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     const starts = new Float32Array(GRID * GRID).fill(-1);
@@ -206,7 +200,6 @@ export default function BootOverlay({ lines, onComplete }) {
     raf = requestAnimationFrame(drawFrame);
 
     return () => {
-      timers.forEach(clearTimeout);
       cancelAnimationFrame(raf);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -216,7 +209,7 @@ export default function BootOverlay({ lines, onComplete }) {
     <div id="boot" className={`on${bootState === 'fade' ? ' fade' : ''}`}>
       <div className="boot-panel">
         <div className="boot-head">
-          <span className="boot-title">MOUNTING OVERWORLD // 世界区块加载</span>
+          <span className="boot-title">世界区块加载</span>
           <span className="boot-meta">
             <span ref={countRef} className="boot-count">0 / {TOTAL_CHUNKS}</span>
             <span ref={pctRef} className="boot-pct">0%</span>
@@ -236,16 +229,6 @@ export default function BootOverlay({ lines, onComplete }) {
           <div
             className={`boot-map-flash${bootState === 'flash' || bootState === 'fade' ? ' on' : ''}`}
           />
-        </div>
-        <div className="boot-lines">
-          {lines.slice(0, shown).map((line, i) => (
-            <div key={i} className="boot-line">
-              {line.before}
-              {line.bold && <b>{line.bold}</b>}
-              {line.after}
-              <span className="ok">OK</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>

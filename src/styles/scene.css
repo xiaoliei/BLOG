@@ -114,7 +114,7 @@
 
 .scene-tagline {
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 11px;
   color: var(--accent);
   letter-spacing: 1px;
 }
@@ -159,7 +159,7 @@
 
 .scene-posts h2 {
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 14px;
   color: var(--accent);
   letter-spacing: 1px;
   margin-bottom: 14px;
@@ -253,7 +253,7 @@
 
 .scene-panel h3 {
   font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 13px;
   color: var(--accent);
   letter-spacing: 1px;
   margin-bottom: 10px;

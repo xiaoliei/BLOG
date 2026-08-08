@@ -16,15 +16,3 @@ export const SYS_INIT = {
   coords: { x: -128.42, y: 64.0, z: 92.17 },
   net: { state: 'ONLINE', up: 1.24 },
 };
-
-/* 开机动画逐行内容（与 demo 完全一致） */
-export const BOOT_LINES = [
-  { before: '> INITIALIZE ', bold: 'BLOG_OS', after: ' v2.0.4 ................ ' },
-  { before: '> MOUNTING OVERWORLD ........................... ' },
-  { before: '> SEED 20260804 · 64×64 TILES .................. ' },
-  { before: '> GENERATE TERRAIN ............................ ' },
-  { before: '> SCATTER 1 LANDMARK .......................... ' },
-  { before: '> SYNC FOG_OF_WAR ............................. ' },
-  { before: '> AUTH SESSION ', bold: '0x8F2A', after: ' ....................... ' },
-  { before: '> ENTERING 方块大陆 ............................ ' },
-];

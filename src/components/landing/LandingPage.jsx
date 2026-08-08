@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BOOT_LINES, SITE } from '../../config/site';
 import { useSystemClock } from '../../hooks/useSystemClock';
 import BootOverlay from './BootOverlay.jsx';
 import HeadViewer from './HeadViewer.jsx';
-import HudCorners from './HudCorners.jsx';
 import LandingClock from './LandingClock.jsx';
 import ScreenOverlays from './ScreenOverlays.jsx';
 import Starfield from './Starfield.jsx';
-import StatusBar from './StatusBar.jsx';
 
 const ENTER_KEYS = ['Enter', ' ', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
 
@@ -37,22 +34,18 @@ export default function LandingPage({ onComplete }) {
     <div className="landing-root">
       <Starfield />
       <ScreenOverlays />
-      <HudCorners version={SITE.version} session={SITE.session} />
 
       <main className="landing-stage" onClick={enter} onPointerDown={enter}>
         {!booting && (
           <>
-            <div className="landing-bootline">[ LOADING VOXEL HEAD // 体素头颅 ]</div>
             <HeadViewer />
             <LandingClock time={clock.time} date={clock.date} />
-            <div className="landing-hint">▸ CLICK ANYWHERE / SCROLL TO ENTER // 点击任意处进入 ◂</div>
+            <div className="landing-hint">▸ 点击任意处进入 ◂</div>
           </>
         )}
       </main>
 
-      <StatusBar {...clock} />
-
-      {booting && <BootOverlay lines={BOOT_LINES} onComplete={onComplete} />}
+      {booting && <BootOverlay onComplete={onComplete} />}
     </div>
   );
 }

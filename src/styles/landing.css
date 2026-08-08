@@ -38,89 +38,6 @@
   background: radial-gradient(ellipse at center, transparent 55%, rgba(2, 6, 12, 0.55) 100%);
 }
 
-/* ---------- HUD 角标 ---------- */
-
-.hud-corner {
-  position: fixed;
-  z-index: 50;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  color: var(--dim);
-  pointer-events: none;
-  text-transform: uppercase;
-  line-height: 1.6;
-}
-
-.hud-corner b {
-  color: var(--cyan);
-  font-weight: 500;
-}
-
-.hud-corner i {
-  color: var(--accent);
-  font-style: normal;
-}
-
-.hud-tl {
-  top: 12px;
-  left: 16px;
-}
-
-.hud-tr {
-  top: 12px;
-  right: 16px;
-  text-align: right;
-}
-
-/* ---------- 状态栏 ---------- */
-
-.status-bar {
-  position: relative;
-  z-index: 61;
-  height: var(--status-h);
-  display: flex;
-  align-items: center;
-  border-top: 1px solid var(--line);
-  background: #070D16;
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: var(--dim);
-  padding: 0 12px;
-  gap: 18px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.status-bar .sb-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-bar .sb-item .lb {
-  color: var(--faint);
-}
-
-.status-bar .sb-item .vl {
-  color: var(--text);
-}
-
-.status-bar .net-state.online {
-  color: var(--ok);
-}
-
-.status-bar .net-state.offline {
-  color: var(--danger);
-}
-
-.status-bar .sb-coords {
-  margin-left: auto;
-}
-
-.status-bar .sb-coords .c {
-  color: var(--cyan);
-}
-
 /* ---------- 世界加载屏幕（开机动画） ---------- */
 
 /* 半透明遮罩：保留背景星空，仅轻微压暗保证前景可读 */
@@ -311,40 +228,6 @@
   }
 }
 
-.boot-lines {
-  width: 100%;
-  max-height: 30vh;
-  overflow: hidden;
-  padding-top: 10px;
-  border-top: 1px dashed var(--line);
-  font-size: 10px;
-  letter-spacing: 1px;
-  line-height: 1.75;
-  color: var(--text);
-}
-
-#boot .boot-line {
-  animation: boot-line-in 0.2s ease-out both;
-}
-
-@keyframes boot-line-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-#boot .boot-line b {
-  color: var(--cyan);
-  font-weight: 500;
-}
-
-#boot .boot-line .ok {
-  color: var(--ok);
-}
-
 /* ---------- 星空 ---------- */
 
 #stars {
@@ -369,22 +252,10 @@
   justify-content: center;
 }
 
-.landing-bootline {
-  position: absolute;
-  z-index: 6;
-  top: calc(var(--status-h) + 26px);
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--faint);
-  text-transform: uppercase;
-}
-
 .landing-hint {
   position: absolute;
   z-index: 6;
-  bottom: calc(var(--status-h) + 30px);
+  bottom: 26px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
@@ -520,12 +391,4 @@
   letter-spacing: 3px;
   color: var(--dim);
   text-transform: uppercase;
-}
-
-/* ---------- 响应式 ---------- */
-
-@media (max-width: 640px) {
-  .status-bar .sb-coords {
-    display: none;
-  }
 }

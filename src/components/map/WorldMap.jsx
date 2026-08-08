@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BIOME_NAMES,
   LANDMARKS,
   WORLD,
   WORLD_COLORS,
   WORLD_STORAGE_KEY,
 } from '../../config/world.js';
-import { T, generateWorld, tileAt } from '../../lib/terrain.js';
+import { T, generateWorld } from '../../lib/terrain.js';
 import { drawSprite, spriteVariant } from '../../lib/sprites.js';
 import { FLOWER_COLORS, ORE_COLORS, ROCK_COLORS } from '../../lib/sprites.js';
 import { hash2 } from '../../lib/rand.js';
-import { buildNearestGrid, landmarkCenter, voronoiCell } from '../../lib/voronoi.js';
+import { landmarkCenter, voronoiCell } from '../../lib/voronoi.js';
 import Minimap from './Minimap.jsx';
 import PixelSprite from './PixelSprite.jsx';
 
@@ -130,7 +129,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     y: (LANDMARKS[0].y + 0.5) * TS,
   }));
   const [walking, setWalking] = useState(null); // { id, name }
-  const [explored, setExplored] = useState(0);
   const [revealTick, setRevealTick] = useState(0);
   const [legendOpen, setLegendOpen] = useState(false);
   const [clockMenuOpen, setClockMenuOpen] = useState(false);
@@ -152,35 +150,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const reducedMotion = useRef(
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
-  const nearestGrid = useMemo(buildNearestGrid, []);
-
-  /* ---------- 迷雾面积计算 ---------- */
-  const computeExplored = useCallback(() => {
-    const reveals = revealsRef.current.filter((r) => !r.done || r.r > 0);
-    const visited = stateRef.current.visited;
-    let count = 0;
-    for (let y = 0; y < WORLD.tilesY; y += 1) {
-      for (let x = 0; x < WORLD.tilesX; x += 1) {
-        const li = nearestGrid[y * WORLD.tilesX + x];
-        const lm = LANDMARKS[li];
-        let inside = lm.id === LANDMARKS[0].id || visited.has(lm.id);
-        if (!inside) {
-          const px = (x + 0.5) * TS;
-          const py = (y + 0.5) * TS;
-          for (let i = 0; i < reveals.length; i += 1) {
-            const dx = px - reveals[i].x;
-            const dy = py - reveals[i].y;
-            if (dx * dx + dy * dy <= reveals[i].r * reveals[i].r) {
-              inside = true;
-              break;
-            }
-          }
-        }
-        if (inside) count += 1;
-      }
-    }
-    setExplored(Math.round((count / (WORLD.tilesX * WORLD.tilesY)) * 100));
-  }, [nearestGrid]);
 
   /* 地标 Voronoi 单元多边形（缓存） */
   const getCellPolygon = useCallback((id) => {
@@ -233,7 +202,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const startFogLoop = useCallback(() => {
     if (animRef.current) return;
     let last = performance.now();
-    let frame = 0;
     const loop = (now) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
@@ -258,31 +226,27 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       }
       if (busy) {
         drawFog();
-        frame += 1;
-        if (frame % 12 === 0) computeExplored();
         animRef.current = requestAnimationFrame(loop);
       } else {
         animRef.current = null;
-        computeExplored();
         setRevealTick((t) => t + 1);
       }
     };
     animRef.current = requestAnimationFrame(loop);
-  }, [computeExplored, drawFog]);
+  }, [drawFog]);
 
   const revealAt = useCallback(
     (x, y, target = 210) => {
       if (reducedMotion.current) {
         revealsRef.current.push({ x, y, r: target, target, done: true });
         drawFog();
-        computeExplored();
         setRevealTick((t) => t + 1);
         return;
       }
       revealsRef.current.push({ x, y, r: 0, target, done: false });
       startFogLoop();
     },
-    [computeExplored, drawFog, startFogLoop]
+    [drawFog, startFogLoop]
   );
 
   /* 探索完地标后：点亮它的 Voronoi 区域 */
@@ -296,13 +260,12 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       });
       if (reducedMotion.current) {
         drawFog();
-        computeExplored();
         setRevealTick((t) => t + 1);
       } else {
         startFogLoop();
       }
     },
-    [computeExplored, drawFog, startFogLoop]
+    [drawFog, startFogLoop]
   );
 
   /* ---------- 地形画布 ---------- */
@@ -720,10 +683,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     revealCell(LANDMARKS[0].id);
   }, [revealCell]);
 
-  const tileX = Math.floor(playerPos.x / TS);
-  const tileZ = Math.floor(playerPos.y / TS);
-  const biome = BIOME_NAMES[tileAt(world, tileX, tileZ)] ?? '未知';
-
   return (
     <div
       ref={viewportRef}
@@ -770,12 +729,10 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
                 {isVisited && <span className="landmark-check" aria-hidden="true">✓</span>}
               </span>
               <span className="landmark-name">{lm.name}</span>
-              {(hovered === lm.id || isWalking) && (
+              {hovered === lm.id && (
                 <span className="landmark-tip" data-nopan>
-                  <b>{lm.name}</b>
                   <em>{lm.module} · {lm.posts.length} 篇</em>
                   <small>{lm.blurb}</small>
-                  <small className="landmark-tip-action">{isWalking ? '正在前往…' : isVisited ? '点击进入场景' : '点击探索并进入'}</small>
                 </span>
               )}
             </button>
@@ -794,16 +751,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
       {/* HUD */}
       <header className="world-hud-top">
-        <div className="hud-title">
-          <span className="hud-title-main">BLOG_OS</span>
-          <span className="hud-title-sub">方块大陆 // OVERWORLD · seed {WORLD.seed}</span>
-        </div>
-        <div className="hud-coords">
-          <span>X {tileX}</span>
-          <span>Z {tileZ}</span>
-          <span className="hud-biome">{biome}</span>
-          <span className="hud-explored">探索 {explored}%</span>
-        </div>
         <div className="hud-actions">
           <button type="button" className="mc-btn" onClick={() => setLegendOpen((o) => !o)} aria-pressed={legendOpen}>
             图例
@@ -821,10 +768,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
         </div>
       </header>
 
-      <div className="world-hud-help">
-        <span>拖拽平移</span><span>滚轮 / + - 缩放</span><span>WASD 移动视角</span><span>R 回出生点</span>
-      </div>
-
       <button
         type="button"
         className={`world-clock${clockMenuOpen ? ' world-clock--open' : ''}`}
@@ -839,8 +782,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
       {clockMenuOpen && (
         <aside className="clock-menu" data-nopan aria-label="地标传送菜单">
-          <h3>时钟传送 // TELEPORT</h3>
-          <p className="clock-menu-tip">选择地标：立即抵达并打开对应模块页</p>
+          <h3>时钟传送</h3>
           <ul className="clock-menu-list">
             {LANDMARKS.map((lm) => (
               <li key={lm.id}>
@@ -864,13 +806,6 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
         </aside>
       )}
 
-      {walking && (
-        <div className="world-walk-hint">
-          <PixelSprite name="player" size={22} />
-          正在前往 <b>{walking.name}</b>…（按 Esc 取消 · 点击他处改道）
-        </div>
-      )}
-
       <Minimap
         world={world}
         view={view}
@@ -885,7 +820,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
 
       {legendOpen && (
         <aside className="world-legend" data-nopan>
-          <h3>图例 // LEGEND</h3>
+          <h3>图例</h3>
           <div className="legend-block">
             <h4>群系</h4>
             <ul>
@@ -919,6 +854,15 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
           <div className="legend-block legend-note">
             <h4>迷雾</h4>
             <p>未探索区域被迷雾笼罩，靠近后会点亮。<b>?</b> 标记为未探索地标。探索进度会保存在本地。</p>
+          </div>
+          <div className="legend-block">
+            <h4>操作</h4>
+            <ul>
+              <li>拖拽 / 滚轮 / + -：平移与缩放</li>
+              <li>WASD / 方向键：移动视角</li>
+              <li>点击地标或空白：前往与探索</li>
+              <li>Esc 取消移动 · R 回出生点</li>
+            </ul>
           </div>
           <button type="button" className="mc-btn" onClick={() => setLegendOpen(false)}>关闭</button>
         </aside>
