@@ -30,13 +30,13 @@ export default function SceneView({ landmark, onBack }) {
         <button type="button" className="mc-btn scene-back" onClick={onBack}>
           <span aria-hidden="true">◄</span> 返回地图
         </button>
+        <span className="scene-bar-title">{landmark.module}</span>
         <span className="scene-coords">X {landmark.x} · Z {landmark.y}</span>
       </header>
 
       <main className="scene-body">
         <section className="scene-hero">
           <div className="scene-hero-text">
-            <h1>{landmark.module}</h1>
             <p>{landmark.blurb}</p>
             <div className="scene-stats">
               <span><b>{landmark.posts.length}</b> 篇文章</span>

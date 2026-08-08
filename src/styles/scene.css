@@ -68,6 +68,20 @@
   padding: 8px 13px;
 }
 
+.scene-bar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--text-bright);
+}
+
 .scene-coords {
   font-size: 11px;
   color: var(--dim);
@@ -108,14 +122,6 @@
 .scene-hero-text {
   position: relative;
   z-index: 1;
-}
-
-.scene-hero-text h1 {
-  font-family: var(--font-pixel);
-  font-size: 22px;
-  color: var(--text-bright);
-  margin: 12px 0 10px;
-  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.55);
 }
 
 .scene-hero-text p {
@@ -389,10 +395,6 @@
 @media (max-width: 560px) {
   .scene-coords {
     display: none;
-  }
-
-  .scene-hero-text h1 {
-    font-size: 17px;
   }
 
   .scene-body {
