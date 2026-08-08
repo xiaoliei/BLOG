@@ -252,7 +252,6 @@ export function loadTowerData(url = TOWER_URL) {
  */
 export function buildVoxelCubes(data, { radius = 14, spread = 15, randomSeed = 20260804 } = {}) {
   const meshes = data.meshes || [];
-  const c = data.bbox.center;
   const rng = mulberry32(randomSeed);
   const tmpQ = new THREE.Quaternion();
   const tmpAxis = new THREE.Vector3();
@@ -358,7 +357,7 @@ export function buildVoxelCubes(data, { radius = 14, spread = 15, randomSeed = 2
 
     pieces.push({
       geometry: geo,
-      center: [ix - c.x, iy, iz - c.z],
+      center: [ix, iy, iz],
       scatter,
       quat: tmpQ.clone(),
       seed: rng(),
@@ -396,14 +395,6 @@ export function addStageLights(scene) {
   scene.add(rim);
 }
 
-export function addGrid(scene) {
-  const grid = new THREE.GridHelper(30, 15, 0x1abc9c, 0x2a4a6a);
-  grid.position.y = -1.1;
-  grid.material.transparent = true;
-  grid.material.opacity = 0.18;
-  scene.add(grid);
-}
-
 /**
  * 从 loadTowerData() 创建逐层网格（每层一个 pivot，供幽灵塔剪影使用），
  * 并把模型水平居中（世界包围盒中心移到原点）。
@@ -426,18 +417,28 @@ export function createLayerMeshes(data, group) {
 /**
  * 按模型包围球自动取景：保证塔完整进入画面（兼顾横/竖屏）。
  */
-export function frameTower(camera, data, { padding = 1.18 } = {}) {
+export function frameTower(camera, data, { padding = 1.18, heightFrac = 0 } = {}) {
   const c = data.bbox.center;
   const sx = data.bbox.max.x - data.bbox.min.x;
   const sy = data.bbox.max.y - data.bbox.min.y;
   const sz = data.bbox.max.z - data.bbox.min.z;
-  const radius = Math.sqrt(sx * sx + sy * sy + sz * sz) / 2;
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const aspect = camera.aspect || 1.6;
-  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-  const distV = radius / Math.sin(vFov / 2);
-  const distH = radius / Math.sin(hFov / 2);
-  const dist = Math.max(distV, distH) * padding;
+  const vHalf = Math.tan(vFov / 2);
+
+  /* 指定目标高度比例时（如与模块页水印一致），按实际包围盒高度取景 */
+  let dist;
+  if (heightFrac > 0 && heightFrac < 1) {
+    const hHalf = vHalf * aspect;
+    const extentH = Math.max(sx, sz);
+    dist = Math.max(sy / (2 * heightFrac * vHalf), extentH / (2 * heightFrac * hHalf));
+  } else {
+    const radius = Math.sqrt(sx * sx + sy * sy + sz * sz) / 2;
+    const hFov = 2 * Math.atan(vHalf * aspect);
+    const distV = radius / Math.sin(vFov / 2);
+    const distH = radius / Math.sin(hFov / 2);
+    dist = Math.max(distV, distH) * padding;
+  }
 
   const dir = new THREE.Vector3(1, 0.72, 1.35).normalize();
   camera.position.set(dir.x * dist, c.y + dir.y * dist, dir.z * dist);

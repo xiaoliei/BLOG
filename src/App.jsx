@@ -17,7 +17,7 @@ export default function App() {
   const [sceneId, setSceneId] = useState(
     initialSceneId && getLandmark(initialSceneId) ? initialSceneId : null
   );
-  const [trans, setTrans] = useState(null); // { mode: 'aggregate' | 'scatter', accent, label }
+  const [trans, setTrans] = useState(null); // { mode: 'aggregate' | 'scatter', accent }
   const pendingRef = useRef(null); // { kind: 'open', id } | { kind: 'close' }
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -76,13 +76,13 @@ export default function App() {
     if (viewRef.current !== 'map') return;
     const lm = getLandmark(id);
     pendingRef.current = { kind: 'open', id };
-    setTrans({ mode: 'aggregate', accent: lm?.accent, label: lm?.name });
+    setTrans({ mode: 'aggregate', accent: lm?.accent });
   }, []);
 
   const closeScene = useCallback(() => {
     const lm = sceneId ? getLandmark(sceneId) : null;
     pendingRef.current = { kind: 'close' };
-    setTrans({ mode: 'scatter', accent: lm?.accent, label: lm?.name });
+    setTrans({ mode: 'scatter', accent: lm?.accent });
   }, [sceneId]);
 
   return (
@@ -99,7 +99,6 @@ export default function App() {
       <SceneTransition
         mode={trans?.mode || null}
         accent={trans?.accent}
-        label={trans?.label}
         onDone={handleTransDone}
       />
     </>

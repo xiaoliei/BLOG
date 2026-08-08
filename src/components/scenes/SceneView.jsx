@@ -23,26 +23,20 @@ export default function SceneView({ landmark, onBack }) {
   return (
     <div className={`scene-root scene--${landmark.biome}`} style={{ '--accent': landmark.accent, '--accent-dark': landmark.accentDark }}>
       <Starfield />
+      <div className="scene-watermark" aria-hidden="true">
+        <img className="scene-watermark-tower" src="/tower_still.png" alt="" draggable="false" />
+      </div>
       <header className="scene-bar">
         <button type="button" className="mc-btn scene-back" onClick={onBack}>
           <span aria-hidden="true">◄</span> 返回地图
         </button>
-        <div className="scene-bar-meta">
-          <img className="tower-still scene-bar-tower" src="/tower_still.png" alt="" draggable="false" />
-          <b>{landmark.name}</b>
-          <em>{landmark.module}</em>
-        </div>
         <span className="scene-coords">X {landmark.x} · Z {landmark.y}</span>
       </header>
 
       <main className="scene-body">
         <section className="scene-hero">
-          <div className="scene-hero-icon">
-            <img className="tower-still scene-hero-tower" src="/tower_still.png" alt="" draggable="false" />
-          </div>
           <div className="scene-hero-text">
-            <span className="scene-tagline">{landmark.module}</span>
-            <h1>{landmark.name}</h1>
+            <h1>{landmark.module}</h1>
             <p>{landmark.blurb}</p>
             <div className="scene-stats">
               <span><b>{landmark.posts.length}</b> 篇文章</span>
@@ -92,8 +86,7 @@ export default function SceneView({ landmark, onBack }) {
                 {related.map((lm) => (
                   <li key={lm.id}>
                     <PixelSprite name={lm.icon} size={18} />
-                    <span>{lm.name}</span>
-                    <em>{lm.module}</em>
+                    <span>{lm.module}</span>
                   </li>
                 ))}
               </ul>
@@ -115,7 +108,7 @@ export default function SceneView({ landmark, onBack }) {
       </main>
 
       <footer className="scene-foot">
-        <span>BLOG_OS · {WORLD.name} · {landmark.name}</span>
+        <span>BLOG_OS · {WORLD.name} · {landmark.module}</span>
         <span>© 2026 · 由 64×64 块方块组成</span>
       </footer>
     </div>

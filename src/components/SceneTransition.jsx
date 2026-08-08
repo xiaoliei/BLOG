@@ -6,8 +6,8 @@
 
 import { useEffect, useRef } from 'react';
 import { makeCamera, makeRenderer, resize } from '../lib/scene.js';
+import Starfield from './landing/Starfield.jsx';
 import {
-  addGrid,
   addStageLights,
   buildVoxelCubes,
   clamp01,
@@ -23,10 +23,8 @@ const SCATTER_TOTAL = 1.3; // 方块散开时长
 const COMPLETE_HOLD = 0.22; // 聚合完成后的完整展示停留
 const SCATTER_FADE_START = 0.7; // 散开进行到 70% 时开始整体淡出
 
-export default function SceneTransition({ mode, accent = '#0A101A', label = '', onDone }) {
+export default function SceneTransition({ mode, accent = '#0A101A', onDone }) {
   const canvasRef = useRef(null);
-  const textRef = useRef(null);
-  const pctRef = useRef(null);
   const barRef = useRef(null);
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
@@ -53,7 +51,6 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
     const camera = makeCamera(1);
     resize(renderer, camera);
     addStageLights(scene);
-    addGrid(scene);
 
     const clock = new THREE.Clock();
     const modelGroup = new THREE.Group();
@@ -67,13 +64,9 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
     let animStart = 0;
     let holdStart = 0;
 
-    const setText = (t) => {
-      if (textRef.current) textRef.current.textContent = t;
-    };
     const setPct = (p) => {
       const v = clamp01(p);
       if (barRef.current) barRef.current.style.width = `${(v * 100).toFixed(1)}%`;
-      if (pctRef.current) pctRef.current.textContent = `${Math.round(v * 100)}%`;
     };
     const finish = () => {
       if (disposed || doneRef.current) return;
@@ -81,7 +74,6 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
       onDoneRef.current?.();
     };
 
-    setText('LOADING TOWER DATA…');
     setPct(0);
 
     loadTowerData()
@@ -108,7 +100,12 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
           return { pivot, scatter: pc.scatter, quat: pc.quat, seed: pc.seed, center: pc.center };
         });
 
-        frameTower(camera, data);
+        /* 最终大小与模块页塔图水印一致：min(44vh, 44vw, 400px) */
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        frameTower(camera, data, {
+          heightFrac: Math.min(0.44, (vw / vh) * 0.44, 400 / vh),
+        });
 
         if (mode === 'aggregate') {
           /* 聚合：方块从各自散射位飞入 */
@@ -135,7 +132,6 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
 
         phase = 'ANIM';
         animStart = clock.getElapsedTime();
-        setText(mode === 'aggregate' ? 'BLOCKS AGGREGATING 0%' : 'BLOCKS DISPERSING 0%');
       })
       .catch((err) => {
         console.error('SCHEME_C 过渡加载失败', err);
@@ -162,7 +158,6 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
             B.pivot.scale.setScalar(0.35 + 0.65 * e);
           });
           setPct(p);
-          setText(`BLOCKS AGGREGATING ${Math.round(p * 100)}%`);
           if (p >= 1) {
             phase = 'HOLD';
             holdStart = t;
@@ -185,7 +180,6 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
             cubeMaterial.opacity = 1 - clamp01((dp - SCATTER_FADE_START) / (1 - SCATTER_FADE_START));
           }
           setPct(dp);
-          setText(`BLOCKS DISPERSING ${Math.round(dp * 100)}%`);
           if (dp >= 1) finish();
         }
       } else if (phase === 'HOLD') {
@@ -216,20 +210,12 @@ export default function SceneTransition({ mode, accent = '#0A101A', label = '', 
       style={{ '--trans-accent': accent }}
       aria-hidden="true"
     >
+      <Starfield />
       <canvas ref={canvasRef} />
-      <div className="scene-transition-tag">SCHEME C // 方块聚合 / 飞散</div>
       <div className="scene-transition-panel">
-        <div className="t-title">
-          {label ? `${label} // ${mode === 'aggregate' ? '场景加载中' : '返回地图'}` : 'SCENE TRANSITION'}
-        </div>
-        <div className="scene-transition-meta">
-          <span className="trans-state">{mode === 'aggregate' ? 'AGGREGATE' : 'DISPERSAL'}</span>
-          <span ref={pctRef} className="trans-pct">0%</span>
-        </div>
         <div className="scene-transition-bar">
           <div ref={barRef} className="trans-fill" />
         </div>
-        <div ref={textRef} className="scene-transition-text">…</div>
       </div>
     </div>
   );

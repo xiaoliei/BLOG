@@ -79,15 +79,6 @@
   will-change: transform;
 }
 
-/* 共享“定妆照”塔图（地图图标 / 场景页复用） */
-.tower-still {
-  display: block;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 0 20px rgba(26, 188, 156, 0.38));
-  animation: still-float 3.2s ease-in-out infinite;
-  will-change: transform;
-}
-
 @keyframes still-float {
   0%, 100% { transform: translateY(0) rotateZ(-1deg); }
   50% { transform: translateY(-9px) rotateZ(1deg); }
@@ -355,12 +346,6 @@
   color: var(--text-bright);
 }
 
-.clock-menu-meta em {
-  font-style: normal;
-  font-size: 10px;
-  color: var(--lm-accent, var(--accent));
-}
-
 .clock-menu-dot {
   width: 10px;
   height: 10px;
@@ -450,13 +435,6 @@
 
 .world-legend li i.legend-icon {
   border: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-.world-legend li em {
-  margin-left: auto;
-  font-style: normal;
-  font-size: 10px;
-  color: var(--dim);
 }
 
 .legend-note p {

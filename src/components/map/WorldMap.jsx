@@ -549,7 +549,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       const to = target.id
         ? { x: (target.x + 0.5) * TS, y: (target.y + 0.5) * TS }
         : { x: target.x, y: target.y };
-      setWalking({ id: target.id || null, name: target.name || '目标点' });
+      setWalking({ id: target.id || null, name: target.module || '目标点' });
 
       if (reducedMotion.current) {
         setPlayerPos(to);
@@ -721,14 +721,14 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
               onFocus={() => setHovered(lm.id)}
               onBlur={() => setHovered(null)}
               onClick={() => startWalk(lm)}
-              aria-label={`${lm.name}：${lm.module}${isVisited ? '，已探索' : '，未探索'}`}
+              aria-label={`${lm.module}${isVisited ? '，已探索' : '，未探索'}`}
             >
               <span className="landmark-icon">
                 <img className="landmark-tower" src="/tower_still.png" alt="" draggable="false" />
                 {!isVisited && <span className="landmark-unknown" aria-hidden="true">?</span>}
                 {isVisited && <span className="landmark-check" aria-hidden="true">✓</span>}
               </span>
-              <span className="landmark-name">{lm.name}</span>
+              <span className="landmark-name">{lm.module}</span>
               {hovered === lm.id && (
                 <span className="landmark-tip" data-nopan>
                   <em>{lm.module} · {lm.posts.length} 篇</em>
@@ -794,8 +794,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
                 >
                   <img className="clock-menu-tower" src="/tower_still.png" alt="" draggable="false" />
                   <span className="clock-menu-meta">
-                    <b>{lm.name}</b>
-                    <em>{lm.module}</em>
+                    <b>{lm.module}</b>
                   </span>
                   <i className="clock-menu-dot" style={{ background: lm.accent }} aria-hidden="true" />
                 </button>
@@ -845,8 +844,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
               {LANDMARKS.map((lm) => (
                 <li key={lm.id}>
                   <i className="legend-icon" style={{ background: lm.accent }} />
-                  {lm.name}
-                  <em>{lm.module}</em>
+                  {lm.module}
                 </li>
               ))}
             </ul>

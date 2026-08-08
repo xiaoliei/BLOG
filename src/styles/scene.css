@@ -19,6 +19,30 @@
   z-index: 0;
 }
 
+/* 塔图水印：固定在视口中央，像背景一样不随内容滚动，保留摇晃动画 */
+.scene-watermark {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  width: min(44vh, 44vw, 400px);
+  aspect-ratio: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(26, 188, 156, 0.16) 0%, rgba(26, 188, 156, 0.05) 45%, transparent 68%);
+}
+
+.scene-watermark-tower {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 20px rgba(26, 188, 156, 0.38));
+  animation: still-float 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+
 .scene-body,
 .scene-foot {
   position: relative;
@@ -44,28 +68,6 @@
   padding: 8px 13px;
 }
 
-.scene-bar-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.scene-bar-meta b {
-  font-family: var(--font-pixel);
-  font-size: 9px;
-  color: var(--text-bright);
-}
-
-.scene-bar-tower {
-  width: 34px;
-}
-
-.scene-bar-meta em {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--accent);
-}
-
 .scene-coords {
   font-size: 11px;
   color: var(--dim);
@@ -80,10 +82,13 @@
 
 .scene-hero {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 30px;
-  padding: 34px;
-  background: rgba(11, 19, 32, 0.72);
+  justify-content: center;
+  text-align: center;
+  gap: 18px;
+  padding: 56px 24px 44px;
+  background-color: rgba(11, 19, 32, 0.72);
   border: 2px solid rgba(102, 138, 178, 0.28);
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
   position: relative;
@@ -94,29 +99,15 @@
   content: '';
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
   background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 4px);
   opacity: 0.35;
 }
 
-.scene-hero-icon {
-  flex: none;
-  background: rgba(0, 0, 0, 0.3);
-  border: 3px solid var(--accent);
-  padding: 18px;
-  box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 5px 5px 0 rgba(0, 0, 0, 0.4);
-  image-rendering: pixelated;
-}
-
-.scene-hero-icon .tower-still {
-  width: 132px;
-}
-
-.scene-tagline {
-  font-family: var(--font-pixel);
-  font-size: 11px;
-  color: var(--accent);
-  letter-spacing: 1px;
+.scene-hero-text {
+  position: relative;
+  z-index: 1;
 }
 
 .scene-hero-text h1 {
@@ -341,64 +332,35 @@
   pointer-events: none;
 }
 
+.scene-transition #stars {
+  z-index: 0;
+}
+
 .scene-transition canvas {
   display: block;
   width: 100%;
   height: 100%;
+  position: relative;
+  z-index: 1;
   outline: none;
-}
-
-.scene-transition-tag {
-  position: fixed;
-  top: 16px;
-  right: 18px;
-  z-index: 101;
-  font-family: var(--font-pixel);
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--cyan);
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 }
 
 .scene-transition-panel {
   position: fixed;
-  left: 18px;
-  bottom: 18px;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
   z-index: 101;
-  width: 302px;
+  width: 240px;
   max-width: calc(100vw - 36px);
   background: rgba(11, 19, 32, 0.88);
   border: 2px solid rgba(102, 138, 178, 0.38);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
-  padding: 10px 14px 12px;
-}
-
-.scene-transition-panel .t-title {
-  font-family: var(--font-pixel);
-  font-size: 10px;
-  color: var(--accent);
-  line-height: 1.8;
-  letter-spacing: 0.5px;
-  word-break: break-all;
-}
-
-.scene-transition-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-top: 4px;
-  color: var(--dim);
-  font-size: 11px;
-  letter-spacing: 1px;
-}
-
-.scene-transition-meta .trans-pct {
-  color: var(--text-bright);
-  font-weight: 600;
+  padding: 10px 12px;
 }
 
 .scene-transition-bar {
-  margin-top: 8px;
+  margin-top: 0;
   height: 5px;
   background: rgba(102, 138, 178, 0.16);
   border: 1px solid rgba(102, 138, 178, 0.28);
@@ -412,14 +374,6 @@
   box-shadow: 0 0 8px rgba(26, 188, 156, 0.65);
 }
 
-.scene-transition-text {
-  margin-top: 7px;
-  color: var(--dim);
-  font-size: 10px;
-  letter-spacing: 1px;
-  min-height: 14px;
-}
-
 /* ---------- 响应式 ---------- */
 @media (max-width: 820px) {
   .scene-grid {
@@ -427,18 +381,9 @@
   }
 
   .scene-hero {
-    flex-direction: column;
-    text-align: center;
-    padding: 26px 18px;
+    padding: 30px 18px 26px;
   }
 
-  .scene-stats {
-    justify-content: center;
-  }
-
-  .scene-bar-meta em {
-    display: none;
-  }
 }
 
 @media (max-width: 560px) {
