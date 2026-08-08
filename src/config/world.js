@@ -30,11 +30,13 @@ export const WORLD_COLORS = {
   fogBlue: '#0E1626',
 };
 
-/* 地标：id / 名称 / 类别 / 位置(格) / 主题色 / 描述 / 文章 */
-export const LANDMARKS = [
+/* 地标：id / 名称 / 类别 / 位置(格) / 主题色 / 描述 / 文章
+   名称统一贴近“镐子”主题（木/石/铁/金/钻石/下界合金……）。
+   visible: false 的地标暂不在地图上展示，数据保留、随时可重新开放。 */
+export const ALL_LANDMARKS = [
   {
     id: 'spawn-town',
-    name: '橡木镇',
+    name: '木镐镇',
     module: '生活杂记',
     x: 32,
     y: 32,
@@ -42,6 +44,7 @@ export const LANDMARKS = [
     accent: '#F1C40F',
     accentDark: '#B7950B',
     icon: 'town',
+    visible: false,
     blurb: '一切冒险的起点。柴火、钟声与琐碎日常的存档点。',
     posts: [
       {
@@ -69,7 +72,7 @@ export const LANDMARKS = [
   },
   {
     id: 'library',
-    name: '幽语图书馆',
+    name: '石镐书塔',
     module: '读书笔记',
     x: 11,
     y: 10,
@@ -77,6 +80,7 @@ export const LANDMARKS = [
     accent: '#52BE80',
     accentDark: '#229954',
     icon: 'library',
+    visible: false,
     blurb: '藏在橡木林深处的书塔，收集读过的每一本书的批注。',
     posts: [
       {
@@ -104,7 +108,7 @@ export const LANDMARKS = [
   },
   {
     id: 'castle',
-    name: '石峰城堡',
+    name: '铁镐堡垒',
     module: '项目作品',
     x: 52,
     y: 12,
@@ -112,6 +116,7 @@ export const LANDMARKS = [
     accent: '#7FB3D8',
     accentDark: '#5499C7',
     icon: 'castle',
+    visible: true,
     blurb: '建在山顶的堡垒，陈列所有完成与未完成的项目。',
     posts: [
       {
@@ -139,7 +144,7 @@ export const LANDMARKS = [
   },
   {
     id: 'forest-camp',
-    name: '迷雾森林营地',
+    name: '金镐营地',
     module: '游记见闻',
     x: 8,
     y: 38,
@@ -147,6 +152,7 @@ export const LANDMARKS = [
     accent: '#4CAF50',
     accentDark: '#2E7D32',
     icon: 'forest',
+    visible: false,
     blurb: '篝火、松涛与沿途风景。去过的每个地方都留下一段文字。',
     posts: [
       {
@@ -174,7 +180,7 @@ export const LANDMARKS = [
   },
   {
     id: 'cave',
-    name: '深红矿洞',
+    name: '钻石镐矿洞',
     module: '技术深潜',
     x: 33,
     y: 55,
@@ -182,6 +188,7 @@ export const LANDMARKS = [
     accent: '#E74C3C',
     accentDark: '#C0392B',
     icon: 'cave',
+    visible: false,
     blurb: '越挖越深。前端、性能与底层原理的硬核笔记都堆在这里。',
     posts: [
       {
@@ -216,7 +223,7 @@ export const LANDMARKS = [
   },
   {
     id: 'lighthouse',
-    name: '珊瑚灯塔',
+    name: '下界合金灯塔',
     module: '关于我',
     x: 58,
     y: 44,
@@ -224,6 +231,7 @@ export const LANDMARKS = [
     accent: '#1ABC9C',
     accentDark: '#148F77',
     icon: 'lighthouse',
+    visible: false,
     blurb: '大陆最东端的灯塔，也是我的自我介绍与联系方式。',
     posts: [
       {
@@ -251,7 +259,7 @@ export const LANDMARKS = [
   },
   {
     id: 'forge',
-    name: '烈焰工坊',
+    name: '烈焰镐坊',
     module: '创意实验',
     x: 45,
     y: 50,
@@ -259,6 +267,7 @@ export const LANDMARKS = [
     accent: '#E67E22',
     accentDark: '#CA6F1E',
     icon: 'forge',
+    visible: false,
     blurb: '熔炉永远开着。奇奇怪怪的创意原型和玩具代码都在这里锻造。',
     posts: [
       {
@@ -286,7 +295,7 @@ export const LANDMARKS = [
   },
   {
     id: 'ruins',
-    name: '旧日遗迹',
+    name: '远古镐迹',
     module: '归档',
     x: 15,
     y: 22,
@@ -294,6 +303,7 @@ export const LANDMARKS = [
     accent: '#9B59B6',
     accentDark: '#7D3C98',
     icon: 'ruins',
+    visible: false,
     blurb: '风沙掩埋的旧文章，像遗迹一样值得偶尔回来看看。',
     posts: [
       {
@@ -320,6 +330,9 @@ export const LANDMARKS = [
     ],
   },
 ];
+
+/* 当前在地图上展示的地标：只保留项目作品（其余 visible: false） */
+export const LANDMARKS = ALL_LANDMARKS.filter((l) => l.visible);
 
 export const LANDMARK_MAP = Object.fromEntries(LANDMARKS.map((l) => [l.id, l]));
 

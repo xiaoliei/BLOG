@@ -23,7 +23,7 @@ export const BOOT_LINES = [
   { before: '> MOUNTING OVERWORLD ........................... ' },
   { before: '> SEED 20260804 · 64×64 TILES .................. ' },
   { before: '> GENERATE TERRAIN ............................ ' },
-  { before: '> SCATTER 8 LANDMARKS ......................... ' },
+  { before: '> SCATTER 1 LANDMARK .......................... ' },
   { before: '> SYNC FOG_OF_WAR ............................. ' },
   { before: '> AUTH SESSION ', bold: '0x8F2A', after: ' ....................... ' },
   { before: '> ENTERING 方块大陆 ............................ ' },

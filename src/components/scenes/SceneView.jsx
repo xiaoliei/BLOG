@@ -28,7 +28,7 @@ export default function SceneView({ landmark, onBack }) {
           <span aria-hidden="true">◄</span> 返回地图
         </button>
         <div className="scene-bar-meta">
-          <PixelSprite name={landmark.icon} size={26} />
+          <img className="tower-still scene-bar-tower" src="/tower_still.png" alt="" draggable="false" />
           <b>{landmark.name}</b>
           <em>{landmark.module}</em>
         </div>
@@ -38,7 +38,7 @@ export default function SceneView({ landmark, onBack }) {
       <main className="scene-body">
         <section className="scene-hero">
           <div className="scene-hero-icon">
-            <PixelSprite name={landmark.icon} size={96} />
+            <img className="tower-still scene-hero-tower" src="/tower_still.png" alt="" draggable="false" />
           </div>
           <div className="scene-hero-text">
             <span className="scene-tagline">{landmark.module} // MODULE</span>

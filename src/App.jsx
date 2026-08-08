@@ -5,10 +5,6 @@ import SceneView from './components/scenes/SceneView.jsx';
 import SceneTransition from './components/SceneTransition.jsx';
 import { getLandmark } from './config/world.js';
 
-const COVER_MS = 360;
-const SWAP_GAP = 40;
-const UNCOVER_MS = 380;
-
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
 const initialSceneId = initialHash.startsWith('#scene/')
   ? initialHash.slice('#scene/'.length)
@@ -21,7 +17,8 @@ export default function App() {
   const [sceneId, setSceneId] = useState(
     initialSceneId && getLandmark(initialSceneId) ? initialSceneId : null
   );
-  const [trans, setTrans] = useState(null); // { phase, accent, label }
+  const [trans, setTrans] = useState(null); // { mode: 'aggregate' | 'scatter', accent, label }
+  const pendingRef = useRef(null); // { kind: 'open', id } | { kind: 'close' }
   const viewRef = useRef(view);
   viewRef.current = view;
 
@@ -31,10 +28,26 @@ export default function App() {
   }, []);
 
   const reboot = useCallback(() => {
+    pendingRef.current = null;
     setSceneId(null);
     setTrans(null);
     setView('landing');
     window.location.hash = '';
+  }, []);
+
+  /* SCHEME C 动画播完：执行视图切换并移除遮罩 */
+  const handleTransDone = useCallback(() => {
+    const pending = pendingRef.current;
+    if (!pending) return;
+    pendingRef.current = null;
+    if (pending.kind === 'open') {
+      setSceneId(pending.id);
+      window.location.hash = `#scene/${pending.id}`;
+    } else {
+      setSceneId(null);
+      window.location.hash = '#world';
+    }
+    setTrans(null);
   }, []);
 
   /* 浏览器前进/后退、手动改 hash 时同步视图 */
@@ -62,24 +75,14 @@ export default function App() {
   const openScene = useCallback((id) => {
     if (viewRef.current !== 'map') return;
     const lm = getLandmark(id);
-    setTrans({ phase: 'cover', accent: lm?.accent, label: lm?.name });
-    window.setTimeout(() => {
-      setSceneId(id);
-      window.location.hash = `#scene/${id}`;
-      setTrans({ phase: 'uncover', accent: lm?.accent, label: lm?.name });
-    }, COVER_MS + SWAP_GAP);
-    window.setTimeout(() => setTrans(null), COVER_MS + SWAP_GAP + UNCOVER_MS);
+    pendingRef.current = { kind: 'open', id };
+    setTrans({ mode: 'aggregate', accent: lm?.accent, label: lm?.name });
   }, []);
 
   const closeScene = useCallback(() => {
     const lm = sceneId ? getLandmark(sceneId) : null;
-    setTrans({ phase: 'cover', accent: lm?.accent, label: lm?.name });
-    window.setTimeout(() => {
-      setSceneId(null);
-      window.location.hash = '#world';
-      setTrans({ phase: 'uncover', accent: lm?.accent, label: lm?.name });
-    }, COVER_MS + SWAP_GAP);
-    window.setTimeout(() => setTrans(null), COVER_MS + SWAP_GAP + UNCOVER_MS);
+    pendingRef.current = { kind: 'close' };
+    setTrans({ mode: 'scatter', accent: lm?.accent, label: lm?.name });
   }, [sceneId]);
 
   return (
@@ -93,7 +96,12 @@ export default function App() {
       )}
 
       {sceneId && <SceneView landmark={getLandmark(sceneId)} onBack={closeScene} />}
-      <SceneTransition phase={trans?.phase} accent={trans?.accent} label={trans?.label} />
+      <SceneTransition
+        mode={trans?.mode || null}
+        accent={trans?.accent}
+        label={trans?.label}
+        onDone={handleTransDone}
+      />
     </>
   );
 }

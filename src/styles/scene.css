@@ -56,6 +56,10 @@
   color: var(--text-bright);
 }
 
+.scene-bar-tower {
+  width: 34px;
+}
+
 .scene-bar-meta em {
   font-style: normal;
   font-size: 11px;
@@ -102,6 +106,10 @@
   padding: 18px;
   box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.35), 5px 5px 0 rgba(0, 0, 0, 0.4);
   image-rendering: pixelated;
+}
+
+.scene-hero-icon .tower-still {
+  width: 132px;
 }
 
 .scene-tagline {
@@ -323,63 +331,93 @@
   color: var(--dim);
 }
 
-/* ---------- 场景切换动画 ---------- */
+/* ---------- 场景切换动画（SCHEME C：方块聚合 / 飞散） ---------- */
 .scene-transition {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background-color: var(--trans-accent, #0A101A);
-  background-image: repeating-linear-gradient(0deg, rgba(10, 16, 26, 0.38) 0 6px, transparent 6px 12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: radial-gradient(circle at 50% 36%, #101d36 0%, #0a1424 45%, #030712 100%);
+  overflow: hidden;
   pointer-events: none;
 }
 
-.scene-transition--cover {
-  transform-origin: bottom;
-  animation: scene-cover 0.34s steps(7, end) both;
+.scene-transition canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
 }
 
-.scene-transition--uncover {
-  transform-origin: top;
-  animation: scene-uncover 0.36s steps(7, end) both;
+.scene-transition-tag {
+  position: fixed;
+  top: 16px;
+  right: 18px;
+  z-index: 101;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--cyan);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
 }
 
-.scene-transition-label {
+.scene-transition-panel {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 101;
+  width: 302px;
+  max-width: calc(100vw - 36px);
+  background: rgba(11, 19, 32, 0.88);
+  border: 2px solid rgba(102, 138, 178, 0.38);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  padding: 10px 14px 12px;
+}
+
+.scene-transition-panel .t-title {
   font-family: var(--font-pixel);
   font-size: 10px;
-  letter-spacing: 2px;
-  color: rgba(10, 16, 26, 0.88);
-  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.16);
-  animation: trans-label 0.3s ease both;
+  color: var(--accent);
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+  word-break: break-all;
 }
 
-@keyframes scene-cover {
-  from {
-    transform: scaleY(0);
-  }
-  to {
-    transform: scaleY(1);
-  }
+.scene-transition-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 1px;
 }
 
-@keyframes scene-uncover {
-  from {
-    transform: scaleY(1);
-  }
-  to {
-    transform: scaleY(0);
-  }
+.scene-transition-meta .trans-pct {
+  color: var(--text-bright);
+  font-weight: 600;
 }
 
-@keyframes trans-label {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.scene-transition-bar {
+  margin-top: 8px;
+  height: 5px;
+  background: rgba(102, 138, 178, 0.16);
+  border: 1px solid rgba(102, 138, 178, 0.28);
+  overflow: hidden;
+}
+
+.scene-transition-bar .trans-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #0e7c68, #1abc9c, #e67e22);
+  box-shadow: 0 0 8px rgba(26, 188, 156, 0.65);
+}
+
+.scene-transition-text {
+  margin-top: 7px;
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 1px;
+  min-height: 14px;
 }
 
 /* ---------- 响应式 ---------- */
@@ -418,21 +456,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene-transition--cover {
-    animation: scene-fade-in 0.14s linear both;
-  }
-
-  .scene-transition--uncover {
-    animation: scene-fade-out 0.14s linear both;
-  }
-
-  @keyframes scene-fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .scene-transition {
+    animation: scene-fade-out 0.18s linear both;
   }
 
   @keyframes scene-fade-out {

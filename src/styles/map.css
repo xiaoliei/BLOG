@@ -65,24 +65,42 @@
 .landmark-icon {
   position: relative;
   display: block;
-  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45));
   transition: transform 180ms ease-out, filter 180ms ease-out;
   image-rendering: pixelated;
+}
+
+/* ---------- 地标图标：Scheme E 纯 CSS 定妆照（镐子塔，无阴影、仅悬浮） ---------- */
+.landmark-tower {
+  display: block;
+  width: 74px;
+  height: auto;
+  image-rendering: pixelated;
+  animation: still-float 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* 共享“定妆照”塔图（地图图标 / 场景页复用） */
+.tower-still {
+  display: block;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 20px rgba(26, 188, 156, 0.38));
+  animation: still-float 3.2s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes still-float {
+  0%, 100% { transform: translateY(0) rotateZ(-1deg); }
+  50% { transform: translateY(-9px) rotateZ(1deg); }
 }
 
 .landmark:hover .landmark-icon,
 .landmark:focus-visible .landmark-icon {
   transform: translateY(-4px) scale(1.08);
-  filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 8px var(--lm-accent, var(--accent)));
 }
 
 .landmark:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-}
-
-.landmark--visited .landmark-icon {
-  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.45)) drop-shadow(0 0 6px var(--lm-accent, var(--accent)));
 }
 
 .landmark-name {
@@ -218,6 +236,17 @@
 
 .world-hud-top > * {
   pointer-events: auto;
+}
+
+/* 顶部 HUD 里的禁用提示气泡改到按钮下方（默认在按钮上方，会被页面顶部截断） */
+.world-hud-top .mc-btn:disabled[data-disabled-msg]::after {
+  bottom: auto;
+  top: calc(100% + 10px);
+}
+
+.world-hud-top .mc-btn:disabled[data-disabled-msg]::before {
+  bottom: auto;
+  top: calc(100% + 4px);
 }
 
 .hud-title-main {
@@ -366,6 +395,13 @@
   text-align: left;
   font-family: var(--font-mono);
   transition: border-color 150ms ease, background 150ms ease;
+}
+
+.clock-menu-tower {
+  width: 30px;
+  height: auto;
+  flex: none;
+  image-rendering: pixelated;
 }
 
 .clock-menu-item:hover,

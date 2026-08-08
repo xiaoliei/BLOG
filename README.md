@@ -27,10 +27,10 @@ npm run preview    # 预览生产构建
 ▼
 ┌ 世界地图 WorldMap（主页 / 文章索引）
 │     2D 俯视像素大陆：地形、迷雾、地标
-│     点击任意处，小人直行前往；点击地标 → 方块式场景切换
+│     点击任意处，小人直行前往；点击地标 → SCHEME C 方块聚合过场
 ▼
 ┌ 地标场景 SceneView（模块详情页）
-      8 个地标 = 8 个博客模块，文章列表 + 传送点 + 战利品箱
+      当前仅展示 1 个地标（铁镐堡垒 · 项目作品），其余 7 个已隐藏待开放
 ```
 
 视图通过 URL hash 驱动，支持深链与浏览器前进/后退：
@@ -43,8 +43,10 @@ npm run preview    # 预览生产构建
 主页是一张 64×64 格的确定性像素大陆（种子固定，每次生成一致），包含：
 
 - 生物群系：海洋 / 河流 / 沙滩 / 平原 / 森林 / 山地 / 雪原 / 沙漠
-- 8 个地标：橡木镇、幽语图书馆、石峰城堡、迷雾森林营地、深红矿洞、
-  珊瑚灯塔、烈焰工坊、旧日遗迹，各自对应一个博客模块
+- 地标统一以“镐”命名（木镐镇、石镐书塔、铁镐堡垒、金镐营地、
+  钻石镐矿洞、下界合金灯塔、烈焰镐坊、远古镐迹），当前地图只展示
+  铁镐堡垒（项目作品），其余在 `world.js` 中 `visible: false` 隐藏、
+  数据保留，随时可重新开放
 - 自由移动：点击地图任意位置，玩家角色即沿直线直行前往（点地标则
   在到达后触发方块式场景切换动画）
 - 迷雾探索：探索完地标后，按与邻近地标之间的实际距离点亮 Voronoi
@@ -92,7 +94,7 @@ npm run preview    # 预览生产构建
     │   └── PixelSprite.jsx     # 像素图标 SVG 渲染
     ├── components/scenes/
     │   └── SceneView.jsx       # 地标场景详情页（文章列表）
-    ├── components/SceneTransition.jsx # 方块式场景切换动画
+    ├── components/SceneTransition.jsx # SCHEME C 过场：方块聚合 / 飞散
     └── styles/
         ├── tokens.css          # 设计令牌（颜色 / 字体 / 尺寸变量）
         ├── base.css            # 全局重置与布局
@@ -112,6 +114,9 @@ npm run preview    # 预览生产构建
 - `js/common.js` → 拆分为 `useSystemClock`（时钟）与 `BootOverlay`（开机动画）
 - `css/styles.css` → 按作用域拆分为 `tokens / base / landing`
 - `assets/favicon.svg`、`assets/models/mc_head.glb` → `public/`
+- `assets/tower_still.png`（方案 E 透明定妆照）→ `public/tower_still.png`
+- 方案 C 数据层（`tower-layers.js` / `tower-cubes.js`）→ `src/lib/tower.js`，
+  场景过场改用 SCHEME C：进入场景 = 192 个方块聚合，返回地图 = 方块飞散
 
 ### 已排除（文章列表 / 详情页相关，后续重新设计）
 
@@ -141,6 +146,6 @@ npm run preview    # 预览生产构建
 - 3D 头颅像素渲染与非背景色占比与 demo 截图数值一致（背景 RGB 完全相同）
 - 时钟 / 日期 / 坐标漂移 / 网络速率 / HUD / 状态栏均在刷新
 - 点击进入 → 开机动画逐行打印 → 进入 `#world` 世界地图
-- 世界地图 41 项端到端断言全部通过：地形 / 迷雾 / 8 地标 / 直行移动与改道 /
+- 世界地图 41 项端到端断言全部通过：地形 / 迷雾 / 1 地标 / 直行移动与改道 /
   地标半程与边界点亮 / 场景切换 / 深链刷新不重叠 / 移动端 /
   减弱动态偏好 / 无控制台错误

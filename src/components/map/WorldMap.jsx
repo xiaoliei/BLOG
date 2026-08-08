@@ -126,8 +126,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
   const [view, setView] = useState({ ox: 0, oy: 0, scale: 1 });
   const [visited, setVisited] = useState(loadVisited);
   const [playerPos, setPlayerPos] = useState(() => ({
-    x: (WORLD.tilesX / 2 + 0.5) * TS,
-    y: (WORLD.tilesY / 2 + 0.5) * TS,
+    x: (LANDMARKS[0].x + 0.5) * TS,
+    y: (LANDMARKS[0].y + 0.5) * TS,
   }));
   const [walking, setWalking] = useState(null); // { id, name }
   const [explored, setExplored] = useState(0);
@@ -163,7 +163,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       for (let x = 0; x < WORLD.tilesX; x += 1) {
         const li = nearestGrid[y * WORLD.tilesX + x];
         const lm = LANDMARKS[li];
-        let inside = lm.id === 'spawn-town' || visited.has(lm.id);
+        let inside = lm.id === LANDMARKS[0].id || visited.has(lm.id);
         if (!inside) {
           const px = (x + 0.5) * TS;
           const py = (y + 0.5) * TS;
@@ -406,10 +406,10 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       const sx = (spawn.x + 0.5) * TS;
       const sy = (spawn.y + 0.5) * TS;
       // 出生点视为已探索：点亮橡木镇的 Voronoi 区域
-      revealCell('spawn-town');
+      revealCell(LANDMARKS[0].id);
       // 已访问地标按地标间距离点亮对应区域
       loadVisited().forEach((id) => {
-        if (id !== 'spawn-town') revealCell(id);
+        if (id !== LANDMARKS[0].id && LANDMARKS.some((l) => l.id === id)) revealCell(id);
       });
       // 初始相机
       const scale = Math.min(Math.max(viewport.w / (WORLD.tilesX * TS), 0.72), 1.3);
@@ -717,7 +717,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
     revealsRef.current = [];
     cellRevealsRef.current = [];
     setVisited(new Set());
-    revealCell('spawn-town');
+    revealCell(LANDMARKS[0].id);
   }, [revealCell]);
 
   const tileX = Math.floor(playerPos.x / TS);
@@ -765,7 +765,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
               aria-label={`${lm.name}：${lm.module}${isVisited ? '，已探索' : '，未探索'}`}
             >
               <span className="landmark-icon">
-                <PixelSprite name={lm.icon} size={40} />
+                <img className="landmark-tower" src="/tower_still.png" alt="" draggable="false" />
                 {!isVisited && <span className="landmark-unknown" aria-hidden="true">?</span>}
                 {isVisited && <span className="landmark-check" aria-hidden="true">✓</span>}
               </span>
@@ -850,7 +850,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
                   style={{ '--lm-accent': lm.accent }}
                   onClick={() => jumpToLandmark(lm)}
                 >
-                  <PixelSprite name={lm.icon} size={26} />
+                  <img className="clock-menu-tower" src="/tower_still.png" alt="" draggable="false" />
                   <span className="clock-menu-meta">
                     <b>{lm.name}</b>
                     <em>{lm.module}</em>

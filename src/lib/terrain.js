@@ -2,7 +2,7 @@
    地形生成：确定性 fBm 高度图 + 湿度图 → 生物群系 + 装饰
    ============================================================ */
 
-import { WORLD, WORLD_COLORS, LANDMARKS } from '../config/world.js';
+import { WORLD, WORLD_COLORS, ALL_LANDMARKS } from '../config/world.js';
 import { fbm, hash2, mulberry32 } from './rand.js';
 
 export const T = {
@@ -78,7 +78,8 @@ export function generateWorld() {
       }
     }
   };
-  const lm = Object.fromEntries(LANDMARKS.map((l) => [l.id, l]));
+  // 所有地标（含隐藏）都保留地形印记，世界形状不随可见地标数量变化
+  const lm = Object.fromEntries(ALL_LANDMARKS.map((l) => [l.id, l]));
   stamp(lm['spawn-town'].x, lm['spawn-town'].y, T.grass, 3);
   stamp(lm.castle.x, lm.castle.y, T.mountain, 3);
   stamp(lm.library.x, lm.library.y, T.forest, 2);
