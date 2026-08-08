@@ -374,8 +374,8 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
       loadVisited().forEach((id) => {
         if (id !== LANDMARKS[0].id && LANDMARKS.some((l) => l.id === id)) revealCell(id);
       });
-      // 初始相机
-      const scale = Math.min(Math.max(viewport.w / (WORLD.tilesX * TS), 0.72), 1.3);
+      // 初始相机：放大到能看清“项目作品”地标（不再整图缩略）
+      const scale = Math.min(Math.max(viewport.w / (WORLD.tilesX * TS), 1.35), MAX_SCALE);
       setView((v) =>
         clampView({ ...v, scale, ox: viewport.w / 2 - sx * scale, oy: viewport.h / 2 - sy * scale })
       );
@@ -745,7 +745,7 @@ export default function WorldMap({ active = true, onEnterScene, onReboot }) {
           style={{ left: playerPos.x, top: playerPos.y }}
         >
           <PixelSprite name="player" size={30} />
-          <span className="world-player-name">{walking ? `→ ${walking.name}` : '你'}</span>
+          {walking && <span className="world-player-name">→ {walking.name}</span>}
         </div>
       </div>
 
