@@ -263,8 +263,25 @@
   color: var(--faint);
   text-transform: uppercase;
   animation: hint-pulse 3.2s ease-in-out infinite;
+  transition: opacity 0.35s ease;
   white-space: nowrap;
   user-select: none;
+}
+
+/* 进入提示仍直接定位在舞台底部（保持原位置），进入时同步淡出 */
+.landing-hint.is-leaving {
+  animation: hint-leave 0.35s ease forwards; /* 用离开动画替代脉冲动画，保证平滑淡出 */
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes hint-leave {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 @keyframes hint-pulse {
@@ -359,6 +376,15 @@
   margin-top: 26px;
   text-align: center;
   user-select: none;
+  transition:
+    opacity 0.35s ease,
+    visibility 0.35s; /* 淡出完成后切到 hidden，但继续占位，防止地球模型位移 */
+}
+
+.landing-clock.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .landing-clock .time {

@@ -1,19 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSystemClock } from '../../hooks/useSystemClock';
-import BootOverlay from './BootOverlay.jsx';
 import HeadViewer from './HeadViewer.jsx';
 import LandingClock from './LandingClock.jsx';
 import ScreenOverlays from './ScreenOverlays.jsx';
 import Starfield from './Starfield.jsx';
 
 const ENTER_KEYS = ['Enter', ' ', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
+const FADE_MS = 380; // 时间文本淡出时长：淡完后再开启动画
 
+/* 过渡动画完成后保持当前状态等待后续指令，暂不触发 onComplete 跳转 */
 export default function LandingPage({ onComplete }) {
   const clock = useSystemClock();
-  const [booting, setBooting] = useState(false);
+  const [phase, setPhase] = useState('idle'); // idle → leaving（文本淡出）→ active（缩放动画）
+  const reducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    []
+  );
 
-  /* 重复触发是幂等的：booting 已为 true 时再次 setState(true) 不会重渲染 */
-  const enter = useCallback(() => setBooting(true), []);
+  /* 重复触发是幂等的：仅 idle 状态接受进入 */
+  const enter = useCallback(() => {
+    setPhase((p) => (p === 'idle' ? 'leaving' : p));
+  }, []);
+
+  /* 文本淡出完成后才启动缩放动画 */
+  useEffect(() => {
+    if (phase !== 'leaving') return undefined;
+    const t = window.setTimeout(() => setPhase('active'), reducedMotion ? 0 : FADE_MS);
+    return () => window.clearTimeout(t);
+  }, [phase, reducedMotion]);
 
   useEffect(() => {
     const onWheel = (e) => {
@@ -36,16 +50,16 @@ export default function LandingPage({ onComplete }) {
       <ScreenOverlays />
 
       <main className="landing-stage" onClick={enter} onPointerDown={enter}>
-        {!booting && (
-          <>
-            <HeadViewer />
-            <LandingClock time={clock.time} date={clock.date} />
-            <div className="landing-hint">▸ 点击任意处进入 ◂</div>
-          </>
-        )}
-      </main>
+        <HeadViewer active={phase === 'active'} />
 
-      {booting && <BootOverlay onComplete={onComplete} />}
+        {/* 时钟淡出后保留占位（visibility:hidden），避免 flex 重排导致地球模型下移 */}
+        <LandingClock
+          time={clock.time}
+          date={clock.date}
+          className={phase !== 'idle' ? 'is-leaving' : ''}
+        />
+        <div className={`landing-hint${phase !== 'idle' ? ' is-leaving' : ''}`}>▸ 点击任意处进入 ◂</div>
+      </main>
     </div>
   );
 }
