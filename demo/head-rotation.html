@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEAD_ROTATION // 旋转坐标调参 — BLOG_OS</title>
+  <meta name="description" content="启动页地球模型 XYZ 旋转角度调参工具：自由旋转并复制最终坐标">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+  <style>
+    /* ---------- 旋转调参面板 ---------- */
+    .rot-panel {
+      position: fixed;
+      top: 64px;
+      right: 18px;
+      z-index: 40;
+      width: 324px;
+      padding: 0 0 14px;
+    }
+
+    .rot-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 10px 14px 6px;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: var(--dim);
+      text-transform: uppercase;
+    }
+
+    .rot-meta #rot-state {
+      color: var(--cyan);
+      white-space: nowrap;
+    }
+
+    .rot-meta #rot-state.error { color: var(--danger); }
+    .rot-meta #rot-state.ready { color: var(--ok); }
+
+    .rot-meta .rot-base {
+      color: var(--faint);
+      font-size: 9px;
+      text-align: right;
+      line-height: 1.5;
+    }
+
+    /* 当前坐标大字读数（可手动框选复制） */
+    .rot-readout {
+      padding: 4px 14px 10px;
+    }
+
+    .rot-readout input {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(4, 9, 16, 0.72);
+      border: 1px solid var(--line-strong);
+      color: var(--text-bright);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-align: center;
+      outline: none;
+      user-select: all;
+    }
+
+    .rot-readout input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(26, 188, 156, 0.25);
+    }
+
+    /* 每个轴：标签 + 滑杆 + 数值 */
+    .rot-axis {
+      display: grid;
+      grid-template-columns: 76px 1fr 76px;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 14px;
+    }
+
+    .rot-axis label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--text);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .rot-axis label i {
+      display: block;
+      font-style: normal;
+      font-size: 8px;
+      color: var(--faint);
+      letter-spacing: 1px;
+    }
+
+    .rot-axis .rot-val {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--cyan);
+      text-align: right;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    /* 主题化 range 滑杆 */
+    .rot-axis input[type='range'] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(26, 188, 156, 0.25), rgba(102, 138, 178, 0.45));
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .rot-axis input[type='range']::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      background: var(--bg-3);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 8px rgba(26, 188, 156, 0.55);
+      cursor: grab;
+    }
+
+    .rot-axis input[type='range']::-moz-range-thumb {
+      width: 11px;
+      height: 11px;
+      background: var(--bg-3);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 8px rgba(26, 188, 156, 0.55);
+      cursor: grab;
+      border-radius: 0;
+    }
+
+    /* 操作按钮 */
+    .rot-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 10px 14px 0;
+    }
+
+    .rot-btn {
+      padding: 8px 0;
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid rgba(26, 188, 156, 0.45);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+      white-space: nowrap;
+    }
+
+    .rot-btn:hover:not(:disabled) {
+      background: var(--cyan-soft);
+      border-color: var(--cyan);
+      color: var(--text-bright);
+    }
+
+    .rot-btn--accent {
+      color: var(--accent);
+      border-color: rgba(230, 126, 34, 0.45);
+    }
+
+    .rot-btn--accent:hover:not(:disabled) {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text-bright);
+    }
+
+    .rot-btn--wide {
+      grid-column: 1 / -1;
+    }
+
+    .rot-note {
+      padding: 10px 14px 0;
+      font-size: 9px;
+      line-height: 1.7;
+      letter-spacing: 1px;
+      color: var(--faint);
+      text-transform: uppercase;
+    }
+
+    .rot-note b { color: var(--dim); font-weight: 500; }
+
+    /* 启动页提示沿用 landing-hint 位置，仅换文案 */
+    .landing-hint b { color: var(--cyan); font-weight: 500; }
+
+    /* 窄屏：面板收窄，避免遮挡地球 */
+    @media (max-width: 980px) {
+      .rot-panel { width: 264px; right: 10px; top: 56px; }
+      .rot-axis { grid-template-columns: 64px 1fr 66px; gap: 6px; padding: 5px 10px; }
+      .rot-meta, .rot-readout, .rot-btns, .rot-note { padding-left: 10px; padding-right: 10px; }
+    }
+
+    @media (max-width: 720px) {
+      .rot-panel {
+        top: auto;
+        right: 10px;
+        bottom: calc(var(--status-h) + 10px);
+        width: 210px;
+      }
+      .rot-axis { grid-template-columns: 1fr 52px; }
+      .rot-axis label { display: none; }
+    }
+  </style>
+</head>
+<body class="landing">
+  <div class="grid-bg"></div>
+  <canvas id="stars"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: HEAD_ROT</div>
+  <div class="hud-corner hud-br" id="hud-status">HEAD_ROT <i>STANDBY</i></div>
+
+  <main class="landing-stage">
+    <div class="earth-wrap">
+      <div class="earth-glow"></div>
+      <canvas id="head3d"></canvas>
+      <div class="float-cube" aria-hidden="true"></div>
+    </div>
+
+    <div class="landing-clock">
+      <div class="time" data-clock>--:--</div>
+      <div class="date" data-date>----/--/-- ---</div>
+    </div>
+
+    <div class="landing-hint">DRAG <b>旋转</b> // SHIFT+DRAG <b>滚转</b> // WHEEL <b>缩放</b> // ARROWS <b>±1°</b> // SHIFT <b>±0.1°</b> // Q/E <b>ROLL</b> // R <b>复位</b></div>
+  </main>
+
+  <section class="panel rot-panel">
+    <div class="panel-head">
+      <span>◈ HEAD_ROTATION // 旋转坐标</span>
+      <span class="led"></span>
+    </div>
+
+    <div class="rot-meta">
+      <span id="rot-state">LOADING…</span>
+      <span class="rot-base">BASE<br>X 25.21° / Y -34.38° / Z -11.75°</span>
+    </div>
+
+    <div class="rot-readout">
+      <input id="rot-values" readonly value="X 25.210°  Y -34.380°  Z -11.750°" title="点击可全选复制">
+    </div>
+
+    <div class="rot-axis">
+      <label>X 俯仰<i>PITCH</i></label>
+      <input type="range" id="slider-x" min="-180" max="180" step="0.1" value="25.21">
+      <span class="rot-val" id="val-x">25.210°</span>
+    </div>
+
+    <div class="rot-axis">
+      <label>Y 偏航<i>YAW</i></label>
+      <input type="range" id="slider-y" min="-180" max="180" step="0.1" value="-34.38">
+      <span class="rot-val" id="val-y">-34.380°</span>
+    </div>
+
+    <div class="rot-axis">
+      <label>Z 滚转<i>ROLL</i></label>
+      <input type="range" id="slider-z" min="-180" max="180" step="0.1" value="-11.75">
+      <span class="rot-val" id="val-z">-11.750°</span>
+    </div>
+
+    <div class="rot-btns">
+      <button class="rot-btn" id="btn-copy-deg">⧉ 复制度数配置</button>
+      <button class="rot-btn" id="btn-copy-rad">⧉ 复制弧度</button>
+      <button class="rot-btn rot-btn--accent rot-btn--wide" id="btn-reset">↺ 复位基准视角</button>
+    </div>
+
+    <div class="rot-note">
+      <b>度数配置</b> → HEAD_TRANSITION（pitchToDeg / yawToDeg / rollToDeg）<br>
+      <b>弧度坐标</b> → head.rotation.x / .y / headPivot.rotation.z
+    </div>
+  </section>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item sb-up"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="js/head-rotation.js"></script>
+</body>
+</html>
