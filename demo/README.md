@@ -12,6 +12,7 @@
 | 层级加载 | `pickaxe-tower.html` | 全屏 3D：`stone_pickaxe_tower.glb` 按体素方块行（每层 1 格）从下到上逐层构建（向上生长 + 淡入 + 辉光过渡，无过冲无尖刺），OrbitControls 旋转 / 缩放，进度面板 + REPLAY 重播 |
 | 火焰方块 | `fire-cube.html` | 全屏 3D：把 `Fire.gif` 逐帧解码为动画贴图，`前/后/左/右` 四片外壁 + 中心两片十字交叉组成俯视「田」字格的动态火焰方块；透明镂空无黑色底，外壁可绕底部铰链向内倾斜（0–30°），火苗明暗驱动点光闪烁 |
 | 旋转调参 | `head-rotation.html` | 启动页地球模型 XYZ 旋转坐标调参工具：场景/灯光/贴图与启动页完全一致，拖拽或滑杆自由旋转（X 俯仰 / Y 偏航 / Z 滚转），一键复制度数配置（HEAD_TRANSITION）或弧度坐标 |
+| 头颅查看 | `computer-head.html` | 全屏 3D：`computer_head.glb`（由 `assets/computer.png` 经 `generate-head.cjs` 生成的两层 Minecraft 头颅）OrbitControls 轨道旋转 / 滚轮缩放 / 自动环绕 / 线框切换，古铜橙线框 bounding box + 呼吸青色点光 |
 | 过场方案 | `transitions.html` | 5 种页面跳转过场动画方案 A–E（逐层搭建/拆除、扫描聚能、粒子聚合/坍缩、错位对齐/坠落、纯 CSS 定妆照），每个方案都是「点击 → 加载动画 → 自动跳转目标页」的完整闭环 |
 | 草堂背景 | `xiaoli-home/index.html` | 参考 [xiaoli.team](https://xiaoli.team/) 草堂论坛背景样式：纯背景演示页（无内容模块），复用其羊毛纹理背景图（`assets/` 内置副本）、绿色 Hero（底部羊毛饰条）、蓝色页脚（顶部羊毛饰条），纯 HTML/CSS 零依赖 |
 
@@ -53,18 +54,19 @@ node scripts/verify.mjs
 
 ## 重新生成 3D 模型
 
-所有 `.glb` 由零依赖 Node 脚本生成（Minecraft 头颅、体素化地球、材料集群、5 种方块）：
+所有 `.glb` 由零依赖 Node 脚本生成（Minecraft 头颅、体素化地球、材料集群、5 种方块）。脚本为 CommonJS（`require`），在根 `package.json` 的 `"type": "module"` 下须用 `.cjs` 扩展名运行：
 
 ```bash
-node scripts/generate-models.js
-node scripts/generate-head.js   # 头颅：读取 mjha_head/skin.png，输出 assets/models/mc_head.glb
+node scripts/generate-models.cjs
+node scripts/generate-head.cjs                                              # 默认：mjha_head/skin.png → mc_head.glb
+node scripts/generate-head.cjs assets/computer.png assets/models/computer_head.glb  # 自定义皮肤 → computer_head.glb
 ```
 
 输出到 `assets/models/`。Three.js 与 GLTFLoader 已本地化于 `vendor/`，离线可用。
 
 ## 头颅贴图来源
 
-`mjha_head/` 中的 `skin.png` 爬取自 [mcheads.ru 地球头页面](https://mcheads.ru/en/decoration/mjha)（页面 3D 视图所用的 64×64 皮肤贴图，与 Mojang 官方纹理一致）。`generate-head.js` 按 Minecraft 头颅标准 UV 布局将其嵌入 `assets/models/mc_head.glb`：
+`mjha_head/` 中的 `skin.png` 爬取自 [mcheads.ru 地球头页面](https://mcheads.ru/en/decoration/mjha)（页面 3D 视图所用的 64×64 皮肤贴图，与 Mojang 官方纹理一致）。`generate-head.cjs` 按 Minecraft 头颅标准 UV 布局将其嵌入 `assets/models/mc_head.glb`：
 
 - **两层结构**：底层头（8×8×8）+ 帽子叠加层（8.5×8.5×8.5，使用 hat 区域 UV，`alphaMode: MASK`），与 skinview3d 的两层头部渲染一致；
 - **NEAREST 采样**：与 skinview3d 一致，不生成 mipmap，保证放大后像素锐利、不模糊。

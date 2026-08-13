@@ -24,8 +24,12 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const SKIN = path.join(ROOT, 'mjha_head', 'skin.png');
-const OUT = path.join(ROOT, 'assets', 'models', 'mc_head.glb');
+const SKIN = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.join(ROOT, 'mjha_head', 'skin.png');
+const OUT = process.argv[3]
+  ? path.resolve(process.argv[3])
+  : path.join(ROOT, 'assets', 'models', 'mc_head.glb');
 
 const S = 64;
 const uv = (x, y) => [x / S, y / S];
