@@ -13,6 +13,7 @@
 | 火焰方块 | `fire-cube.html` | 全屏 3D：把 `Fire.gif` 逐帧解码为动画贴图，`前/后/左/右` 四片外壁 + 中心两片十字交叉组成俯视「田」字格的动态火焰方块；透明镂空无黑色底，外壁可绕底部铰链向内倾斜（0–30°），火苗明暗驱动点光闪烁 |
 | 旋转调参 | `head-rotation.html` | 启动页地球模型 XYZ 旋转坐标调参工具：场景/灯光/贴图与启动页完全一致，拖拽或滑杆自由旋转（X 俯仰 / Y 偏航 / Z 滚转），一键复制度数配置（HEAD_TRANSITION）或弧度坐标 |
 | 头颅查看 | `computer-head.html` | 全屏 3D：`computer_head.glb`（由 `assets/computer.png` 经 `generate-head.cjs` 生成的两层 Minecraft 头颅）OrbitControls 轨道旋转 / 滚轮缩放 / 自动环绕 / 线框切换，古铜橙线框 bounding box + 呼吸青色点光 |
+| 显示输出 | `computer-display.html` | 全屏 3D：程序化搭建体素显示器（机身 + 颈柱 + 底座 + 青色描边 + 电源灯），用 `CSS3DRenderer` 把 `xiaoli-home/index.html` 作为实时 `<iframe>` 贴在显示屏一侧（1600×900 / 16:9，可滚动点击交互）；WebGL 与 CSS3D 共享同一相机，转到背面自动隐藏 iframe 防穿透，POWER 键开关屏幕 |
 | 过场方案 | `transitions.html` | 5 种页面跳转过场动画方案 A–E（逐层搭建/拆除、扫描聚能、粒子聚合/坍缩、错位对齐/坠落、纯 CSS 定妆照），每个方案都是「点击 → 加载动画 → 自动跳转目标页」的完整闭环 |
 | 草堂背景 | `xiaoli-home/index.html` | 参考 [xiaoli.team](https://xiaoli.team/) 草堂论坛背景样式：纯背景演示页（无内容模块），复用其羊毛纹理背景图（`assets/` 内置副本）、绿色 Hero（底部羊毛饰条）、蓝色页脚（顶部羊毛饰条），纯 HTML/CSS 零依赖 |
 
@@ -93,7 +94,7 @@ node scripts/generate-head.cjs assets/computer.png assets/models/computer_head.g
 ├── assets/Fire.gif             # 火焰贴图（public/texture/Fire.gif 的副本，见下）
 ├── assets/tower_still.png      # 方案 E 透明定妆照
 ├── transitions.html / transition-target.html / transition-a.html … e.html
-├── vendor/                     # three.module.js + GLTFLoader + OrbitControls
+├── vendor/                     # three.module.js + GLTFLoader + OrbitControls + CSS3DRenderer
 └── scripts/                    # 模型生成器 + 静态服务器
 ```
 
