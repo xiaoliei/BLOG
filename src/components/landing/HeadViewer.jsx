@@ -6,11 +6,12 @@ import { makeCamera, makeRenderer, loadGLB, resize, THREE } from '../../lib/scen
    ------------------------------------------------------------
    点击进入后，地球模型（3D 头颅）渐进放大，放大过程中同步
    旋转，使界面视角逐步对准模型左侧正面区域，直到模型完全
-   覆盖屏幕。动画结束后保持当前状态，不跳转主页。
+   覆盖屏幕。随后进入 reveal 阶段：模型继续略微放大产生
+   “穿屏”效果，同时整个启动层淡出，露出下方主页内容。
 
    · 动画速度：修改 durationMs（毫秒），越小越快。
-   · 旋转角度：pitch / yaw / roll 目标值，单位为“度”，
-     可精确微调最终对准方向。
+   · 旋转角度：pitch / yaw / roll 目标值，单位为“度”。
+   · revealMs：模型穿屏放大 + 淡出的时长。
    ============================================================ */
 const DEG = Math.PI / 180;
 
@@ -29,21 +30,41 @@ export const HEAD_TRANSITION = {
   pitchToDeg: 0, // 目标俯角：正面平视
   yawToDeg: 0, // 目标偏航：正面正对镜头
   rollToDeg: 0, // 目标滚转：中棱垂直
+  revealMs: 750, // reveal 阶段：继续放大 + 启动层淡出的时长
 };
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const easeInOutCubic = (t) =>
   t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
-export default function HeadViewer({ active = false, transition: transitionOverride }) {
+export default function HeadViewer({
+  active = false,
+  revealing = false,
+  transition: transitionOverride,
+  onZoomDone,
+  onRevealDone,
+}) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const moonRef = useRef(null);
   const startZoomRef = useRef(null);
+  const onZoomDoneRef = useRef(onZoomDone);
+  const onRevealDoneRef = useRef(onRevealDone);
+  const revealingRef = useRef(revealing);
+  const revealStartRef = useRef(null);
 
   const cfgRef = useRef({ ...HEAD_TRANSITION, ...transitionOverride });
   cfgRef.current = { ...HEAD_TRANSITION, ...transitionOverride };
+  onZoomDoneRef.current = onZoomDone;
+  onRevealDoneRef.current = onRevealDone;
+  revealingRef.current = revealing;
+
+  /* revealing 变为 true 时重置 reveal 计时起点 */
+  useEffect(() => {
+    if (revealing) revealStartRef.current = null;
+  }, [revealing]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -81,6 +102,7 @@ export default function HeadViewer({ active = false, transition: transitionOverr
     let zoomState = null; // 过渡动画状态
     let pendingZoom = false; // 模型未加载完就点击：先挂起，加载完成立即开播
     let zoomDone = false;
+    let revealDone = false;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -269,7 +291,26 @@ export default function HeadViewer({ active = false, transition: transitionOverr
         /* 月球随放大淡出，避免遮挡 */
         moonEl.style.opacity = `${1 - e}`;
 
-        if (p >= 1) zoomDone = true; // 动画结束：保持覆盖状态，不跳转
+        if (p >= 1) {
+          if (!zoomDone) {
+            zoomDone = true;
+            onZoomDoneRef.current?.(); // 覆盖完成：通知上层挂载主页并开始 reveal
+          }
+          if (revealingRef.current) {
+            /* reveal：模型继续放大“穿屏”，同时启动层整体淡出 */
+            if (revealStartRef.current === null) revealStartRef.current = performance.now();
+            const rp = reducedMotion
+              ? 1
+              : clamp01((performance.now() - revealStartRef.current) / cfg.revealMs);
+            const re = easeOutCubic(rp);
+            group.scale.setScalar(coverScale * (1 + 0.14 * re));
+            wrap.style.opacity = String(Math.max(0, 1 - re));
+            if (rp >= 1 && !revealDone) {
+              revealDone = true;
+              onRevealDoneRef.current?.();
+            }
+          }
+        }
       } else {
         /* —— 待机：摆动动画 —— */
         const phase = Math.sin(t * 0.9);

@@ -8,8 +8,8 @@ import Starfield from './Starfield.jsx';
 const ENTER_KEYS = ['Enter', ' ', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft'];
 const FADE_MS = 380; // 时间文本淡出时长：淡完后再开启动画
 
-/* 过渡动画完成后保持当前状态等待后续指令，暂不触发 onComplete 跳转 */
-export default function LandingPage({ onComplete }) {
+/* 点击进入 → 文本淡出 → 3D 头颅缩放旋转至满屏 → reveal 淡出露出博客首页 */
+export default function LandingPage({ revealing = false, onZoomDone, onRevealDone }) {
   const clock = useSystemClock();
   const [phase, setPhase] = useState('idle'); // idle → leaving（文本淡出）→ active（缩放动画）
   const reducedMotion = useMemo(
@@ -45,12 +45,17 @@ export default function LandingPage({ onComplete }) {
   }, [enter]);
 
   return (
-    <div className="landing-root">
+    <div className={`landing-root${revealing ? ' is-revealing' : ''}`}>
       <Starfield />
       <ScreenOverlays />
 
       <main className="landing-stage" onClick={enter} onPointerDown={enter}>
-        <HeadViewer active={phase === 'active'} />
+        <HeadViewer
+          active={phase === 'active'}
+          revealing={revealing}
+          onZoomDone={onZoomDone}
+          onRevealDone={onRevealDone}
+        />
 
         {/* 时钟淡出后保留占位（visibility:hidden），避免 flex 重排导致地球模型下移 */}
         <LandingClock

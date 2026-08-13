@@ -1,50 +1,26 @@
 /* ============================================================
-   BLOG_OS · 方块大陆（Overworld）世界配置
-   地图 = 博客主页：每个地标 = 一个博客模块
+   BLOG_OS 站点与内容配置（正常博客首页）
+   文章内容继承自旧世界地图数据，仅调整数据形态。
    ============================================================ */
 
-export const WORLD = {
-  name: '方块大陆',
-  seed: 20260804,
-  tilesX: 64,
-  tilesY: 64,
-  tileSize: 32, // 每格 CSS 像素（缩放 1 时）
+export const SITE = {
+  name: 'BLOG_OS',
+  author: 'KAI',
+  since: 2019,
+  tagline: '用代码、文字与像素，记录这个世界的存档点。',
+  description: '前端开发者 / 像素爱好者 / 游戏玩家。这里记录我如何用代码一砖一瓦搭出自己的世界。',
+  email: 'hello@blog-os.dev',
+  github: 'https://github.com/',
 };
 
-/* 方块大陆调色板（在暗色 HUD 框架内保持明亮） */
-export const WORLD_COLORS = {
-  deepWater: '#3D57D6',
-  water: '#3D57D6',
-  shallow: '#3F76E4',
-  sand: '#E4D18A',
-  grass: '#91bd59',
-  grassDark: '#5E9C47',
-  forest: '#79c05a',
-  forestDark: '#2F6633',
-  stone: '#8D9299',
-  stoneDark: '#6F747C',
-  snow: '#E9EEF4',
-  desert: '#E4C878',
-  desertDark: '#C9A95F',
-  fog: '#0A101A',
-  fogBlue: '#0E1626',
-};
-
-/* 地标：id / 名称 / 类别 / 位置(格) / 主题色 / 描述 / 文章
-   名称统一贴近“镐子”主题（木/石/铁/金/钻石/下界合金……）。
-   visible: false 的地标暂不在地图上展示，数据保留、随时可重新开放。 */
-export const ALL_LANDMARKS = [
+/* 栏目：title / 简介 / 主题色 / 图标 / 文章 */
+export const MODULES = [
   {
-    id: 'spawn-town',
-    name: '木镐镇',
-    module: '生活杂记',
-    x: 32,
-    y: 32,
-    biome: 'grass',
+    id: 'life',
+    title: '生活杂记',
     accent: '#F1C40F',
     accentDark: '#B7950B',
-    icon: 'town',
-    visible: false,
+    icon: 'home',
     blurb: '一切冒险的起点。柴火、钟声与琐碎日常的存档点。',
     posts: [
       {
@@ -71,16 +47,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'library',
-    name: '石镐书塔',
-    module: '读书笔记',
-    x: 11,
-    y: 10,
-    biome: 'forest',
+    id: 'reading',
+    title: '读书笔记',
     accent: '#52BE80',
     accentDark: '#229954',
-    icon: 'library',
-    visible: false,
+    icon: 'book',
     blurb: '藏在橡木林深处的书塔，收集读过的每一本书的批注。',
     posts: [
       {
@@ -107,16 +78,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'castle',
-    name: '铁镐堡垒',
-    module: '项目作品',
-    x: 52,
-    y: 12,
-    biome: 'mountain',
+    id: 'projects',
+    title: '项目作品',
     accent: '#7FB3D8',
     accentDark: '#5499C7',
-    icon: 'castle',
-    visible: true,
+    icon: 'code',
     blurb: '建在山顶的堡垒，陈列所有完成与未完成的项目。',
     posts: [
       {
@@ -143,16 +109,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'forest-camp',
-    name: '金镐营地',
-    module: '游记见闻',
-    x: 8,
-    y: 38,
-    biome: 'forest',
+    id: 'travel',
+    title: '游记见闻',
     accent: '#4CAF50',
     accentDark: '#2E7D32',
-    icon: 'forest',
-    visible: false,
+    icon: 'map',
     blurb: '篝火、松涛与沿途风景。去过的每个地方都留下一段文字。',
     posts: [
       {
@@ -179,16 +140,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'cave',
-    name: '钻石镐矿洞',
-    module: '技术深潜',
-    x: 33,
-    y: 55,
-    biome: 'mountain',
+    id: 'tech',
+    title: '技术深潜',
     accent: '#E74C3C',
     accentDark: '#C0392B',
-    icon: 'cave',
-    visible: false,
+    icon: 'cpu',
     blurb: '越挖越深。前端、性能与底层原理的硬核笔记都堆在这里。',
     posts: [
       {
@@ -222,16 +178,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'lighthouse',
-    name: '下界合金灯塔',
-    module: '关于我',
-    x: 58,
-    y: 44,
-    biome: 'coast',
+    id: 'about',
+    title: '关于我',
     accent: '#1ABC9C',
     accentDark: '#148F77',
-    icon: 'lighthouse',
-    visible: false,
+    icon: 'user',
     blurb: '大陆最东端的灯塔，也是我的自我介绍与联系方式。',
     posts: [
       {
@@ -258,16 +209,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'forge',
-    name: '烈焰镐坊',
-    module: '创意实验',
-    x: 45,
-    y: 50,
-    biome: 'desert',
+    id: 'lab',
+    title: '创意实验',
     accent: '#E67E22',
     accentDark: '#CA6F1E',
-    icon: 'forge',
-    visible: false,
+    icon: 'flask',
     blurb: '熔炉永远开着。奇奇怪怪的创意原型和玩具代码都在这里锻造。',
     posts: [
       {
@@ -294,16 +240,11 @@ export const ALL_LANDMARKS = [
     ],
   },
   {
-    id: 'ruins',
-    name: '远古镐迹',
-    module: '归档',
-    x: 15,
-    y: 22,
-    biome: 'desert',
+    id: 'archive',
+    title: '归档',
     accent: '#9B59B6',
     accentDark: '#7D3C98',
-    icon: 'ruins',
-    visible: false,
+    icon: 'archive',
     blurb: '风沙掩埋的旧文章，像遗迹一样值得偶尔回来看看。',
     posts: [
       {
@@ -331,41 +272,11 @@ export const ALL_LANDMARKS = [
   },
 ];
 
-/* 当前在地图上展示的地标：只保留项目作品（其余 visible: false） */
-export const LANDMARKS = ALL_LANDMARKS.filter((l) => l.visible);
+export const MODULE_MAP = Object.fromEntries(MODULES.map((m) => [m.id, m]));
 
-export const LANDMARK_MAP = Object.fromEntries(LANDMARKS.map((l) => [l.id, l]));
+/* 全部文章（带所属栏目），按日期倒序 */
+export const ALL_POSTS = MODULES.flatMap((module) =>
+  module.posts.map((post) => ({ ...post, moduleId: module.id, moduleTitle: module.title, moduleAccent: module.accent, moduleAccentDark: module.accentDark })),
+).sort((a, b) => (a.date < b.date ? 1 : -1));
 
-export const getLandmark = (id) => LANDMARK_MAP[id];
-
-/* 地标之间的连接关系（用于场景页“传送点”导航） */
-export const PATHS = [
-  { id: 'town-castle', from: 'spawn-town', to: 'castle' },
-  { id: 'town-library', from: 'spawn-town', to: 'library' },
-  { id: 'town-forest', from: 'spawn-town', to: 'forest-camp' },
-  { id: 'town-cave', from: 'spawn-town', to: 'cave' },
-  { id: 'town-forge', from: 'spawn-town', to: 'forge' },
-  { id: 'town-lighthouse', from: 'spawn-town', to: 'lighthouse' },
-  { id: 'town-ruins', from: 'spawn-town', to: 'ruins' },
-  { id: 'library-castle', from: 'library', to: 'castle' },
-  { id: 'library-forest', from: 'library', to: 'forest-camp' },
-  { id: 'forest-ruins', from: 'forest-camp', to: 'ruins' },
-  { id: 'cave-forge', from: 'cave', to: 'forge' },
-  { id: 'forge-lighthouse', from: 'forge', to: 'lighthouse' },
-  { id: 'castle-lighthouse', from: 'castle', to: 'lighthouse' },
-];
-
-/* 生物群系名称（用于 HUD 坐标提示） */
-export const BIOME_NAMES = {
-  deepWater: '深海',
-  water: '海洋',
-  river: '河流',
-  sand: '沙滩',
-  grass: '平原',
-  forest: '森林',
-  mountain: '山地',
-  snow: '雪原',
-  desert: '沙漠',
-};
-
-export const WORLD_STORAGE_KEY = 'blogos-overworld-v1';
+export const POST_COUNT = ALL_POSTS.length;

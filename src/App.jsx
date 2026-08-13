@@ -1,106 +1,55 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import HomePage from './components/home/HomePage.jsx';
 import LandingPage from './components/landing/LandingPage.jsx';
-import WorldMap from './components/map/WorldMap.jsx';
-import SceneView from './components/scenes/SceneView.jsx';
-import SceneTransition from './components/SceneTransition.jsx';
-import { getLandmark } from './config/world.js';
 
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
-const initialSceneId = initialHash.startsWith('#scene/')
-  ? initialHash.slice('#scene/'.length)
-  : null;
 
+/* 三阶段：landing（启动页）→ revealing（主页在头颅下挂载并淡入）→ home
+   hash '#home' 可跳过启动页直达首页 */
 export default function App() {
-  const [view, setView] = useState(
-    initialHash.startsWith('#world') || (initialSceneId && getLandmark(initialSceneId)) ? 'map' : 'landing'
+  const [phase, setPhase] = useState(initialHash === '#home' ? 'home' : 'landing');
+
+  const reducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
   );
-  const [sceneId, setSceneId] = useState(
-    initialSceneId && getLandmark(initialSceneId) ? initialSceneId : null
-  );
-  const [trans, setTrans] = useState(null); // { mode: 'aggregate' | 'scatter', accent }
-  const pendingRef = useRef(null); // { kind: 'open', id } | { kind: 'close' }
-  const viewRef = useRef(view);
-  viewRef.current = view;
 
-  const enterWorld = useCallback(() => {
-    setView('map');
-    window.location.hash = '#world';
-  }, []);
-
-  const reboot = useCallback(() => {
-    pendingRef.current = null;
-    setSceneId(null);
-    setTrans(null);
-    setView('landing');
-    window.location.hash = '';
-  }, []);
-
-  /* SCHEME C 动画播完：执行视图切换并移除遮罩 */
-  const handleTransDone = useCallback(() => {
-    const pending = pendingRef.current;
-    if (!pending) return;
-    pendingRef.current = null;
-    if (pending.kind === 'open') {
-      setSceneId(pending.id);
-      window.location.hash = `#scene/${pending.id}`;
+  /* 头颅缩放旋转覆盖全屏完成：挂载主页（在其下方），启动层开始淡出 */
+  const handleZoomDone = useCallback(() => {
+    if (reducedMotion) {
+      window.location.hash = '#home';
+      setPhase('home');
     } else {
-      setSceneId(null);
-      window.location.hash = '#world';
+      setPhase('revealing');
     }
-    setTrans(null);
+  }, [reducedMotion]);
+
+  /* reveal 淡出完成：卸载启动层，只保留博客首页 */
+  const handleRevealDone = useCallback(() => {
+    window.location.hash = '#home';
+    setPhase('home');
   }, []);
 
-  /* 浏览器前进/后退、手动改 hash 时同步视图 */
   useEffect(() => {
     const onHash = () => {
       const h = window.location.hash;
-      if (h.startsWith('#scene/')) {
-        const id = h.slice('#scene/'.length);
-        if (getLandmark(id)) {
-          setView('map');
-          setSceneId(id);
-        }
-      } else if (h === '#world') {
-        setView('map');
-        setSceneId(null);
-      } else if (h === '') {
-        setView('landing');
-        setSceneId(null);
-      }
+      if (h === '#home') setPhase('home');
+      else if (h === '') setPhase('landing');
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const openScene = useCallback((id) => {
-    if (viewRef.current !== 'map') return;
-    const lm = getLandmark(id);
-    pendingRef.current = { kind: 'open', id };
-    setTrans({ mode: 'aggregate', accent: lm?.accent });
-  }, []);
-
-  const closeScene = useCallback(() => {
-    const lm = sceneId ? getLandmark(sceneId) : null;
-    pendingRef.current = { kind: 'close' };
-    setTrans({ mode: 'scatter', accent: lm?.accent });
-  }, [sceneId]);
-
   return (
     <>
-      {view === 'landing' ? (
-        <LandingPage onComplete={enterWorld} />
-      ) : (
-        <div className={`map-host${sceneId ? ' hidden' : ''}`}>
-          <WorldMap active={!sceneId} onEnterScene={openScene} onReboot={reboot} />
-        </div>
+      {phase !== 'landing' && <HomePage />}
+      {phase !== 'home' && (
+        <LandingPage
+          revealing={phase === 'revealing'}
+          onZoomDone={handleZoomDone}
+          onRevealDone={handleRevealDone}
+        />
       )}
-
-      {sceneId && <SceneView landmark={getLandmark(sceneId)} onBack={closeScene} />}
-      <SceneTransition
-        mode={trans?.mode || null}
-        accent={trans?.accent}
-        onDone={handleTransDone}
-      />
     </>
   );
 }

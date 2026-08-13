@@ -6,9 +6,9 @@
 
 ---
 
-**Project:** BLOG_OS
-**Generated:** 2026-08-04 18:12:51
-**Category:** Portfolio/Personal
+**Project:** blog_os
+**Generated:** 2026-08-13 18:51:40
+**Category:** Magazine/Blog
 
 ---
 
@@ -28,14 +28,14 @@
 
 ### Typography
 
-- **Heading Font:** Archivo
-- **Body Font:** Space Grotesk
-- **Mood:** minimal, portfolio, designer, creative, clean, artistic
-- **Google Fonts:** [Archivo + Space Grotesk](https://fonts.google.com/share?selection.family=Archivo:wght@300;400;500;600;700|Space+Grotesk:wght@300;400;500;600;700)
+- **Heading Font:** Caveat
+- **Body Font:** Quicksand
+- **Mood:** handwritten, personal, friendly, casual, warm, charming
+- **Google Fonts:** [Caveat + Quicksand](https://fonts.google.com/share?selection.family=Caveat:wght@400;500;600;700|Quicksand:wght@300;400;500;600;700)
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap');
 ```
 
 ### Spacing Variables
@@ -65,23 +65,35 @@
 
 ### Buttons
 
-**实现类：`.mc-btn`（见 `src/styles/base.css`），令牌见 `src/styles/tokens.css`（`--btn-*`）**
+```css
+/* Primary Button */
+.btn-primary {
+  background: #2563EB;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 200ms ease;
+  cursor: pointer;
+}
 
-Bedrock 版像素按钮，五种交互状态：
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
 
-| 状态 | 触发 | 外观 |
-|------|------|------|
-| 正常 | 默认 | 灰面 `#C6C6C6` + 深色 `#131313` 2px 描边 + 左上高光 `#F7F7F7` / 右下阴影 `#656465` |
-| 悬停 | `:hover` | 绿面 `#218306` + 白色描边 + 亮绿高光 `#17CD07` / 深绿阴影 `#004E00` |
-| 焦点 | `:focus-visible` | 悬停外观 + 白色虚线焦点环（`outline: 2px dashed #FFF`） |
-| 按下 | `:active` | 悬停中：绿色倒置棱角 + 下移 1px；键盘/触屏：灰面 `#8B8B8B` 倒置棱角 |
-| 禁用 | `:disabled` | 平面灰 `#757575`，无棱角，`cursor: not-allowed` |
-
-- 禁用按钮配合 `data-disabled-msg` 显示提示气泡（悬停 / 触屏可见），对应
-  “禁用，触碰时显示提示”贴图。
-- 危险操作（如“重启”）使用 `.mc-btn--danger`：悬停 / 按下时红色面
-  `#B02E26`，高光 `#FF6B5E` / 阴影 `#5C1B17`。
-- 所有状态用 90ms `steps()` 过渡，模拟贴图瞬间切换的像素感。
+/* Secondary Button */
+.btn-secondary {
+  background: transparent;
+  color: #18181B;
+  border: 2px solid #18181B;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 200ms ease;
+  cursor: pointer;
+}
+```
 
 ### Cards
 
@@ -141,28 +153,28 @@ Bedrock 版像素按钮，五种交互状态：
 
 ## Style Guidelines
 
-**Style:** Motion-Driven
+**Style:** Swiss Modernism 2.0
 
-**Keywords:** Animation-heavy, microinteractions, smooth transitions, scroll effects, parallax, entrance anim, page transitions
+**Keywords:** Grid system, Helvetica, modular, asymmetric, international style, rational, clean, mathematical spacing
 
-**Best For:** Portfolio sites, storytelling platforms, interactive experiences, entertainment apps, creative, SaaS
+**Best For:** Corporate sites, architecture, editorial, SaaS, museums, professional services, documentation
 
-**Key Effects:** Scroll anim (Intersection Observer), hover (300-400ms), entrance, parallax (3-5 layers), page transitions
+**Key Effects:** display: grid, grid-template-columns: repeat(12 1fr), gap: 1rem, mathematical ratios, clear hierarchy
 
 ### Page Pattern
 
-**Pattern Name:** Portfolio Grid
+**Pattern Name:** Minimal Single Column
 
-- **Conversion Strategy:**  hover overlay info,  lightbox view, Visuals first. Filter by category. Fast loading essential.
-- **CTA Placement:** Project Card Hover + Footer Contact
-- **Section Order:** 1. Hero (Name/Role), 2. Project Grid (Masonry), 3. About/Philosophy, 4. Contact
+- **Conversion Strategy:** Single CTA focus. Large typography. Lots of whitespace. No nav clutter. Mobile-first.
+- **CTA Placement:** Center, large CTA button
+- **Section Order:** 1. Hero headline, 2. Short description, 3. Benefit bullets (3 max), 4. CTA, 5. Footer
 
 ---
 
 ## Anti-Patterns (Do NOT Use)
 
-- ❌ Corporate templates
-- ❌ Generic layouts
+- ❌ Poor typography
+- ❌ Slow loading
 
 ### Additional Forbidden Patterns
 

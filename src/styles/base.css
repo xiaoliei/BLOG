@@ -1,4 +1,6 @@
-/* 基础重置与全局布局 */
+/* ============================================================
+   全局重置与基础布局（正常文档流，整页滚动）
+   ============================================================ */
 
 * {
   box-sizing: border-box;
@@ -6,32 +8,33 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
 }
 
 body {
-  background: var(--bg);
+  background-color: var(--wool);
+  background-image: url('/wool/bg-wool-light.png');
+  background-repeat: repeat;
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1.55;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
-  display: flex;
-  flex-direction: column;
 }
 
 #root {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh;
 }
 
 ::selection {
-  background: var(--accent);
-  color: #0A101A;
+  background: var(--hero-green);
+  color: #ffffff;
 }
 
 a {
@@ -43,169 +46,53 @@ button {
   font-family: inherit;
 }
 
+img,
+svg {
+  display: block;
+}
+
 .hidden {
   display: none !important;
 }
 
-/* ============================================================
-   Minecraft Bedrock 风格按钮（mc-btn）
-   参考 zh.minecraft.wiki 基岩版按钮贴图：
-   正常 / 悬停 / 焦点 / 按下（含悬停）/ 按下（无悬停）/ 禁用 / 禁用+提示
-   ============================================================ */
-
-.mc-btn {
-  position: relative;
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--btn-text);
-  background: var(--btn-face);
-  border: 2px solid var(--btn-border);
-  padding: 7px 13px;
-  cursor: pointer;
-  user-select: none;
-  box-shadow:
-    inset 1px 1px 0 var(--btn-face-hi),
-    inset -1px -1px 0 var(--btn-face-lo),
-    3px 3px 0 rgba(0, 0, 0, 0.45);
-  transition:
-    background-color 90ms steps(2, jump-none),
-    border-color 90ms steps(2, jump-none),
-    color 90ms steps(2, jump-none),
-    box-shadow 90ms steps(2, jump-none),
-    transform 90ms linear;
+/* 内容容器：全站统一宽度，避免混用 */
+.container {
+  width: min(var(--content-w), 100% - 40px);
+  margin-inline: auto;
 }
 
-/* 悬停：贴图整体变为绿色 + 白色描边 */
-.mc-btn:hover {
-  background: var(--btn-hover-face);
-  border-color: var(--btn-hover-border);
-  color: var(--btn-hover-text);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-hover-hi),
-    inset -1px -1px 0 var(--btn-hover-lo),
-    3px 3px 0 rgba(0, 0, 0, 0.45);
+/* 键盘导航焦点环 */
+:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* 焦点：键盘导航时保持绿色高亮，并叠加虚线焦点环（MC 经典样式） */
-.mc-btn:focus-visible {
-  background: var(--btn-hover-face);
-  border-color: var(--btn-hover-border);
-  color: var(--btn-hover-text);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-hover-hi),
-    inset -1px -1px 0 var(--btn-hover-lo),
-    3px 3px 0 rgba(0, 0, 0, 0.45);
-  outline: 2px dashed #FFFFFF;
-  outline-offset: 3px;
-}
-
-/* 按下（无悬停，键盘/触屏）：灰色 + 倒置棱角 */
-.mc-btn:active {
-  transform: translateY(1px);
-  background: var(--btn-pressed-face);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-pressed-lo),
-    inset -1px -1px 0 var(--btn-pressed-hi),
-    2px 2px 0 rgba(0, 0, 0, 0.4);
-}
-
-/* 按下（悬停中）：绿色 + 白色描边 + 倒置棱角 */
-.mc-btn:hover:active {
-  background: var(--btn-hover-face);
-  border-color: var(--btn-hover-border);
-  color: var(--btn-hover-text);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-hover-lo),
-    inset -1px -1px 0 var(--btn-hover-hi),
-    2px 2px 0 rgba(0, 0, 0, 0.4);
-}
-
-/* 禁用：平面灰块，无棱角 */
-.mc-btn:disabled {
-  background: var(--btn-disabled-face);
-  border-color: var(--btn-border);
-  color: var(--btn-disabled-text);
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
-}
-
-/* 禁用 + 提示气泡（参考“禁用，触碰时显示提示”贴图） */
-.mc-btn:disabled[data-disabled-msg]::after {
-  content: attr(data-disabled-msg);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  transform: translateX(-50%);
-  white-space: nowrap;
-  background: #212121;
-  color: #F2F2F2;
-  border: 2px solid #131313;
-  padding: 6px 10px;
-  font-size: 11px;
-  line-height: 1.45;
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
-  z-index: 50;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease, visibility 120ms;
-}
-
-.mc-btn:disabled[data-disabled-msg]::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 4px);
-  transform: translateX(-50%) rotate(45deg);
+/* 自定义滚动条（同 xiaoli.team 原站） */
+::-webkit-scrollbar {
   width: 10px;
   height: 10px;
-  background: #212121;
-  border-right: 2px solid #131313;
-  border-bottom: 2px solid #131313;
-  z-index: 51;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 120ms ease, visibility 120ms;
 }
 
-.mc-btn:disabled[data-disabled-msg]:hover::before,
-.mc-btn:disabled[data-disabled-msg]:hover::after {
-  opacity: 1;
-  visibility: visible;
+::-webkit-scrollbar-thumb {
+  background: var(--footer-blue);
 }
 
-@media (hover: none) {
-  /* 触屏设备无法悬停，直接常显禁用原因 */
-  .mc-btn:disabled[data-disabled-msg]::before,
-  .mc-btn:disabled[data-disabled-msg]::after {
-    opacity: 1;
-    visibility: visible;
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+/* 减弱动态偏好 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
-}
 
-/* 危险变体（如“重启”）：悬停/按下时使用红色贴图 */
-.mc-btn--danger:hover,
-.mc-btn--danger:focus-visible {
-  background: var(--btn-danger-face);
-  border-color: var(--btn-hover-border);
-  color: var(--btn-hover-text);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-danger-hi),
-    inset -1px -1px 0 var(--btn-danger-lo),
-    3px 3px 0 rgba(0, 0, 0, 0.45);
-}
-
-.mc-btn--danger:active,
-.mc-btn--danger:hover:active {
-  background: var(--btn-danger-face);
-  border-color: var(--btn-hover-border);
-  color: var(--btn-hover-text);
-  box-shadow:
-    inset 1px 1px 0 var(--btn-danger-lo),
-    inset -1px -1px 0 var(--btn-danger-hi),
-    2px 2px 0 rgba(0, 0, 0, 0.4);
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
