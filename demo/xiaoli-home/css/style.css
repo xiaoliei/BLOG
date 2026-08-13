@@ -1,0 +1,88 @@
+/* ============================================================
+   草堂 GrassBlog — 背景样式 Demo
+   仅保留背景层：复用 xiaoli.team 羊毛背景图
+   （bg-wool-light.png / hero-bottom-lightwool.png /
+    footer-top-lightwool.png）+ 绿色 Hero #4CAF50 + 蓝色页脚 #0e77a4
+   ============================================================ */
+
+:root {
+  --primary: #4caf50;
+  --blue: #0e77a4;
+  --wool: #e9e9e9;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--wool);
+  background-image: url("../assets/bg-wool-light.png");
+  background-repeat: repeat;
+}
+
+/* ---------- 绿色 Hero 色带（同原站 .Hero：底部羊毛饰条） ---------- */
+.hero {
+  position: relative;
+  min-height: 38vh;
+  padding-bottom: 30px;
+  background: url("../assets/hero-bottom-lightwool.png") bottom var(--primary) repeat-x;
+  color: #fff;
+  overflow: hidden;
+}
+
+/* ---------- 蓝色页脚色带（同原站 .footer：顶部羊毛饰条，固定 210px） ---------- */
+.site-footer {
+  margin-top: auto;
+  height: 210px;
+  background: url("../assets/footer-top-lightwool.png") var(--blue) repeat-x;
+  padding-top: 85px;
+  font-size: 17px;
+  color: #fff;
+}
+
+/* 桌面端页脚（同原站） */
+@media (min-width: 767px) {
+  .site-footer {
+    padding-left: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+}
+
+/* ---------- 小屏适配 ---------- */
+@media (max-width: 767px) {
+  .hero {
+    min-height: 32vh;
+  }
+
+  .site-footer {
+    padding-left: 25px;
+    padding-right: 25px;
+    padding-top: 0;
+  }
+}
+
+/* ---------- 自定义滚动条（同原站） ---------- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0e77a4;
+}
+
+::-webkit-scrollbar-track {
+  background: #e8ecf3;
+}
