@@ -1,5 +1,12 @@
 /* 2D 星空粒子（启动页背景，300 颗呼吸闪烁星点 + 偶发流星） */
 
+let paused = false;
+
+/* 过渡重叠期暂停星空绘制（避免与 3D 头颅/房间双 WebGL 叠加抢帧） */
+export function setStarsPaused(v) {
+  paused = v;
+}
+
 export function startStars(canvas) {
   const ctx = canvas.getContext('2d');
   let w = 0;
@@ -45,6 +52,10 @@ export function startStars(canvas) {
   let lastShoot = 0;
 
   function frame(t) {
+    if (paused) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const sec = t / 1000;
     ctx.clearRect(0, 0, w, h);
 

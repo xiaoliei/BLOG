@@ -4,7 +4,8 @@ import LandingPage from './components/landing/LandingPage.jsx';
 
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
 
-/* 三阶段：landing（启动页）→ revealing（主页在头颅下挂载并淡入）→ home
+/* 三阶段：landing（启动页）→ revealing（地球放大旋转到交接点，聚焦飞行从指定起点起飞）→ home
+   房间从页面加载即常驻挂载：预渲染并停在过渡入场位，交接零等待
    hash '#home' 可跳过启动页直达首页 */
 export default function App() {
   const [phase, setPhase] = useState(initialHash === '#home' ? 'home' : 'landing');
@@ -14,8 +15,8 @@ export default function App() {
     [],
   );
 
-  /* 头颅缩放旋转覆盖全屏完成：挂载主页（在其下方），启动层开始淡出 */
-  const handleZoomDone = useCallback(() => {
+  /* 地球放大到交接点：启动层开始淡出，房间聚焦飞行从指定起点起飞 */
+  const handleZoomHalf = useCallback(() => {
     if (reducedMotion) {
       window.location.hash = '#home';
       setPhase('home');
@@ -42,11 +43,14 @@ export default function App() {
 
   return (
     <>
-      {phase !== 'landing' && <RoomHome />}
+      <RoomHome
+        autoFocus={!reducedMotion && phase !== 'home'}
+        beginFocus={phase === 'revealing'}
+      />
       {phase !== 'home' && (
         <LandingPage
           revealing={phase === 'revealing'}
-          onZoomDone={handleZoomDone}
+          onZoomHalf={handleZoomHalf}
           onRevealDone={handleRevealDone}
         />
       )}

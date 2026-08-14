@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { makeRenderer, resize, loadGLB, THREE } from '../../lib/scene';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { HEAD_TRANSITION } from '../landing/HeadViewer.jsx';
 import HomePage from './HomePage.jsx';
 
 /* ============================================================
@@ -47,11 +48,50 @@ const SCREEN_PX_H = 1000; // 屏幕内容 DOM 像素高（≈ 模型屏幕面比
 /* ---------- 相机 ---------- */
 const CAM_POS = new THREE.Vector3(2.0, 3.45, 3.5);
 const CAM_TARGET = new THREE.Vector3(0, SCREEN_CENTER_Y - 0.15, MON_Z + 0.6);
-/* 聚焦屏幕：正对显示器、拉近，让博客页面填满视野便于阅读 */
-const FOCUS_DIST = 2.5;
-/* 严格正对（相机 Y = 屏幕中心 Y），投影才是正矩形，DOM 面板才能严丝合缝贴住屏幕区 */
-const FOCUS_POS = new THREE.Vector3(0, SCREEN_CENTER_Y, SCREEN_FACE_Z + FOCUS_DIST);
-const FOCUS_TGT = new THREE.Vector3(0, SCREEN_CENTER_Y, SCREEN_FACE_Z);
+
+/* ============================================================
+   ★ 聚焦飞行相机配置（动画从哪里开始 → 到哪里结束）★
+   ------------------------------------------------------------
+   启动页地球放大/旋转到交接点后，启动层淡出，房间以全景视角
+   （REVEAL_POS）露出；随后聚焦飞行从该全景位起跑，与点击
+   “聚焦屏幕阅读”按钮的动画完全一致：摄像机相对显示器旋转并
+   zoom-in 到屏幕，直达聚焦阅读位。
+   直接改下面的坐标 / 朝向即可微调动画起点与终点。
+
+   · 坐标单位：1 ≈ 0.5m
+   · 屏幕中心参考：(0, 3.03, -7.74) 即 (0, SCREEN_CENTER_Y, SCREEN_FACE_Z)
+   · position：相机位置 [x, y, z]
+   · lookAt  ：相机看向的点 [x, y, z]（俯仰/偏航角度由它决定）
+   ============================================================ */
+const FOCUS_FLY = {
+  /* 过渡入场位（兜底停放点）：屏幕正前方稍远处，正对屏幕中心。
+     实际聚焦飞行从 REVEAL_POS 全景位起跑 */
+  start: {
+    position: [0, SCREEN_CENTER_Y, SCREEN_FACE_Z + 4.2], // [0, 3.03, -3.54]
+    lookAt: [0, SCREEN_CENTER_Y, SCREEN_FACE_Z],
+    roll: 0,
+  },
+  /* 动画终点：聚焦阅读位，正对屏幕（当前坐标 [0, 3.03, -5.24]） */
+  end: {
+    position: [0, SCREEN_CENTER_Y, SCREEN_FACE_Z + 2.5],
+    lookAt: [0, SCREEN_CENTER_Y, SCREEN_FACE_Z],
+    roll: 0,
+  },
+};
+
+const ENTRY_POS = new THREE.Vector3(...FOCUS_FLY.start.position);
+const FOCUS_POS = new THREE.Vector3(...FOCUS_FLY.end.position);
+const FOCUS_TGT = new THREE.Vector3(...FOCUS_FLY.end.lookAt);
+/* 过渡到主页后的初始全景视角（调试定位的 CAM · live 状态）：
+   聚焦飞行从这里起跑，摄像机相对显示器旋转并 zoom-in 到屏幕 */
+const REVEAL_POS = new THREE.Vector3(5.22, 6.36, -0.15);
+const REVEAL_TGT = CAM_TARGET.clone();
+/* 飞行一半时的相机位：用于向启动页暴露屏幕投影矩形（地球缩放对齐参考） */
+const MID_POS = ENTRY_POS.clone().lerp(FOCUS_POS, 0.5);
+
+/* 调试：在网页角落实时显示相机坐标/角度与 FOCUS_FLY 配置（改 true/false 开关） */
+const SHOW_CAMERA_DEBUG = false;
+const RAD2DEG = 180 / Math.PI;
 
 /* ---------- 配色（呼应站点绿/蓝/羊毛） ---------- */
 const COL = {
@@ -71,6 +111,20 @@ const COL = {
 };
 
 const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ---------- 缓动与速度衔接 ---------- */
+const easeInOutCubic = (t) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const easeInOutCubicInverse = (e) =>
+  e < 0.5 ? Math.cbrt(e / 4) : (2 - Math.cbrt(2 * (1 - e))) / 2;
+const easeInOutCubicSlope = (p) => 12 * (p < 0.5 ? p * p : (1 - p) * (1 - p));
+/* 带初始速度的三次缓动：e(0)=0、e(1)=1、e'(0)=startSlope、e'(1)=0 */
+const easeFromSlope = (t, s) => (s - 2) * t * t * t + (3 - 2 * s) * t * t + s * t;
+
+/* 地球缩放缓动在交接点的瞬时速度（eased 进度/毫秒）：
+   过渡聚焦飞行以该速度起步，保证“过渡后不从 0 重新加速” */
+const HANDOFF_P = easeInOutCubicInverse(HEAD_TRANSITION.handoffAt);
+const HANDOFF_SLOPE_PER_MS = easeInOutCubicSlope(HANDOFF_P) / HEAD_TRANSITION.durationMs;
 
 /* ---------- 程序化纹理 ---------- */
 function makeWoodTexture(baseHex, darkHex, plankCount = 8, vertical = false) {
@@ -179,12 +233,35 @@ function quadToMatrix3d(x0, y0, x1, y1, x2, y2, x3, y3, W, H) {
   return `matrix3d(${a11 / W},${a21 / W},0,${a31 / W},${a12 / H},${a22 / H},0,${a32 / H},0,0,1,0,${a13},${a23},0,1)`;
 }
 
-export default function RoomHome() {
+export default function RoomHome({ autoFocus = false, beginFocus = false }) {
   const canvasRef = useRef(null);
   const [error, setError] = useState(null);
   const [focused, setFocused] = useState(false);
+  const [autoFocusing, setAutoFocusing] = useState(autoFocus); // 过渡入场：自动聚焦飞行中
+  const [copied, setCopied] = useState(false); // 调试面板复制反馈
   const apiRef = useRef(null);
   const portalRef = useRef(null);
+  const debugRef = useRef(null);
+
+  /* 复制调试面板内容（剪贴板不可用时回退 execCommand） */
+  const handleCopyDebug = useCallback(async () => {
+    const text = debugRef.current?.textContent;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -433,7 +510,7 @@ export default function RoomHome() {
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.minDistance = 2.4;
+    controls.minDistance = 0.5; // 允许过渡起点等近距离机位（起点到其看向点约 1.0）
     controls.maxDistance = 18;
     controls.minPolarAngle = 30 * DEG;
     controls.maxPolarAngle = Math.PI / 2; // 允许严格正对屏幕（聚焦时投影为正矩形）
@@ -442,8 +519,19 @@ export default function RoomHome() {
     controls.update();
 
     /* ---------- 自适应 ---------- */
+    let portalReady = false; // 门户四角/投影工具就绪后才刷新 data-mid-rect
     function doResize() {
-      resize(renderer, camera);
+      /* 画布尺寸不变时跳过，避免每帧重设投影矩阵 */
+      const w = canvas.clientWidth || 1;
+      const h = canvas.clientHeight || 1;
+      if (canvas.width !== w * renderer.getPixelRatio() || canvas.height !== h * renderer.getPixelRatio()) {
+        resize(renderer, camera);
+        /* 视口变化：刷新聚焦飞行中点的屏幕投影矩形，供启动页地球缩放目标对齐 */
+        if (portalReady) {
+          const rect = portalRectAt(MID_POS, FOCUS_TGT);
+          portalRef.current?.parentElement?.setAttribute('data-mid-rect', JSON.stringify(rect));
+        }
+      }
     }
     doResize();
     window.addEventListener('resize', doResize);
@@ -457,27 +545,62 @@ export default function RoomHome() {
 
     /* ---------- 视点切换：全景 ↔ 聚焦屏幕（平滑飞行动画） ---------- */
     let camAnim = null;
-    function flyTo(toPos, toTgt, duration = 850, onComplete = null) {
+    function flyTo(toPos, toTgt, duration = 850, onComplete = null, rollDeg = 0, startSlope = 0) {
       camAnim = {
         fromPos: camera.position.clone(),
         toPos: toPos.clone(),
         fromTgt: controls.target.clone(),
         toTgt: toTgt.clone(),
+        fromUp: camera.up.clone(),
+        toUp: new THREE.Vector3(0, 1, 0).applyAxisAngle(
+          new THREE.Vector3().subVectors(toPos, toTgt).normalize(),
+          rollDeg * DEG,
+        ),
         start: performance.now(),
         duration,
+        startSlope,
         onComplete,
       };
       controls.enabled = false; // 飞行中禁用拖拽，避免抢夺镜头
     }
+
+    /* 过渡入场位：页面加载即预渲染并停在全景视角（REVEAL_POS），
+       启动层淡出后由 beginFocus 触发聚焦飞行（与点击聚焦按钮同动画） */
+    const placeEntry = () => {
+      camAnim = null;
+      camera.up.set(0, 1, 0);
+      camera.position.copy(REVEAL_POS);
+      controls.target.copy(REVEAL_TGT);
+      controls.enabled = true;
+      controls.update();
+      setFocused(false);
+      setAutoFocusing(true);
+    };
+    const finishFocus = () => {
+      setFocused(true);
+      setAutoFocusing(false);
+    };
     apiRef.current = {
-      /* 聚焦：相机飞到屏幕正前方阅读位（门户始终在，自动跟随填满视野，无需切换面板） */
-      focus: () => flyTo(FOCUS_POS, FOCUS_TGT, 850, () => setFocused(true)),
+      placeEntry,
+      /* 聚焦：相机从当前全景位飞到屏幕正前方阅读位（门户始终在，自动跟随填满视野） */
+      focus: () => flyTo(FOCUS_POS, FOCUS_TGT, 850, finishFocus, FOCUS_FLY.end.roll),
+      /* 过渡聚焦：地球交接瞬间从全景位起跑（与 reveal 淡出重叠，渐变过渡），
+         与“聚焦屏幕阅读”按钮相同的旋转 + zoom-in 动画，并以地球交接点的
+         瞬时速度起步，保持过渡速度连续、不从 0 重新加速 */
+      focusFromEntry: () =>
+        flyTo(
+          FOCUS_POS, FOCUS_TGT, 850, finishFocus, FOCUS_FLY.end.roll,
+          HANDOFF_SLOPE_PER_MS * 850, // 初始速度 = 地球交接点速度（eased/ms × 飞行时长）
+        ),
       /* 返回：飞回全景 */
       unfocus: () => {
         setFocused(false);
+        camera.up.set(0, 1, 0);
         flyTo(CAM_POS, CAM_TARGET, 850);
       },
     };
+
+    if (autoFocus) placeEntry();
 
     /* matrix3d 门户：把博客 DOM 元素用透视变换贴到屏幕四边形。
        每帧投影屏幕 4 角 → 算矩形→四边形单应性 → 写入 transform。任意距离均可点击。 */
@@ -488,6 +611,7 @@ export default function RoomHome() {
       [SCREEN_HALF_W, SCREEN_CENTER_Y - SCREEN_HALF_H], // 右下
       [-SCREEN_HALF_W, SCREEN_CENTER_Y - SCREEN_HALF_H], // 左下
     ];
+    portalReady = true;
     function updatePortal() {
       const el = portalRef.current;
       if (!el) return;
@@ -504,10 +628,47 @@ export default function RoomHome() {
         px[0], py[0], px[1], py[1], px[2], py[2], px[3], py[3],
         SCREEN_PX_W, SCREEN_PX_H,
       );
-      el.style.opacity = '1';
+      if (el.style.opacity !== '1') el.style.opacity = '1';
     }
 
+    /* 计算指定相机位下屏幕的投影矩形（临时移动相机，算完还原），
+       用于向启动页暴露聚焦阅读位矩形做位置对齐 */
+    function portalRectAt(pos, tgt) {
+      const prevPos = camera.position.clone();
+      const prevTgt = controls.target.clone();
+      camera.position.copy(pos);
+      controls.target.copy(tgt);
+      controls.update();
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      const w = canvas.clientWidth || 1;
+      const h = canvas.clientHeight || 1;
+      const px = [];
+      const py = [];
+      for (const [cx, cy] of _portalCorners) {
+        _pv.set(cx, cy, SCREEN_FACE_Z).project(camera);
+        px.push((_pv.x * 0.5 + 0.5) * w);
+        py.push((-_pv.y * 0.5 + 0.5) * h);
+      }
+      camera.position.copy(prevPos);
+      controls.target.copy(prevTgt);
+      controls.update();
+      return {
+        left: Math.min(...px),
+        top: Math.min(...py),
+        width: Math.max(...px) - Math.min(...px),
+        height: Math.max(...py) - Math.min(...py),
+      };
+    }
+
+    /* 暴露聚焦飞行一半时屏幕的投影矩形（.room-root[data-mid-rect]），
+       启动页据此对齐地球交接尺寸——交接瞬间地球矩形 = 屏幕实际位置 */
+    const midRect = portalRectAt(MID_POS, FOCUS_TGT);
+    portalRef.current?.parentElement?.setAttribute('data-mid-rect', JSON.stringify(midRect));
+
     const clock = new THREE.Clock();
+    const dbgEuler = new THREE.Euler();
+    let lastCamDebugAt = 0;
     renderer.setAnimationLoop(() => {
       if (disposed) return;
       doResize();
@@ -516,16 +677,21 @@ export default function RoomHome() {
       if (camAnim) {
         /* 视点切换：相机位置 + 目标同步插值 */
         const p = Math.min(1, (performance.now() - camAnim.start) / camAnim.duration);
-        const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; // easeInOutQuad
+        /* 缓动：过渡聚焦带初始速度（startSlope = 地球交接点速度），
+           按钮聚焦仍用 easeInOutCubic 从静止平滑起步 */
+        const e = camAnim.startSlope > 0
+          ? easeFromSlope(p, camAnim.startSlope)
+          : easeInOutCubic(p);
         camera.position.lerpVectors(camAnim.fromPos, camAnim.toPos, e);
         controls.target.lerpVectors(camAnim.fromTgt, camAnim.toTgt, e);
+        camera.up.lerpVectors(camAnim.fromUp, camAnim.toUp, e);
         if (p >= 1) {
           const cb = camAnim.onComplete;
           camAnim = null;
           controls.enabled = true;
           if (cb) cb();
         }
-      } else {
+      } else if (!autoFocus) {
         /* 入场推进 */
         const ip = Math.min(1, (performance.now() - introStart) / introMs);
         const ie = 1 - Math.pow(1 - ip, 3); // easeOutCubic
@@ -535,6 +701,20 @@ export default function RoomHome() {
       }
 
       controls.update();
+
+      /* 调试面板：实时相机坐标/角度 + 聚焦飞行配置 */
+      const dbg = debugRef.current;
+      if (dbg && performance.now() - lastCamDebugAt > 100) {
+        lastCamDebugAt = performance.now();
+        dbgEuler.setFromQuaternion(camera.quaternion, 'YXZ');
+        dbg.textContent =
+          'CAM · live\n' +
+          `pos ${camera.position.x.toFixed(2)} ${camera.position.y.toFixed(2)} ${camera.position.z.toFixed(2)}\n` +
+          `yaw ${(dbgEuler.y * RAD2DEG).toFixed(1)}°  pitch ${(dbgEuler.x * RAD2DEG).toFixed(1)}°  roll ${(dbgEuler.z * RAD2DEG).toFixed(1)}°\n` +
+          'FLY · config\n' +
+          `start [${FOCUS_FLY.start.position.map((v) => Number(v).toFixed(2)).join(', ')}]  roll ${FOCUS_FLY.start.roll}°\n` +
+          `end   [${FOCUS_FLY.end.position.map((v) => Number(v).toFixed(2)).join(', ')}]  roll ${FOCUS_FLY.end.roll}°`;
+      }
 
       /* 屏幕辉光呼吸 */
       screenGlow.intensity = 0.5 + Math.sin(t * 1.3) * 0.08;
@@ -571,6 +751,21 @@ export default function RoomHome() {
     }
   }, []);
 
+  /* 从主页返回启动页再次进入时，相机先回到过渡入场位 */
+  useEffect(() => {
+    if (autoFocus) apiRef.current?.placeEntry();
+  }, [autoFocus]);
+
+  /* 地球交接瞬间即从全景位起跑聚焦飞行：
+     reveal 淡出与飞行重叠，形成渐变过渡——而不是先切到静止房间再开启动画 */
+  const prevBeginFocus = useRef(beginFocus);
+  useEffect(() => {
+    if (beginFocus && !prevBeginFocus.current) {
+      apiRef.current?.focusFromEntry();
+    }
+    prevBeginFocus.current = beginFocus;
+  }, [beginFocus]);
+
   if (error) {
     return (
       <div className="room-root room-root--error">
@@ -593,7 +788,7 @@ export default function RoomHome() {
       </div>
 
       {/* 房间全景态：聚焦按钮 */}
-      {!focused && (
+      {!focused && !autoFocusing && (
         <button
           type="button"
           className="room-focus-btn"
@@ -612,6 +807,19 @@ export default function RoomHome() {
         >
           ◂ 返回全景
         </button>
+      )}
+
+      {/* 调试面板：实时相机坐标/角度与聚焦飞行配置 + 复制按钮 */}
+      {SHOW_CAMERA_DEBUG && (
+        <div className="cam-debug" aria-hidden="true">
+          <div className="cam-debug__head">
+            <span>CAMERA DEBUG</span>
+            <button type="button" className="cam-debug__copy" onClick={handleCopyDebug}>
+              {copied ? '已复制 ✓' : '复制'}
+            </button>
+          </div>
+          <pre ref={debugRef} className="cam-debug__body" />
+        </div>
       )}
     </div>
   );
