@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import HomePage from './components/home/HomePage.jsx';
+import RoomHome from './components/home/RoomHome.jsx';
 import LandingPage from './components/landing/LandingPage.jsx';
 
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
@@ -42,7 +42,7 @@ export default function App() {
 
   return (
     <>
-      {phase !== 'landing' && <HomePage />}
+      {phase !== 'landing' && <RoomHome />}
       {phase !== 'home' && (
         <LandingPage
           revealing={phase === 'revealing'}
