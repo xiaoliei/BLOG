@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HEAD_DISPLAY // XIAOLI_HOME — BLOG_OS</title>
+  <meta name="description" content="3D 头颅模型（computer_head.glb）：正面作为显示屏实时渲染 xiaoli-home 页面内容（CSS3DRenderer + iframe），TV-head 效果">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/"
+      }
+    }
+  </script>
+  <style>
+    body.display-page {
+      background: radial-gradient(circle at 50% 30%, #101d36 0%, #0a1424 45%, #030712 100%);
+    }
+
+    .viewer-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    #viewer3d {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+      z-index: 0;
+    }
+
+    #css3d {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    #css3d iframe {
+      pointer-events: auto;
+      background: #e9e9e9;
+      border: 0;
+    }
+
+    .disp-panel {
+      position: fixed;
+      top: 64px;
+      left: 18px;
+      z-index: 40;
+      width: 296px;
+      padding: 0 0 14px;
+    }
+
+    .disp-title {
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      color: var(--accent);
+      line-height: 1.8;
+      padding: 12px 16px 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .disp-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 4px 16px 8px;
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 1px;
+    }
+
+    .disp-meta #disp-source { color: var(--text-bright); font-weight: 600; }
+    .disp-meta #disp-state { color: var(--cyan); }
+    .disp-meta #disp-state.done { color: var(--ok); }
+    .disp-meta #disp-state.error { color: var(--danger); }
+
+    .disp-stats {
+      padding: 0 16px;
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1px;
+      line-height: 1.9;
+    }
+
+    .disp-stats .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .disp-stats .row b { color: var(--text); font-weight: 500; }
+    .disp-stats .row .v { color: var(--cyan); font-family: var(--font-mono); }
+
+    .disp-btns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px 16px 0;
+    }
+
+    .disp-btn {
+      padding: 8px 0;
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid rgba(26, 188, 156, 0.45);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s, border-color 0.18s;
+      white-space: nowrap;
+    }
+
+    .disp-btn:hover {
+      background: var(--cyan-soft);
+      border-color: var(--cyan);
+      color: var(--text-bright);
+    }
+
+    .disp-btn.on {
+      background: var(--cyan-soft);
+      border-color: var(--cyan);
+      color: var(--text-bright);
+    }
+
+    .disp-btn--accent {
+      color: var(--accent);
+      border-color: rgba(230, 126, 34, 0.45);
+    }
+
+    .disp-btn--accent:hover {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text-bright);
+    }
+
+    .disp-btn--accent.on {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text-bright);
+    }
+
+    .disp-note {
+      padding: 10px 16px 0;
+      font-size: 9px;
+      line-height: 1.7;
+      letter-spacing: 1px;
+      color: var(--faint);
+      text-transform: uppercase;
+    }
+
+    .disp-note b { color: var(--dim); font-weight: 500; }
+
+    .viewer-hint {
+      position: fixed;
+      bottom: calc(var(--status-h) + 14px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .viewer-hint b { color: var(--cyan); font-weight: 500; }
+    .viewer-hint i { color: var(--accent); font-style: normal; font-weight: 500; }
+
+    .hud-br {
+      bottom: calc(var(--status-h) + 12px);
+      right: 16px;
+      text-align: right;
+    }
+
+    @media (max-width: 720px) {
+      .disp-panel { width: 232px; left: 10px; top: 56px; }
+      .disp-title { font-size: 9px; padding: 10px 12px 4px; }
+      .disp-meta, .disp-stats, .disp-note { padding-left: 12px; padding-right: 12px; }
+      .disp-btns { padding-left: 12px; padding-right: 12px; }
+      .viewer-hint { font-size: 9px; letter-spacing: 1px; }
+    }
+  </style>
+</head>
+<body class="display-page">
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="hud-corner hud-tl">BLOG_OS // <b>v2.0.4</b></div>
+  <div class="hud-corner hud-tr">SESSION <i>0x8F2A</i> &nbsp;|&nbsp; MODE: HEAD_DISPLAY</div>
+  <div class="hud-corner hud-br" id="hud-status">HEAD_DISPLAY <i>STANDBY</i></div>
+
+  <main class="viewer-stage">
+    <canvas id="viewer3d"></canvas>
+    <div id="css3d"></div>
+
+    <section class="panel disp-panel">
+      <div class="panel-head">
+        <span>◈ HEAD_DISPLAY // 头颅显屏</span>
+        <span class="led"></span>
+      </div>
+      <div class="disp-title">COMPUTER_HEAD</div>
+      <div class="disp-meta">
+        <span id="disp-source">xiaoli-home/index.html</span>
+        <span id="disp-state">BOOTING…</span>
+      </div>
+      <div class="disp-stats">
+        <div class="row"><b>MODEL</b><span class="v">computer_head.glb</span></div>
+        <div class="row"><b>RENDER</b><span class="v">CSS3D · LIVE IFRAME</span></div>
+        <div class="row"><b>SCREEN</b><span class="v">960 × 800 · 贴合纹理</span></div>
+        <div class="row"><b>HOST</b><span class="v">头颅正面</span></div>
+      </div>
+      <div class="disp-btns">
+        <button class="disp-btn on" id="btn-rotate">↻ AUTO_ROTATE</button>
+        <button class="disp-btn disp-btn--accent on" id="btn-power">⏻ POWER</button>
+      </div>
+      <div class="disp-note">
+        <b>正面屏幕</b> → 实时 iframe，可<i>滚动 / 点击</i><br>
+        <b>空白处拖拽</b> → 旋转视角
+      </div>
+    </section>
+  </main>
+
+  <div class="viewer-hint">DRAG <b>旋转</b> // WHEEL <b>缩放</b> // <i>屏幕可交互</i></div>
+
+  <div class="status-bar">
+    <span class="sb-item"><span class="lb">SYS</span><span class="vl">BLOG_OS</span></span>
+    <span class="sb-item sb-up"><span class="lb">TASK</span><span class="vl" data-uptime>UP 00:00:00</span></span>
+    <span class="sb-coords sb-item" data-coords></span>
+    <span class="sb-item"><span class="lb">NET</span><span data-net class="net-state online">ONLINE</span></span>
+    <span class="sb-item"><span class="lb">TX</span><span class="vl" data-upspeed>0.00 MB/s</span></span>
+    <span class="sb-item"><span class="lb">UTC+8</span><span class="vl" data-clock>--:--</span></span>
+  </div>
+
+  <div id="toast"></div>
+
+  <script type="module" src="js/head-display.js"></script>
+</body>
+</html>
