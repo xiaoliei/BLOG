@@ -13,7 +13,7 @@
     "seed": "node scripts/seed.mjs",
     "seed:remote": "node scripts/seed.mjs --remote",
     "dev:worker": "wrangler dev",
-    "deploy": "vite build && wrangler deploy"
+    "deploy": "vite build && npm run db:migrate:remote && wrangler deploy"
   },
   "dependencies": {
     "aws4fetch": "^1.0.20",

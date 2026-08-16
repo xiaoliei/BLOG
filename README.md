@@ -62,16 +62,30 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
    - **Secrets**：`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`
    （也可用 `wrangler secret put` 添加 Secrets）
 5. `npm run db:migrate:remote && npm run seed:remote`
-6. Zero Trust 控制台：建 Access 应用保护 `域名/admin*`（邮箱 OTP，
-   自用邮箱唯一用户）；再建一个应用保护 `域名/api/admin/*`（服务 Token 免），
-   把团队域名与 AUD 填到第 4 步的 Variables
-7. 部署：CI 由 Workers Builds 项目设置部署到 Worker `blog`；
-   本地 `npm run deploy` 默认取 package.json 的 `blog-os` 作为 Worker 名，
-   要部署到线上需 `npx wrangler deploy --name blog`（自定义域名在后台
-   项目设置中配置，国内不可用 workers.dev）
+6. Zero Trust 控制台 → Access → Applications，建**一个** Access 应用，
+   Include 规则同时覆盖两个路径：
+   - `域名/admin/*`（后台页面）
+   - `域名/api/admin/*`（后台写接口）
+   给该应用配两条策略：
+   - **Email OTP**：用户为你的自用邮箱——浏览器访问 `/admin` 登录后，
+     `CF_Authorization` cookie 自动随同域 `/api/admin/*` 请求携带，
+     Worker 中间件验 cookie（或 `Cf-Access-Jwt-Assertion` 头）放行；
+   - **Service Auth**：创建 Service Token——脚本/curl 调写接口时带
+     `Cf-Access-Client-Id` 与 `Cf-Access-Client-Secret` 请求头，免交互登录。
+   最后把团队域名（`https://<team>.cloudflareaccess.com` 的 `<team>`）
+   与应用 AUD 填到第 4 步的 Variables（`ACCESS_TEAM_DOMAIN` / `ACCESS_AUD`）。
+   注意：Worker 中间件只校验一个 AUD，两个路径必须在**同一个**应用里；
+   不要建两个 Access 应用，否则两套 AUD 互相不认、后台会 401。
+7. 部署：CI 由 Workers Builds 项目设置部署到 Worker `blog`：
+   后台 Worker → `blog` → **Settings → Build**，把 **Deploy command** 设为
+   `npm run deploy`（Build command 可留空；`npm run deploy` 会先构建，
+   再自动执行远程迁移，最后 `wrangler deploy`）。
+   本地部署直接 `npm run deploy`（wrangler.toml 已声明 `name = "blog"`）。
+   自定义域名在后台项目设置中配置，国内不可用 workers.dev。
 
-> **配置约定**：`wrangler.toml` 只声明绑定名称（DB / IMAGES / ASSETS），
-> 资源本体、Worker 名、路由与全部运行环境变量都在 Cloudflare 后台；
+> **配置约定**：`wrangler.toml` 声明绑定名称（DB / IMAGES / ASSETS）、
+> 资源名（`blog-db` / `blog-images`）与 Worker 名（`blog`）；资源 ID、
+> 路由与全部运行环境变量都在 Cloudflare 后台；
 > 本地开发用 `.dev.vars`（模板 `.dev.vars.example`），值不进 git。
 
 ## 备份与恢复
