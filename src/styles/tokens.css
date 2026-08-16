@@ -1,68 +1,69 @@
 /* ============================================================
-   BLOG_OS 设计令牌（正常博客主页 · xiaoli-home 融合版）
+   小礼工坊 设计令牌（正常博客主页 · xiaoli-home 融合版）
    绿色 Hero #4CAF50 / 羊毛底 #E9E9E9 / 蓝色页脚 #0E77A4
    ============================================================ */
 
 :root {
-  /* xiaoli-home 背景三色带 */
-  --hero-green: #4caf50;
-  --hero-green-dark: #2e7d32;
-  --hero-green-deeper: #1b5e20;
-  --footer-blue: #0e77a4;
-  --wool: #e9e9e9;
-  --scrollbar-track: #e8ecf3;
+	/* xiaoli-home 背景三色带 */
+	--hero-green: #4caf50;
+	--hero-green-dark: #2e7d32;
+	--hero-green-deeper: #1b5e20;
+	--footer-blue: #0e77a4;
+	--wool: #e9e9e9;
+	--scrollbar-track: #e8ecf3;
 
-  /* 文本 */
-  --text: #1f2937;
-  --text-strong: #111827;
-  --text-muted: #4b5563;
-  --text-faint: #9ca3af;
+	/* 文本 */
+	--text: #1f2937;
+	--text-strong: #111827;
+	--text-muted: #4b5563;
+	--text-faint: #9ca3af;
 
-  /* 表面与描边 */
-  --card: #ffffff;
-  --card-border: #dde3e9;
-  --line: rgba(31, 41, 55, 0.08);
+	/* 表面与描边 */
+	--card: #ffffff;
+	--card-border: #dde3e9;
+	--line: rgba(31, 41, 55, 0.08);
 
-  /* 链接与标签 */
-  --link: #2e7d32;
-  --link-hover: #1b5e20;
-  --tag-bg: #eaf4ec;
+	/* 链接与标签 */
+	--link: #2e7d32;
+	--link-hover: #1b5e20;
+	--tag-bg: #eaf4ec;
 
-  /* 阴影 */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.1);
-  --shadow-lg: 0 14px 30px rgba(15, 23, 42, 0.14);
+	/* 阴影 */
+	--shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+	--shadow-md: 0 6px 16px rgba(15, 23, 42, 0.1);
+	--shadow-lg: 0 14px 30px rgba(15, 23, 42, 0.14);
 
-  /* 字体 */
-  --font-serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', serif;
-  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+	/* 字体 */
+	--font-serif:
+		"Noto Serif SC", "Source Han Serif SC", "Songti SC", "SimSun", serif;
+	--font-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+	--font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
 
-  /* 布局 */
-  --content-w: 1120px;
-  --radius: 14px;
-  --nav-h: 72px;
+	/* 布局 */
+	--content-w: 1120px;
+	--radius: 14px;
+	--nav-h: 72px;
 }
 
 /* 启动页（landing）作用域令牌：仅在该子树内生效，
    与首页的浅色主题令牌（--text 等）互不冲突 */
 .landing-root {
-  --bg: #0a101a;
-  --bg-2: #0c1420;
-  --bg-3: #101b2c;
-  --panel: rgba(11, 19, 32, 0.78);
-  --panel-solid: #0d1524;
-  --line: rgba(102, 138, 178, 0.18);
-  --line-strong: rgba(102, 138, 178, 0.38);
-  --accent: #e67e22;
-  --accent-soft: rgba(230, 126, 34, 0.22);
-  --cyan: #1abc9c;
-  --cyan-soft: rgba(26, 188, 156, 0.16);
-  --text: #c9d4e2;
-  --text-bright: #eaf2fb;
-  --dim: #5f718a;
-  --faint: #3a4a60;
-  --danger: #e74c3c;
-  --ok: #2ecc71;
-  --warn: #f1c40f;
+	--bg: #0a101a;
+	--bg-2: #0c1420;
+	--bg-3: #101b2c;
+	--panel: rgba(11, 19, 32, 0.78);
+	--panel-solid: #0d1524;
+	--line: rgba(102, 138, 178, 0.18);
+	--line-strong: rgba(102, 138, 178, 0.38);
+	--accent: #e67e22;
+	--accent-soft: rgba(230, 126, 34, 0.22);
+	--cyan: #1abc9c;
+	--cyan-soft: rgba(26, 188, 156, 0.16);
+	--text: #c9d4e2;
+	--text-bright: #eaf2fb;
+	--dim: #5f718a;
+	--faint: #3a4a60;
+	--danger: #e74c3c;
+	--ok: #2ecc71;
+	--warn: #f1c40f;
 }

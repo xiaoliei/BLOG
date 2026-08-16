@@ -1,4 +1,4 @@
-# BLOG_OS — 个人博客（React / Vite）
+# 小礼工坊 — 个人博客（React / Vite）
 
 保留启动页（星空、3D 头颅、像素月球、开机动画），点击进入后到达正常的博客主页；
 主页背景结构融合 `demo/xiaoli-home/`（草堂 GrassForum）的样式：

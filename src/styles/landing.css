@@ -1,334 +1,352 @@
 /* ============================================================
-   BLOG_OS 启动页（landing）样式
+   小礼工坊 启动页（landing）样式
    视觉与交互效果与 demo 保持一致，仅包含启动页所需组件。
    ============================================================ */
 
 /* 页面根容器：深蓝径向渐变夜空，纵向撑满视口 */
 .landing-root {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  flex-direction: column;
-  background: radial-gradient(circle at center, #10203d 0%, #0a1424 45%, #030712 100%);
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	display: flex;
+	flex-direction: column;
+	background: radial-gradient(
+		circle at center,
+		#10203d 0%,
+		#0a1424 45%,
+		#030712 100%
+	);
 }
 
 /* reveal 阶段：整个启动层（含 3D 头颅）渐缓淡出，与房间聚焦飞行重叠成渐变过渡 */
 .landing-root.is-revealing {
-  opacity: 0;
-  transform: scale(1.03);
-  transition:
-    opacity 0.7s ease,
-    transform 0.7s ease;
-  pointer-events: none;
+	opacity: 0;
+	transform: scale(1.03);
+	transition:
+		opacity 0.7s ease,
+		transform 0.7s ease;
+	pointer-events: none;
 }
 
 /* ---------- 全局背景层 ---------- */
 
 .scanlines {
-  position: fixed;
-  inset: 0;
-  z-index: 900;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.022) 0px,
-    rgba(255, 255, 255, 0.022) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  mix-blend-mode: overlay;
+	position: fixed;
+	inset: 0;
+	z-index: 900;
+	pointer-events: none;
+	background: repeating-linear-gradient(
+		to bottom,
+		rgba(255, 255, 255, 0.022) 0px,
+		rgba(255, 255, 255, 0.022) 1px,
+		transparent 1px,
+		transparent 3px
+	);
+	mix-blend-mode: overlay;
 }
 
 .vignette {
-  position: fixed;
-  inset: 0;
-  z-index: 899;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, transparent 55%, rgba(2, 6, 12, 0.55) 100%);
+	position: fixed;
+	inset: 0;
+	z-index: 899;
+	pointer-events: none;
+	background: radial-gradient(
+		ellipse at center,
+		transparent 55%,
+		rgba(2, 6, 12, 0.55) 100%
+	);
 }
 
 /* ---------- 星空 ---------- */
 
 #stars {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
+	position: fixed;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 1;
 }
 
 /* ---------- 舞台 ---------- */
 
 .landing-stage {
-  position: relative;
-  z-index: 5;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+	position: relative;
+	z-index: 5;
+	flex: 1;
+	min-height: 0;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
 }
 
 .landing-hint {
-  position: absolute;
-  z-index: 6;
-  bottom: 26px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--faint);
-  text-transform: uppercase;
-  animation: hint-pulse 3.2s ease-in-out infinite;
-  transition: opacity 0.35s ease;
-  white-space: nowrap;
-  user-select: none;
+	position: absolute;
+	z-index: 6;
+	bottom: 26px;
+	left: 50%;
+	transform: translateX(-50%);
+	font-size: 10px;
+	letter-spacing: 3px;
+	color: var(--faint);
+	text-transform: uppercase;
+	animation: hint-pulse 3.2s ease-in-out infinite;
+	transition: opacity 0.35s ease;
+	white-space: nowrap;
+	user-select: none;
 }
 
 /* 进入提示仍直接定位在舞台底部（保持原位置），进入时同步淡出 */
 .landing-hint.is-leaving {
-  animation: hint-leave 0.35s ease forwards; /* 用离开动画替代脉冲动画，保证平滑淡出 */
-  opacity: 0;
-  pointer-events: none;
+	animation: hint-leave 0.35s ease forwards; /* 用离开动画替代脉冲动画，保证平滑淡出 */
+	opacity: 0;
+	pointer-events: none;
 }
 
 @keyframes hint-leave {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
 }
 
 @keyframes hint-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
+	0%,
+	100% {
+		opacity: 0.45;
+	}
+	50% {
+		opacity: 1;
+	}
 }
 
 /* ---------- 3D 头颅与像素月球 ---------- */
 
 .earth-wrap {
-  position: relative;
-  width: min(46vh, 46vw, 480px);
-  aspect-ratio: 1;
+	position: relative;
+	width: min(46vh, 46vw, 480px);
+	aspect-ratio: 1;
 }
 
 #head3d {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 2;
 }
 
 .earth-glow {
-  position: absolute;
-  inset: -12%;
-  z-index: 1;
-  background: radial-gradient(circle, rgba(26, 188, 156, 0.15) 0%, rgba(26, 188, 156, 0.05) 45%, transparent 70%);
-  filter: blur(2px);
-  animation: glow-pulse 5s ease-in-out infinite;
+	position: absolute;
+	inset: -12%;
+	z-index: 1;
+	background: radial-gradient(
+		circle,
+		rgba(26, 188, 156, 0.15) 0%,
+		rgba(26, 188, 156, 0.05) 45%,
+		transparent 70%
+	);
+	filter: blur(2px);
+	animation: glow-pulse 5s ease-in-out infinite;
 }
 
 @keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.75;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.06);
-  }
+	0%,
+	100% {
+		opacity: 0.75;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1.06);
+	}
 }
 
 .float-cube {
-  position: absolute;
-  z-index: 4;
-  left: -12%;
-  top: -12%;
-  width: 5%; /* 随页面宽度（.earth-wrap）自适应缩放 */
-  aspect-ratio: 1;
-  background: rgba(200, 215, 230, 0.92);
-  box-shadow:
-    0 0 12px rgba(255, 255, 255, 0.45),
-    0 0 28px rgba(190, 215, 240, 0.28);
-  transform: rotate(8deg);
+	position: absolute;
+	z-index: 4;
+	left: -12%;
+	top: -12%;
+	width: 5%; /* 随页面宽度（.earth-wrap）自适应缩放 */
+	aspect-ratio: 1;
+	background: rgba(200, 215, 230, 0.92);
+	box-shadow:
+		0 0 12px rgba(255, 255, 255, 0.45),
+		0 0 28px rgba(190, 215, 240, 0.28);
+	transform: rotate(8deg);
 }
 
 /* 像素陨石坑，强化"体素月球"的质感 */
 .float-cube::before,
 .float-cube::after {
-  content: '';
-  position: absolute;
-  background: rgba(120, 140, 162, 0.55);
+	content: "";
+	position: absolute;
+	background: rgba(120, 140, 162, 0.55);
 }
 
 .float-cube::before {
-  width: 28%;
-  height: 28%;
-  left: 16%;
-  top: 22%;
+	width: 28%;
+	height: 28%;
+	left: 16%;
+	top: 22%;
 }
 
 .float-cube::after {
-  width: 16%;
-  height: 16%;
-  right: 16%;
-  bottom: 16%;
-  background: rgba(140, 160, 182, 0.5);
+	width: 16%;
+	height: 16%;
+	right: 16%;
+	bottom: 16%;
+	background: rgba(140, 160, 182, 0.5);
 }
 
 /* ---------- 时钟 ---------- */
 
 .landing-clock {
-  position: relative;
-  z-index: 5;
-  margin-top: 26px;
-  text-align: center;
-  user-select: none;
-  transition:
-    opacity 0.35s ease,
-    visibility 0.35s; /* 淡出完成后切到 hidden，但继续占位，防止地球模型位移 */
+	position: relative;
+	z-index: 5;
+	margin-top: 26px;
+	text-align: center;
+	user-select: none;
+	transition:
+		opacity 0.35s ease,
+		visibility 0.35s; /* 淡出完成后切到 hidden，但继续占位，防止地球模型位移 */
 }
 
 .landing-clock.is-leaving {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
 }
 
 .landing-clock .time {
-  font-family: var(--font-mono);
-  font-size: clamp(34px, 7vh, 58px);
-  font-weight: 500;
-  letter-spacing: 6px;
-  color: var(--text-bright);
-  text-shadow: 0 0 18px rgba(26, 188, 156, 0.35), 0 0 40px rgba(26, 188, 156, 0.15);
+	font-family: var(--font-mono);
+	font-size: clamp(34px, 7vh, 58px);
+	font-weight: 500;
+	letter-spacing: 6px;
+	color: var(--text-bright);
+	text-shadow:
+		0 0 18px rgba(26, 188, 156, 0.35),
+		0 0 40px rgba(26, 188, 156, 0.15);
 }
 
 .landing-clock .time .colon {
-  color: var(--accent);
-  animation: led-blink 1s infinite;
+	color: var(--accent);
+	animation: led-blink 1s infinite;
 }
 
 @keyframes led-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.25;
+	}
 }
 
 .landing-clock .date {
-  margin-top: 6px;
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: var(--dim);
-  text-transform: uppercase;
+	margin-top: 6px;
+	font-size: 10px;
+	letter-spacing: 3px;
+	color: var(--dim);
+	text-transform: uppercase;
 }
 
 /* ---------- 调试面板：当前角度 + 复制 + 手动跳转 ---------- */
 .landing-debug {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 11px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.6;
-  letter-spacing: 0.2px;
-  color: #bfe8dd;
-  background: rgba(8, 14, 24, 0.74);
-  border: 1px solid rgba(26, 188, 156, 0.45);
-  border-radius: 8px;
-  pointer-events: none;
-  user-select: none;
-  backdrop-filter: blur(4px);
+	position: fixed;
+	left: 12px;
+	bottom: 12px;
+	z-index: 60;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 8px 11px;
+	font-family: var(--font-mono);
+	font-size: 11px;
+	line-height: 1.6;
+	letter-spacing: 0.2px;
+	color: #bfe8dd;
+	background: rgba(8, 14, 24, 0.74);
+	border: 1px solid rgba(26, 188, 156, 0.45);
+	border-radius: 8px;
+	pointer-events: none;
+	user-select: none;
+	backdrop-filter: blur(4px);
 }
 
 .landing-debug__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  color: #7fd8c4;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	font-size: 10px;
+	letter-spacing: 1.5px;
+	color: #7fd8c4;
 }
 
 .landing-debug__body {
-  margin: 0;
-  white-space: pre;
+	margin: 0;
+	white-space: pre;
 }
 
 .landing-debug__copy,
 .landing-debug__jump {
-  pointer-events: auto;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #eaf2fb;
-  background: rgba(26, 188, 156, 0.16);
-  border: 1px solid rgba(26, 188, 156, 0.55);
-  border-radius: 6px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s ease, border-color 0.15s ease;
+	pointer-events: auto;
+	font-family: var(--font-mono);
+	font-size: 10px;
+	letter-spacing: 1px;
+	color: #eaf2fb;
+	background: rgba(26, 188, 156, 0.16);
+	border: 1px solid rgba(26, 188, 156, 0.55);
+	border-radius: 6px;
+	cursor: pointer;
+	user-select: none;
+	transition:
+		background 0.15s ease,
+		border-color 0.15s ease;
 }
 
 /* 过渡进度条：拖拽可直接预览过渡动画进度 */
 .landing-debug__progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: auto;
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #7fd8c4;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	pointer-events: auto;
+	font-size: 10px;
+	letter-spacing: 1px;
+	color: #7fd8c4;
 }
 
-.landing-debug__progress input[type='range'] {
-  flex: 1;
-  min-width: 150px;
-  height: 16px;
-  accent-color: #1abc9c;
-  cursor: pointer;
-  background: transparent;
+.landing-debug__progress input[type="range"] {
+	flex: 1;
+	min-width: 150px;
+	height: 16px;
+	accent-color: #1abc9c;
+	cursor: pointer;
+	background: transparent;
 }
 
 .landing-debug__copy {
-  padding: 2px 9px;
+	padding: 2px 9px;
 }
 
 .landing-debug__jump {
-  padding: 6px 10px;
-  color: #0b1320;
-  background: #1abc9c;
-  border-color: #1abc9c;
-  font-weight: 600;
+	padding: 6px 10px;
+	color: #0b1320;
+	background: #1abc9c;
+	border-color: #1abc9c;
+	font-weight: 600;
 }
 
 .landing-debug__copy:hover {
-  background: rgba(26, 188, 156, 0.34);
-  border-color: #1abc9c;
+	background: rgba(26, 188, 156, 0.34);
+	border-color: #1abc9c;
 }
 
 .landing-debug__jump:hover {
-  background: #2fd0b0;
+	background: #2fd0b0;
 }
