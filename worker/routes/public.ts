@@ -3,6 +3,8 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../lib/db";
 import { comments, modules, posts } from "../db/schema";
+import { siteSettings } from "../db/schema";
+import { settingsFromRow } from "../lib/settings";
 import type { Env } from "../env";
 
 /* ============================================================
@@ -34,6 +36,18 @@ const listColumns = {
 };
 
 const publicApi = new Hono<{ Bindings: Env }>();
+
+/* ---------- 站点设置：单行读取，表空回退默认值 ---------- */
+publicApi.get("/settings", async (c) => {
+	const row = (
+		await db(c.env)
+			.select()
+			.from(siteSettings)
+			.where(eq(siteSettings.id, 1))
+			.limit(1)
+	)[0];
+	return c.json(settingsFromRow(row), 200, { "Cache-Control": CACHE_GET });
+});
 
 /* ---------- 栏目列表：sort 升序 + 已发布文章数 ---------- */
 publicApi.get("/modules", async (c) => {

@@ -3,7 +3,9 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../lib/db";
 import { comments, modules, posts } from "../db/schema";
-import { purgePostCache, purgeCommentsCache } from "../lib/cache";
+import { siteSettings } from "../db/schema";
+import { purgePostCache, purgeCommentsCache, purgeSettingsCache } from "../lib/cache";
+import { settingsFromRow, settingsValues } from "../lib/settings";
 import { requireAccess } from "../middleware/access";
 import type { Env } from "../env";
 
@@ -56,6 +58,75 @@ const moduleInput = z.object({
 });
 
 const modulePatch = moduleInput.partial();
+
+/* ---------- 站点设置（部分更新，缺失字段取默认值） ---------- */
+
+const settingsPatch = z
+	.object({
+		name: z.string().trim().min(1, "站名必填").max(60),
+		tagline: z.string().trim().max(120),
+		since: z.number().int().min(1900, "开始时间为 1900–2100 的四位年份").max(2100),
+		description: z.string().trim().max(300),
+		author: z.string().trim().max(60),
+		email: z.email("邮箱格式不正确").max(120),
+		github: z.url("GitHub 链接格式不正确").max(200),
+		latestSub: z.string().trim().max(200),
+		modulesSub: z.string().trim().max(200),
+		aboutTitle: z.string().trim().max(60),
+		aboutText: z.string().trim().max(2000),
+		footerBrand: z.string().trim().max(60),
+		footerTagline: z.string().trim().max(120),
+		footerNavTitle: z.string().trim().max(60),
+		footerContactTitle: z.string().trim().max(60),
+		footerBottom: z.string().trim().max(200),
+	})
+	.partial();
+
+/* ============================================================
+   站点设置：单行读取 + 部分更新（首次更新自动建行，写后失效缓存）
+   ============================================================ */
+
+adminApi.get("/settings", async (c) => {
+	const row = (
+		await db(c.env)
+			.select()
+			.from(siteSettings)
+			.where(eq(siteSettings.id, 1))
+			.limit(1)
+	)[0];
+	return c.json(settingsFromRow(row), 200, { "Cache-Control": "no-store" });
+});
+
+adminApi.patch("/settings", async (c) => {
+	const parsed = settingsPatch.safeParse(await c.req.json().catch(() => null));
+	if (!parsed.success) {
+		return jsonErr("请求体校验失败", 400, { fields: parsed.error.flatten().fieldErrors });
+	}
+	const input = parsed.data;
+	const existing = (
+		await db(c.env)
+			.select()
+			.from(siteSettings)
+			.where(eq(siteSettings.id, 1))
+			.limit(1)
+	)[0];
+	const ts = now();
+	let row;
+	if (!existing) {
+		[row] = await db(c.env)
+			.insert(siteSettings)
+			.values({ ...settingsValues(input), id: 1, updatedAt: ts })
+			.returning();
+	} else {
+		[row] = await db(c.env)
+			.update(siteSettings)
+			.set({ ...input, updatedAt: ts })
+			.where(eq(siteSettings.id, 1))
+			.returning();
+	}
+	await purgeSettingsCache(c);
+	return c.json(settingsFromRow(row), 200, { "Cache-Control": "no-store" });
+});
 
 /* ============================================================
    文章 CRUD

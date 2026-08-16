@@ -36,3 +36,11 @@ export async function purgeCommentsCache(c: Context<{ Bindings: Env }>, slug: st
 	const target = new URL(`${url.protocol}//${url.host}/api/public/posts/${encodeURIComponent(slug)}/comments`);
 	await cache.delete(target, { ignoreMethod: true }).catch(() => {});
 }
+
+/** 站点设置更新后失效公开设置缓存（单键，可完全清除） */
+export async function purgeSettingsCache(c: Context<{ Bindings: Env }>) {
+	const cache = caches.default;
+	const url = new URL(c.req.url);
+	const target = new URL(`${url.protocol}//${url.host}/api/public/settings`);
+	await cache.delete(target, { ignoreMethod: true }).catch(() => {});
+}
