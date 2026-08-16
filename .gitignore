@@ -3,6 +3,7 @@ dist/
 .wrangler/
 .dev.vars
 backups/
+public/vditor/
 .shots/
 .preview.pid
 *.log

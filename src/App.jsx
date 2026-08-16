@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import RoomHome from './components/home/RoomHome.jsx';
 import LandingPage from './components/landing/LandingPage.jsx';
+
+/* /admin 路径前缀：独立懒加载 chunk（读者不下载编辑器代码） */
+const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
 
@@ -8,6 +11,23 @@ const initialHash = typeof window !== 'undefined' ? window.location.hash : '';
    房间从页面加载即常驻挂载：预渲染并停在过渡入场位，交接零等待
    hash '#home' 可跳过启动页直达首页 */
 export default function App() {
+  /* pathname 级路由：/admin/* 整页切换到后台（SPA 回退由 assets 配置保证刷新可用） */
+  const isAdmin = useMemo(
+    () => typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '').startsWith('/admin'),
+    [],
+  );
+
+  if (isAdmin) {
+    return (
+      <Suspense fallback={<div className="admin-boot">后台加载中…</div>}>
+        <AdminApp />
+      </Suspense>
+    );
+  }
+  return <BlogApp />;
+}
+
+function BlogApp() {
   const [phase, setPhase] = useState(initialHash === '#home' ? 'home' : 'landing');
 
   const reducedMotion = useMemo(
