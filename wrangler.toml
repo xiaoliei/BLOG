@@ -9,6 +9,7 @@
 #   生产：Cloudflare 后台 Worker → Settings → Variables and Secrets
 # ============================================================
 
+name = "blog"
 main = "worker/index.ts"
 compatibility_date = "2026-08-16"
 
@@ -24,6 +25,7 @@ run_worker_first = ["/api/*", "/img/*"]
 # 只按 database_name 绑定，部署时 wrangler 自动按名字解析/创建，无需填 ID
 [[d1_databases]]
 binding = "DB"
+database_name = "blog-db"
 migrations_dir = "drizzle"
 
 # ---------- R2 图片桶（P4） ----------
@@ -33,3 +35,4 @@ migrations_dir = "drizzle"
 #   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY（后台 Secrets）
 [[r2_buckets]]
 binding = "IMAGES"
+bucket_name = "blog-images"
