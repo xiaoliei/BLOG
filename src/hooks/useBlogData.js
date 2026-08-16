@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { getModules, getPosts, resolveDataSource } from "../lib/api";
+import { DEFAULT_SETTINGS } from "../config/site-settings.js";
+import { getModules, getPosts, getSettings, resolveDataSource } from "../lib/api";
 
 /* ============================================================
    博客数据 hooks：modules / posts 列表 + 加载/错误态 + 重试
@@ -64,6 +65,33 @@ export function usePosts({ moduleId, limit } = {}) {
 				setState({ data: null, loading: false, error: new Error("posts_failed") }),
 			);
 	}, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect(load, [load]);
+	return { ...state, retry: load };
+}
+
+export function useSettings() {
+	const [state, setState] = useState({
+		data: DEFAULT_SETTINGS,
+		loading: true,
+		error: null,
+	});
+
+	const load = useCallback(() => {
+		if (STATIC()) {
+			setState({ data: DEFAULT_SETTINGS, loading: false, error: null });
+			return;
+		}
+		getSettings()
+			.then((data) => setState({ data, loading: false, error: null }))
+			.catch(() =>
+				setState((s) => ({
+					data: s.data,
+					loading: false,
+					error: new Error("settings_failed"),
+				})),
+			);
+	}, []);
 
 	useEffect(load, [load]);
 	return { ...state, retry: load };

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { SITE } from "../../config/blog.js";
-import { useModules, usePosts } from "../../hooks/useBlogData.js";
+import { DEFAULT_SETTINGS } from "../../config/site-settings.js";
+import { useModules, usePosts, useSettings } from "../../hooks/useBlogData.js";
 import ArticleModal from "./ArticleModal.jsx";
 import PostCard from "./PostCard.jsx";
 import SkeletonCard from "./SkeletonCard.jsx";
@@ -17,6 +17,8 @@ const LATEST_LIMIT = 6;
 export default function HomePage() {
 	const [activeModuleSlug, setActiveModuleSlug] = useState(null);
 	const [selected, setSelected] = useState(null); // { post }
+	const { data: settings } = useSettings();
+	const s = settings ?? DEFAULT_SETTINGS;
 
 	const {
 		data: modules,
@@ -103,6 +105,11 @@ export default function HomePage() {
 			window.removeEventListener("scroll", onScroll);
 		};
 	}, [reducedMotion, activeModuleSlug]);
+
+	/* 文档标题跟随站点设置中的站名 */
+	useEffect(() => {
+		document.title = s.name;
+	}, [s.name]);
 
 	/* ---------- 渲染辅助 ---------- */
 	const renderPostGrid = () => {
@@ -195,8 +202,8 @@ export default function HomePage() {
 			<header id="top" className="hero">
 				<nav className="hero-nav container" aria-label="主导航">
 					<a className="hero-logo" href="#top">
-						<span className="hero-logo__mark">礼</span>
-						小礼工坊
+						<span className="hero-logo__mark">{s.name[0]}</span>
+						{s.name}
 					</a>
 					<div className="hero-nav__links">
 						<a href="#latest">最新文章</a>
@@ -206,9 +213,9 @@ export default function HomePage() {
 				</nav>
 
 				<div className="hero-inner container">
-					<p className="hero-eyebrow">PERSONAL BLOG · EST. {SITE.since}</p>
-					<h1 className="hero-title">{SITE.name}</h1>
-					<p className="hero-lead">{SITE.tagline}</p>
+					<p className="hero-eyebrow">PERSONAL BLOG · EST. {s.since}</p>
+					<h1 className="hero-title">{s.name}</h1>
+					<p className="hero-lead">{s.tagline}</p>
 					<div className="hero-cta">
 						<a className="btn btn--light" href="#latest">
 							浏览最新文章
@@ -228,7 +235,7 @@ export default function HomePage() {
 							<span>篇文章</span>
 						</li>
 						<li>
-							<strong>{SITE.since}</strong>
+							<strong>{s.since}</strong>
 							<span>年开始</span>
 						</li>
 					</ul>
@@ -247,7 +254,7 @@ export default function HomePage() {
 							<p className="section-sub">
 								{activeModule
 									? activeModule.blurb
-									: `按时间倒序，先看最近更新的 ${LATEST_LIMIT} 篇。`}
+									: s.latestSub}
 							</p>
 						</div>
 						{activeModule && (
@@ -276,7 +283,7 @@ export default function HomePage() {
 								文章栏目
 							</h2>
 							<p className="section-sub">
-								八个栏目，八块拼图。点击任意栏目查看其中的文章。
+								{s.modulesSub}
 							</p>
 						</div>
 					</div>
@@ -288,27 +295,22 @@ export default function HomePage() {
 				<section id="about" className="section" aria-labelledby="about-title">
 					<div className="about-card reveal">
 						<div className="about-avatar" aria-hidden="true">
-							{SITE.author[0]}
+							{s.author[0]}
 						</div>
 						<div className="about-body">
 							<h2 id="about-title" className="section-title">
-								关于我
+								{s.aboutTitle}
 							</h2>
-							<p className="about-role">{SITE.description}</p>
-							<p className="about-text">
-								这里是小礼工坊的建造者 {SITE.author}。从 2019
-								年写下第一篇文章开始，
-								我一直在用代码一砖一瓦地搭自己的世界：前端、像素、游戏与设计，
-								所有认真做过的事都会在这里留下记录。
-							</p>
+							<p className="about-role">{s.description}</p>
+							<p className="about-text">{s.aboutText}</p>
 							<div className="about-links">
-								<a className="btn btn--solid" href={`mailto:${SITE.email}`}>
+								<a className="btn btn--solid" href={`mailto:${s.email}`}>
 									<IconMail />
 									给我写信
 								</a>
 								<a
 									className="btn btn--ghost"
-									href={SITE.github}
+									href={s.github}
 									target="_blank"
 									rel="noreferrer"
 								>
@@ -325,29 +327,27 @@ export default function HomePage() {
 			<footer className="site-footer">
 				<div className="container footer-grid">
 					<div className="footer-brand">
-						<p className="footer-logo">{SITE.name}</p>
-						<p className="footer-tagline">{SITE.tagline}</p>
+						<p className="footer-logo">{s.footerBrand}</p>
+						<p className="footer-tagline">{s.footerTagline}</p>
 					</div>
 					<nav className="footer-col" aria-label="页脚导航">
-						<h3>快速导航</h3>
+						<h3>{s.footerNavTitle}</h3>
 						<a href="#latest">最新文章</a>
 						<a href="#modules">文章栏目</a>
 						<a href="#about">关于我</a>
 					</nav>
 					<div className="footer-col">
-						<h3>联系</h3>
-						<a href={`mailto:${SITE.email}`}>
-							<IconMail /> {SITE.email}
+						<h3>{s.footerContactTitle}</h3>
+						<a href={`mailto:${s.email}`}>
+							<IconMail /> {s.email}
 						</a>
-						<a href={SITE.github} target="_blank" rel="noreferrer">
+						<a href={s.github} target="_blank" rel="noreferrer">
 							<IconGithub /> GitHub
 						</a>
 					</div>
 				</div>
 				<div className="container footer-bottom">
-					<span>
-						© 2026 {SITE.name} · 由 {SITE.author} 维护
-					</span>
+					<span>{s.footerBottom}</span>
 				</div>
 			</footer>
 

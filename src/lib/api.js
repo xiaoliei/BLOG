@@ -10,6 +10,7 @@
    ============================================================ */
 
 import { ALL_POSTS, MODULES } from "../config/blog.js";
+import { DEFAULT_SETTINGS } from "../config/site-settings.js";
 
 const API_BASE = "/api/public";
 const TTL_MS = 5 * 60 * 1000;
@@ -122,6 +123,17 @@ export function getStaticPosts({ moduleId } = {}) {
 	let list = ALL_POSTS;
 	if (moduleId) list = list.filter((p) => p.moduleId === moduleId);
 	return list.map(withModuleMeta);
+}
+
+/* ---------- 站点设置 ---------- */
+
+export function getStaticSettings() {
+	return DEFAULT_SETTINGS;
+}
+
+export function getSettings() {
+	if (resolveDataSource() === "static") return Promise.resolve(DEFAULT_SETTINGS);
+	return swr("settings", () => fetchJSON("/settings"));
 }
 
 /* ---------- 公开 API 封装 ---------- */
