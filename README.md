@@ -96,7 +96,9 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 ## 内容维护
 
 - 日常发文/栏目/评论审核：访问 `域名/admin`（Access 验证后进入）
-- 站点名/标语/邮箱/GitHub：`src/config/blog.js` 的 `SITE`（前端元信息）
+- 站点名/标语/开始时间/描述/邮箱/GitHub/首页区块文案/关于我/页脚：
+  后台「站点设置」页（D1 `site_settings` 表，前台经 `GET /api/public/settings` 读取）
+- 静态回退默认值：`src/config/site-settings.js` 的 `DEFAULT_SETTINGS`（与 seed 一致）
 - 启动页文案：`src/config/site.js`
 - API 故障应急：浏览器控制台执行
   `localStorage.setItem('blog:data-source','static')` 切回静态数据源，
@@ -160,7 +162,8 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
     ├── main.jsx                # React 入口（样式导入 + admin.css）
     ├── App.jsx                 # /admin 前缀分流 + landing→home 三阶段
     ├── admin/                  # 后台 SPA（独立 chunk：列表/编辑/栏目/评论）
-    ├── config/blog.js          # SITE 元信息 + 静态回退数据快照（seed 源）
+    ├── config/blog.js          # 静态内容快照（seed 源，SITE 已退役）
+    ├── config/site-settings.js # 站点设置默认值（单一来源：前台/Worker/seed）
     ├── config/site.js          # 启动页系统文案（BOOT / 版本 / 状态栏数据）
     ├── hooks/useBlogData.js    # modules/posts 数据 hooks（骨架/错误/重试）
     ├── lib/api.js              # API 客户端 + SWR 缓存 + 浏览/评论提交

@@ -4,7 +4,8 @@
    内容数据（栏目/文章）已迁移至 D1 数据库，由 /admin 后台管理，
    前台经 /api/public/* 拉取（见 src/lib/api.js）。
    本文件保留两处职责：
-   1. SITE 站点元信息（前端仍直接使用）
+   1. SITE 站点元信息快照（已退役：运行期站点设置来自 D1 site_settings，
+      后台「站点设置」页编辑；静态回退默认值见 src/config/site-settings.js）
    2. MODULES/ALL_POSTS 静态数据快照 —— 仅作 API 故障时的
       feature flag 回退数据源（localStorage 'blog:data-source'
       设为 'static' 即时切回），不再是日常内容维护入口
