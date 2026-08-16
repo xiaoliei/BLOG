@@ -1,9 +1,14 @@
+# 本地实际配置文件：由 wrangler.toml.example 复制而来，已被 .gitignore 忽略
+# 需要改动部署结构时，先改模板 wrangler.toml.example，再同步本文件
 # ============================================================
 # 小礼工坊 · Cloudflare Worker 全栈配置
 # 静态资产（dist/）+ Hono API（worker/index.ts）单部署单元
+# 配置约定：本文件只放「绑定」与「部署结构」；
+# 运行环境变量（ACCESS_*、R2_* 等）统一走环境变量——
+#   本地：.dev.vars（模板见 .dev.vars.example，已 gitignore）
+#   生产：Cloudflare 后台 Worker → Settings → Variables and Secrets
 # ============================================================
 
-name = "xiaoli-blog"
 main = "worker/index.ts"
 compatibility_date = "2026-08-16"
 
@@ -15,24 +20,16 @@ not_found_handling = "single-page-application"
 run_worker_first = ["/api/*", "/img/*"]
 
 # ---------- D1 数据库 ----------
-# 首次使用：`wrangler d1 create blog-db`，把返回的 database_id 填到下面
+# 首次使用：`wrangler d1 create blog-db`
+# 只按 database_name 绑定，部署时 wrangler 自动按名字解析/创建，无需填 ID
 [[d1_databases]]
 binding = "DB"
-database_name = "blog-db"
-database_id = "00000000-0000-0000-0000-000000000000"
 migrations_dir = "drizzle"
 
 # ---------- R2 图片桶（P4） ----------
 # 首次使用：`wrangler r2 bucket create blog-images`
-# 读写走 aws4fetch S3 协议（见 worker/lib/s3.ts），密钥用 secrets：
-#   wrangler secret put R2_ACCESS_KEY_ID
-#   wrangler secret put R2_SECRET_ACCESS_KEY
+# 读写走 aws4fetch S3 协议（见 worker/lib/s3.ts），端点和密钥来自环境变量：
+#   R2_ACCOUNT_ID（后台 Variables）
+#   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY（后台 Secrets）
 [[r2_buckets]]
 binding = "IMAGES"
-bucket_name = "blog-images"
-
-# ---------- Cloudflare Access（P2，生产在 Zero Trust 控制台配置） ----------
-# 团队域名（形如 "xxx" → https://xxx.cloudflareaccess.com）与应用 AUD
-[vars]
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""

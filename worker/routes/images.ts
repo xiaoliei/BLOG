@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { s3Get } from "../lib/s3";
+import { makeObjectName, s3Get, s3Put } from "../lib/s3";
 import adminApi from "./admin";
 
 /* ============================================================

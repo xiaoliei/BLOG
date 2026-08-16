@@ -48,17 +48,31 @@ Cloudflare Worker（单部署单元：静态资产 + API）
 
 ## 首次部署（Cloudflare）
 
+`wrangler.toml` 只声明绑定与部署结构，**不含任何资源 ID 和值**；
+Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Cloudflare 后台维护。
+
 1. `wrangler login`
-2. `wrangler d1 create blog-db` → 把 database_id 写入 `wrangler.toml`
-3. `wrangler r2 bucket create blog-images`（图片功能用）
-4. 创建 R2 API Token（S3 凭证），`wrangler secret put R2_ACCESS_KEY_ID`
-   与 `wrangler secret put R2_SECRET_ACCESS_KEY`；并把 `worker/lib/s3.ts`
-   中的 `accountid` 占位替换为实际账户 ID
+2. 创建资源：`wrangler d1 create blog-db`、`wrangler r2 bucket create blog-images`
+3. Cloudflare 后台 Worker → Settings → **Bindings** 添加绑定：
+   - D1：`DB` → `blog-db`
+   - R2：`IMAGES` → `blog-images`
+4. Cloudflare 后台 Worker → Settings → **Variables and Secrets** 配置：
+   - **Variables**：`R2_ACCOUNT_ID`（仪表盘右上角账户 ID）、
+     `ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`
+   - **Secrets**：`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`
+   （也可用 `wrangler secret put` 添加 Secrets）
 5. `npm run db:migrate:remote && npm run seed:remote`
 6. Zero Trust 控制台：建 Access 应用保护 `域名/admin*`（邮箱 OTP，
    自用邮箱唯一用户）；再建一个应用保护 `域名/api/admin/*`（服务 Token 免），
-   将团队域名与 AUD 写入 `wrangler.toml` 的 `[vars]`
-7. `npm run deploy`，Worker 绑定自定义域名（国内不可用 workers.dev）
+   把团队域名与 AUD 填到第 4 步的 Variables
+7. 部署：CI 由 Workers Builds 项目设置部署到 Worker `blog`；
+   本地 `npm run deploy` 默认取 package.json 的 `blog-os` 作为 Worker 名，
+   要部署到线上需 `npx wrangler deploy --name blog`（自定义域名在后台
+   项目设置中配置，国内不可用 workers.dev）
+
+> **配置约定**：`wrangler.toml` 只声明绑定名称（DB / IMAGES / ASSETS），
+> 资源本体、Worker 名、路由与全部运行环境变量都在 Cloudflare 后台；
+> 本地开发用 `.dev.vars`（模板 `.dev.vars.example`），值不进 git。
 
 ## 备份与恢复
 
@@ -110,12 +124,13 @@ Cloudflare Worker（单部署单元：静态资产 + API）
 
 ```
 ├── index.html                  # 入口（中文字体、meta、theme-color #4CAF50）
-├── wrangler.toml               # Worker 配置（D1/R2 绑定、静态资产、Access vars）
+├── wrangler.toml               # Worker 配置（只声明绑定名称，资源/值在 Cloudflare 后台）
+├── .dev.vars.example           # 环境变量模板（本地复制为 .dev.vars，已 gitignore）
 ├── drizzle.config.ts           # Drizzle Kit 配置（SQLite → D1）
 ├── drizzle/                    # 生成的 SQL 迁移（wrangler d1 migrations）
 ├── worker/                     # Cloudflare Worker（Hono API）
 │   ├── index.ts                # 入口：路由挂载、静态资产兜底、全局错误
-│   ├── env.d.ts                # Env 类型（DB/ASSETS/IMAGES/Access vars）
+│   ├── env.d.ts                # Env 类型（DB/ASSETS/IMAGES/ACCESS_*/R2_*）
 │   ├── db/schema.ts            # modules/posts/comments 三表 schema
 │   ├── routes/public.ts        # /api/public/*（栏目/文章/详情/浏览量/评论）
 │   ├── routes/admin.ts         # /api/admin/*（文章/栏目/评论 CRUD）

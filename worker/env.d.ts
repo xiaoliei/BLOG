@@ -14,6 +14,7 @@ export type Env = {
 	/** 本地开发 admin 令牌（仅本地回退） */
 	ADMIN_DEV_TOKEN?: string;
 	/** R2 S3 协议密钥（P4） */
+	R2_ACCOUNT_ID: string;
 	R2_ACCESS_KEY_ID?: string;
 	R2_SECRET_ACCESS_KEY?: string;
 };
