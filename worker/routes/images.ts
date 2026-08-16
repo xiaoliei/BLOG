@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
-import { makeObjectName, s3Get, s3Put } from "../lib/s3";
+import { makeObjectName, r2Get, r2Put } from "../lib/r2";
 import adminApi from "./admin";
 
 /* ============================================================
    图片：/img/* 公开读（immutable 长缓存）+ /api/admin/upload 上传
-   读写都经 Worker，保持单一鉴权面（设计 D7）；公开路径仅支持读取
+   读写都经 Worker，保持单一鉴权面；公开路径仅支持读取
    ============================================================ */
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -39,13 +39,13 @@ images.get("/img/*", async (c) => {
 	if (!EXT_TYPES[ext]) return c.text("not found", 404);
 
 	try {
-		const obj = await s3Get(c.env, name);
+		const obj = await r2Get(c.env, name);
 		if (!obj) return c.text("not found", 404, { "Cache-Control": "no-store" });
 		return new Response(obj.body, {
 			headers: {
-				"Content-Type": obj.headers.get("Content-Type") ?? EXT_TYPES[ext],
+				"Content-Type": obj.httpMetadata?.contentType ?? EXT_TYPES[ext],
 				"Cache-Control": "public, max-age=31536000, immutable",
-				ETag: obj.headers.get("ETag") ?? "",
+				ETag: obj.httpEtag ?? "",
 			},
 		});
 	} catch (err) {
@@ -78,12 +78,12 @@ adminApi.post("/upload", async (c) => {
 	if (body.byteLength === 0) {
 		return c.json({ error: "validation_error", message: "空文件" }, 400);
 	}
-	if (!c.env.R2_ACCESS_KEY_ID || !c.env.R2_SECRET_ACCESS_KEY) {
-		return c.json({ error: "internal_error", message: "图片存储未配置（R2 密钥缺失）" }, 500);
+	if (!c.env.IMAGES) {
+		return c.json({ error: "internal_error", message: "图片存储未配置（R2 绑定缺失）" }, 500);
 	}
 
 	const name = makeObjectName(ext);
-	await s3Put(c.env, name, body, contentType);
+	await r2Put(c.env, name, body, contentType);
 
 	const url = new URL(c.req.url);
 	return c.json(

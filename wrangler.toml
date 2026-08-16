@@ -30,9 +30,7 @@ migrations_dir = "drizzle"
 
 # ---------- R2 图片桶（P4） ----------
 # 首次使用：`wrangler r2 bucket create blog-images`
-# 读写走 aws4fetch S3 协议（见 worker/lib/s3.ts），端点和密钥来自环境变量：
-#   R2_ACCOUNT_ID（后台 Variables）
-#   R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY（后台 Secrets）
+# 读写走 Worker 原生 binding（见 worker/lib/r2.ts）
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "blog-images"

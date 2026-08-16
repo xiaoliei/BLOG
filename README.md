@@ -34,12 +34,12 @@ npm run deploy        # 构建并部署到 Cloudflare Workers
   └─ /img/*           R2 图片公开读（immutable 缓存）
 Cloudflare Worker（单部署单元：静态资产 + API）
   ├─ D1   modules / posts / comments（Drizzle ORM，drizzle/ 迁移）
-  └─ R2   blog-images（S3 协议 aws4fetch，非原生 binding）
+  └─ R2   blog-images（原生 binding，worker/lib/r2.ts）
 ```
 
 - **鉴权**：Cloudflare Access（邮箱 OTP）保护 `/admin` 与 `/api/admin/*`；
   Worker 内 `worker/middleware/access.ts` 验 `Cf-Access-Jwt-Assertion`（RS256 JWKS）
-- **可移植性**：Hono 路由 + Drizzle ORM + S3 协议 + 单鉴权中间件，
+- **可移植性**：Hono 路由 + Drizzle ORM + 单鉴权中间件，
   平台耦合面收敛在上述四点，迁移换 driver 即可
 - **评论反垃圾**：蜜罐字段 + IP 30s 限频（ip_hash 截断哈希）+ 后台人工审核
 - **浏览量**：D1 原子 +1，客户端 60s sessionStorage 去重
@@ -57,10 +57,8 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
    - D1：`DB` → `blog-db`
    - R2：`IMAGES` → `blog-images`
 4. Cloudflare 后台 Worker → Settings → **Variables and Secrets** 配置：
-   - **Variables**：`R2_ACCOUNT_ID`（仪表盘右上角账户 ID）、
-     `ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`
-   - **Secrets**：`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`
-   （也可用 `wrangler secret put` 添加 Secrets）
+   - **Variables**：`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`
+   （图片存储走 R2 原生绑定，无需 S3 密钥）
 5. `npm run db:migrate:remote && npm run seed:remote`
 6. Zero Trust 控制台 → Access → Applications，建**一个** Access 应用，
    Include 规则同时覆盖两个路径：
@@ -150,7 +148,7 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 │   ├── routes/admin.ts         # /api/admin/*（文章/栏目/评论 CRUD）
 │   ├── routes/images.ts        # /img/* 公开读 + /api/admin/upload 上传
 │   ├── middleware/access.ts    # CF Access JWT 验证（本地 X-Admin-Token 回退）
-│   └── lib/                    # db / cache（边缘缓存失效）/ s3（aws4fetch）
+│   └── lib/                    # db / cache（边缘缓存失效）/ r2（原生 binding）
 ├── scripts/
 │   ├── seed.mjs                # blog.js 快照 → D1（幂等，行数比对报告）
 │   ├── copy-vditor.mjs         # vditor dist → public/vditor（自托管）

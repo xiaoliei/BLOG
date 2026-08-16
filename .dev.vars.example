@@ -12,9 +12,5 @@ ADMIN_DEV_TOKEN=dev-token-change-me
 ACCESS_TEAM_DOMAIN=
 ACCESS_AUD=
 
-# ---------- R2 S3 协议（P4） ----------
-# 账户 ID（仪表盘右上角，形如 32 位十六进制）；生产：后台 Variables 添加
-R2_ACCOUNT_ID=
-# S3 密钥；生产：后台 Secrets 添加（或 `wrangler secret put`）
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
+# ---------- R2（P4） ----------
+# 图片存储走 Worker 原生 binding（IMAGES），无需环境变量

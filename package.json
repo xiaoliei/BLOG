@@ -16,7 +16,6 @@
     "deploy": "vite build && npm run db:migrate:remote && wrangler deploy"
   },
   "dependencies": {
-    "aws4fetch": "^1.0.20",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.13.2",
     "react": "^19.2.8",
