@@ -28,3 +28,11 @@ export async function purgePostCache(c: Context<{ Bindings: Env }>, slug?: strin
 		}),
 	);
 }
+
+/** 评论审核后失效某文章的公开评论缓存 */
+export async function purgeCommentsCache(c: Context<{ Bindings: Env }>, slug: string) {
+	const cache = caches.default;
+	const url = new URL(c.req.url);
+	const target = new URL(`${url.protocol}//${url.host}/api/public/posts/${encodeURIComponent(slug)}/comments`);
+	await cache.delete(target, { ignoreMethod: true }).catch(() => {});
+}

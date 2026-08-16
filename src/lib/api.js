@@ -153,3 +153,48 @@ export function getPost(slug) {
 		fetchJSON(`/posts/${encodeURIComponent(slug)}`),
 	);
 }
+
+/* ---------- 互动（浏览量 / 评论）：直连，不走 SWR ---------- */
+
+/** 浏览计数提交：同一文章 60s 内不重复提交（sessionStorage 标记） */
+export async function submitViewOnce(slug, { windowMs = 60_000 } = {}) {
+	if (resolveDataSource() === "static") return null;
+	const key = `viewed:${slug}`;
+	try {
+		const at = Number(sessionStorage.getItem(key));
+		if (Number.isFinite(at) && Date.now() - at < windowMs) return null;
+	} catch {
+		/* ignore */
+	}
+	const res = await fetch(`${API_BASE}/posts/${encodeURIComponent(slug)}/views`, {
+		method: "POST",
+	});
+	if (!res.ok) return null;
+	try {
+		sessionStorage.setItem(key, String(Date.now()));
+	} catch {
+		/* ignore */
+	}
+	return (await res.json()).views;
+}
+
+/** 已放行评论列表（时间正序） */
+export async function getComments(slug) {
+	return fetchJSON(`/posts/${encodeURIComponent(slug)}/comments`);
+}
+
+/** 提交评论（昵称 + 内容 + 蜜罐字段）；成功返回 true */
+export async function submitComment(slug, { author, body, website = "" }) {
+	const res = await fetch(`${API_BASE}/posts/${encodeURIComponent(slug)}/comments`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json; charset=utf-8" },
+		body: JSON.stringify({ author, body, website }),
+	});
+	const payload = await res.json().catch(() => ({}));
+	if (res.status === 429) throw new Error(payload.message || "评论太频繁，请稍后再试");
+	if (!res.ok) {
+		const first = payload?.fields ? Object.values(payload.fields)[0]?.[0] : null;
+		throw new Error(first || payload.message || "提交失败，请稍后再试");
+	}
+	return true;
+}

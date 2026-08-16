@@ -901,6 +901,128 @@ main.container {
 	border-top: 1px dashed var(--card-border);
 }
 
+/* ---------- 评论区（详情弹层底部） ---------- */
+.comments {
+	margin-top: 30px;
+	padding-top: 22px;
+	border-top: 1px dashed var(--card-border);
+}
+
+.comments__title {
+	font-family: var(--font-serif);
+	font-size: 17px;
+	font-weight: 700;
+	color: var(--text-strong);
+}
+
+.comments__hint {
+	margin-top: 8px;
+	font-size: 13px;
+	color: var(--text-muted);
+}
+
+.comments__list {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	margin: 14px 0 4px;
+}
+
+.comments__item {
+	padding: 12px 14px;
+	background: #f8faf5;
+	border: 1px solid var(--card-border);
+	border-radius: 12px;
+}
+
+.comments__head {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+}
+
+.comments__author {
+	font-weight: 700;
+	font-size: 14px;
+	color: var(--text-strong);
+}
+
+.comments__time {
+	font-family: var(--font-mono);
+	font-size: 11px;
+	color: var(--text-faint);
+	margin-left: auto;
+}
+
+.comments__body {
+	margin: 6px 0 0;
+	font-size: 14px;
+	line-height: 1.7;
+	color: var(--text);
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.comments__form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+/* 蜜罐：视觉与可访问性双重隐藏，机器人表单填充仍会命中 */
+.comments__honeypot {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.comments__input {
+	padding: 9px 12px;
+	border: 1px solid var(--card-border);
+	border-radius: 10px;
+	background: #ffffff;
+	font-family: inherit;
+	font-size: 14px;
+}
+
+.comments__input:focus {
+	outline: 2px solid rgba(63, 157, 75, 0.3);
+	border-color: #3f9d4b;
+}
+
+.comments__input--author {
+	max-width: 240px;
+}
+
+.comments__input--body {
+	resize: vertical;
+	min-height: 72px;
+}
+
+.comments__form-foot {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.comments__ok {
+	font-size: 13px;
+	color: #2e7d32;
+}
+
+.comments__err {
+	font-size: 13px;
+	color: #b91c1c;
+}
+
+.comments__submit {
+	margin-left: auto;
+}
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1024px) {
 	.post-grid {

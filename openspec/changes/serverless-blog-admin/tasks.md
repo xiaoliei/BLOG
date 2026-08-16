@@ -35,13 +35,13 @@
 
 ## 5. P3 互动功能
 
-- [ ] 5.1 浏览量：`POST /api/public/posts/:slug/views`（D1 原子 +1，draft 404），前台详情弹层打开时提交（sessionStorage 60s 去重）
-- [ ] 5.2 评论提交：`POST /api/public/posts/:slug/comments`（zod：昵称 1-24、内容 1-500，draft 404，默认 pending）
-- [ ] 5.3 反垃圾三层：蜜罐字段（非空静默丢弃伪 201）、同 IP 30s 1 条（429）、后台人工审核兜底
-- [ ] 5.4 评论公开读取：`GET /api/public/posts/:slug/comments` 仅 approved、时间正序、不暴露 ip_hash 与状态
-- [ ] 5.5 后台评论审核 API + 界面：`GET /api/admin/comments?status=`、approve/reject/删除，审核队列 UI（pending/approved/rejected 筛选）
-- [ ] 5.6 ArticleModal 评论区：approved 列表 + 提交表单（昵称+内容+蜜罐），提交后「待审核」提示并清空
-- [ ] 5.7 P3 联调验收：游客评论 → 后台放行 → 前台可见；蜜罐/限频/429 全路径验证
+- [x] 5.1 浏览量：`POST /api/public/posts/:slug/views`（D1 原子 +1，draft 404），前台详情弹层打开时提交（sessionStorage 60s 去重）
+- [x] 5.2 评论提交：`POST /api/public/posts/:slug/comments`（zod：昵称 1-24、内容 1-500，draft 404，默认 pending）
+- [x] 5.3 反垃圾三层：蜜罐字段（非空静默丢弃伪 201）、同 IP 30s 1 条（429）、后台人工审核兜底
+- [x] 5.4 评论公开读取：`GET /api/public/posts/:slug/comments` 仅 approved、时间正序、不暴露 ip_hash 与状态
+- [x] 5.5 后台评论审核 API + 界面：`GET /api/admin/comments?status=`、approve/reject/删除，审核队列 UI（pending/approved/rejected 筛选）
+- [x] 5.6 ArticleModal 评论区：approved 列表 + 提交表单（昵称+内容+蜜罐），提交后「待审核」提示并清空
+- [x] 5.7 P3 联调验收：游客评论 → 后台放行 → 前台可见；蜜罐/限频/429 全路径验证（本地 wrangler dev 全部通过）
 
 ## 6. P4 图片与运维
 

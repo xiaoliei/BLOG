@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../lib/db";
-import { modules, posts } from "../db/schema";
-import { purgePostCache } from "../lib/cache";
+import { comments, modules, posts } from "../db/schema";
+import { purgePostCache, purgeCommentsCache } from "../lib/cache";
 import { requireAccess } from "../middleware/access";
 import type { Env } from "../env";
 
@@ -334,6 +334,79 @@ adminApi.delete("/modules/:id", async (c) => {
 
 	await db(c.env).delete(modules).where(eq(modules.id, id));
 	await purgePostCache(c);
+	return c.body(null, 204);
+});
+
+/* ============================================================
+   评论审核
+   ============================================================ */
+
+/** 列表：按状态筛选，含文章标题，时间倒序 */
+adminApi.get("/comments", async (c) => {
+	const status = c.req.query("status");
+	const conditions = [];
+	if (status === "pending" || status === "approved" || status === "rejected") {
+		conditions.push(eq(comments.status, status));
+	}
+	const rows = await db(c.env)
+		.select({
+			id: comments.id,
+			postId: comments.postId,
+			postTitle: posts.title,
+			postSlug: posts.slug,
+			author: comments.author,
+			body: comments.body,
+			status: comments.status,
+			ipHash: comments.ipHash,
+			createdAt: comments.createdAt,
+		})
+		.from(comments)
+		.innerJoin(posts, eq(comments.postId, posts.id))
+		.where(conditions.length ? and(...conditions) : undefined)
+		.orderBy(desc(comments.createdAt))
+		.limit(200);
+	return c.json(rows, 200, { "Cache-Control": "no-store" });
+});
+
+/** 审核：approve / reject */
+const reviewAction = z.object({ action: z.enum(["approve", "reject"]) });
+
+adminApi.patch("/comments/:id", async (c) => {
+	const id = Number(c.req.param("id"));
+	if (!Number.isInteger(id)) return jsonErr("无效 id", 400);
+	const parsed = reviewAction.safeParse(await c.req.json().catch(() => null));
+	if (!parsed.success) return jsonErr("action 必须是 approve 或 reject", 400);
+
+	const [existing] = await db(c.env)
+		.select({ id: comments.id, slug: posts.slug })
+		.from(comments)
+		.innerJoin(posts, eq(comments.postId, posts.id))
+		.where(eq(comments.id, id))
+		.limit(1);
+	if (!existing) return jsonErr("评论不存在", 404);
+
+	const [row] = await db(c.env)
+		.update(comments)
+		.set({ status: parsed.data.action === "approve" ? "approved" : "rejected" })
+		.where(eq(comments.id, id))
+		.returning();
+	await purgeCommentsCache(c, existing.slug);
+	return c.json(row, 200, { "Cache-Control": "no-store" });
+});
+
+/** 删除：返回 204 */
+adminApi.delete("/comments/:id", async (c) => {
+	const id = Number(c.req.param("id"));
+	if (!Number.isInteger(id)) return jsonErr("无效 id", 400);
+	const [existing] = await db(c.env)
+		.select({ id: comments.id, slug: posts.slug })
+		.from(comments)
+		.innerJoin(posts, eq(comments.postId, posts.id))
+		.where(eq(comments.id, id))
+		.limit(1);
+	if (!existing) return jsonErr("评论不存在", 404);
+	await db(c.env).delete(comments).where(eq(comments.id, id));
+	await purgeCommentsCache(c, existing.slug);
 	return c.body(null, 204);
 });
 
