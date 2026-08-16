@@ -45,8 +45,8 @@
 
 ## 6. P4 图片与运维
 
-- [ ] 6.1 R2 绑定与图片路由：`/img/*` 公开读（immutable 长缓存），aws4fetch S3 客户端封装（D7）
-- [ ] 6.2 上传端点：`POST /api/admin/upload`（Access 鉴权，类型 jpeg/png/gif/webp、≤5MB，413/400），返回公开 URL（不可预测文件名）
-- [ ] 6.3 Vditor 贴图上传对接：剪贴板/拖拽图片 → 上传端点 → URL 插入 markdown
-- [ ] 6.4 备份脚本：`wrangler d1 export` 定期导出（scripts/backup.sh + 说明）
-- [ ] 6.5 P4 验收 + 收尾：贴图发文全流程、`blog.js` 退役清理（SITE 保留）、README 更新架构说明
+- [x] 6.1 R2 绑定与图片路由：`/img/*` 公开读（immutable 长缓存），aws4fetch S3 客户端封装（D7）
+- [x] 6.2 上传端点：`POST /api/admin/upload`（Access 鉴权，类型 jpeg/png/gif/webp、≤5MB，413/400），返回公开 URL（不可预测文件名）
+- [x] 6.3 Vditor 贴图上传对接：剪贴板/拖拽图片 → 上传端点 → URL 插入 markdown
+- [x] 6.4 备份脚本：`wrangler d1 export` 定期导出（scripts/backup.sh + 说明）
+- [x] 6.5 P4 收尾：`blog.js` 退役注释（SITE 保留 + 静态回退开关）、README 更新架构说明（贴图发文全流程与生产部署随 2.7/3.6/4.5 统一验收）

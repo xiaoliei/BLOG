@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "vditor/dist/index.css";
-import { adminFetch } from "./api.js";
+import { adminFetch, getDevToken } from "./api.js";
 
 /* ============================================================
    文章编辑页：表单 + Vditor（动态 import，仅 admin chunk）
@@ -81,6 +81,35 @@ export default function PostEdit({ initial, onBack, guard }) {
 					cache: { enable: false },
 					placeholder: "在这里写下正文（Markdown）…",
 					value: form.bodyMd,
+					/* 剪贴板/拖拽图片 → /api/admin/upload → URL 插入 markdown */
+					upload: {
+						accept: "image/*",
+						max: 5 * 1024 * 1024,
+						handler: (files) => {
+							const uploadOne = async (file) => {
+								const res = await fetch("/api/admin/upload", {
+									method: "POST",
+									credentials: "same-origin",
+									headers: {
+										"Content-Type": file.type,
+										...(getDevToken() ? { "X-Admin-Token": getDevToken() } : {}),
+									},
+									body: file,
+								});
+								const payload = await res.json().catch(() => ({}));
+								if (!res.ok) throw new Error(payload.message || `上传失败（${res.status}）`);
+								return payload.url;
+							};
+							Promise.all([...files].map(uploadOne))
+								.then((urls) => {
+									const md = urls.map((u) => `![](${u})`).join("\n");
+									vdRef.current?.insertValue(md);
+									flash("ok", "图片已上传并插入");
+								})
+								.catch((e) => flash("err", e.message));
+							return true; // 阻止默认上传行为
+						},
+					},
 					toolbar: [
 						"headings",
 						"bold",
