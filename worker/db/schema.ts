@@ -62,6 +62,32 @@ export const comments = sqliteTable(
 	],
 );
 
+export const siteSettings = sqliteTable("site_settings", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	name: text("name").notNull(),
+	tagline: text("tagline").notNull().default(""),
+	/** 开始年份（四位整数） */
+	since: integer("since").notNull(),
+	description: text("description").notNull().default(""),
+	author: text("author").notNull().default(""),
+	email: text("email").notNull().default(""),
+	github: text("github").notNull().default(""),
+	/* 首页区块描述 */
+	latestSub: text("latest_sub").notNull().default(""),
+	modulesSub: text("modules_sub").notNull().default(""),
+	/* 关于我 */
+	aboutTitle: text("about_title").notNull().default("关于我"),
+	aboutText: text("about_text").notNull().default(""),
+	/* 页脚 */
+	footerBrand: text("footer_brand").notNull().default(""),
+	footerTagline: text("footer_tagline").notNull().default(""),
+	footerNavTitle: text("footer_nav_title").notNull().default("快速导航"),
+	footerContactTitle: text("footer_contact_title").notNull().default("联系"),
+	footerBottom: text("footer_bottom").notNull().default(""),
+	updatedAt: text("updated_at").notNull(),
+});
+
 export type ModuleRow = typeof modules.$inferSelect;
 export type PostRow = typeof posts.$inferSelect;
 export type CommentRow = typeof comments.$inferSelect;
+export type SiteSettingsRow = typeof siteSettings.$inferSelect;

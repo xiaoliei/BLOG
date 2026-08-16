@@ -1,0 +1,20 @@
+CREATE TABLE `site_settings` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
+	`tagline` text DEFAULT '' NOT NULL,
+	`since` integer NOT NULL,
+	`description` text DEFAULT '' NOT NULL,
+	`author` text DEFAULT '' NOT NULL,
+	`email` text DEFAULT '' NOT NULL,
+	`github` text DEFAULT '' NOT NULL,
+	`latest_sub` text DEFAULT '' NOT NULL,
+	`modules_sub` text DEFAULT '' NOT NULL,
+	`about_title` text DEFAULT '关于我' NOT NULL,
+	`about_text` text DEFAULT '' NOT NULL,
+	`footer_brand` text DEFAULT '' NOT NULL,
+	`footer_tagline` text DEFAULT '' NOT NULL,
+	`footer_nav_title` text DEFAULT '快速导航' NOT NULL,
+	`footer_contact_title` text DEFAULT '联系' NOT NULL,
+	`footer_bottom` text DEFAULT '' NOT NULL,
+	`updated_at` text NOT NULL
+);
