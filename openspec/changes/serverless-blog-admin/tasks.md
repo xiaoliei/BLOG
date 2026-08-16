@@ -18,12 +18,12 @@
 
 ## 3. P2 后台鉴权与管理 API
 
-- [ ] 3.1 Access 配置：CF Zero Trust 建应用保护 `/admin/*`，邮箱 OTP，自用邮箱为唯一用户
-- [ ] 3.2 admin 鉴权中间件（`worker/middleware/access.ts`）：验 `Cf-Access-Jwt-Assertion`（团队域名公钥验签），无效返回 401；`/api/admin/*` 全挂
-- [ ] 3.3 文章 CRUD 端点（zod 校验）：列表（含草稿、status/moduleId 筛选）、单篇、创建（slug 唯一 409、title 必填 400）、更新、删除（cascade 评论）
-- [ ] 3.4 文章状态流转：publish / unpublish 端点，published_at 记录，写后失效边缘缓存（Cache API 删键或接受 ≤60s 延迟）
-- [ ] 3.5 栏目 CRUD 端点：增删改查 + sort 更新，非空栏目删除返回 409 迁移提示
-- [ ] 3.6 P2 生产验收：Access 拦截未验证请求（401 重定向验证页），有效 OTP 后 API 正常
+- [ ] 3.1 Access 配置：CF Zero Trust 建应用保护 `/admin/*`，邮箱 OTP，自用邮箱为唯一用户（需 CF 控制台操作，随部署收尾）
+- [x] 3.2 admin 鉴权中间件（`worker/middleware/access.ts`）：验 `Cf-Access-Jwt-Assertion`（团队域名公钥验签），无效返回 401；`/api/admin/*` 全挂（本地以 X-Admin-Token 回退，已验证 401）
+- [x] 3.3 文章 CRUD 端点（zod 校验）：列表（含草稿、status/moduleId 筛选）、单篇、创建（slug 唯一 409、title 必填 400）、更新、删除（cascade 评论）
+- [x] 3.4 文章状态流转：publish / unpublish 端点，published_at 记录，写后失效边缘缓存（Cache API 删键或接受 ≤60s 延迟）
+- [x] 3.5 栏目 CRUD 端点：增删改查 + sort 更新，非空栏目删除返回 409 迁移提示
+- [ ] 3.6 P2 生产验收：Access 拦截未验证请求（401 重定向验证页），有效 OTP 后 API 正常（需生产环境，随部署收尾）
 
 ## 4. P2 后台界面
 

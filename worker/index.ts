@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Env } from "./env";
+import adminApi from "./routes/admin";
 import publicApi from "./routes/public";
 
 /* ============================================================
@@ -11,6 +12,7 @@ import publicApi from "./routes/public";
 const app = new Hono<{ Bindings: Env }>();
 
 app.route("/api/public", publicApi);
+app.route("/api/admin", adminApi);
 
 /* 静态资产兜底：worker 被命中且非 API 路径时，委托给资产绑定 */
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
