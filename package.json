@@ -6,15 +6,33 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply blog-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply blog-db --remote",
+    "seed": "node scripts/seed.mjs",
+    "seed:remote": "node scripts/seed.mjs --remote",
+    "dev:worker": "wrangler dev",
+    "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
+    "aws4fetch": "^1.0.20",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "three": "^0.185.1"
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "three": "^0.185.1",
+    "vditor": "^3.11.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260816.1",
     "@vitejs/plugin-react": "^6.0.5",
-    "vite": "^8.2.0"
+    "drizzle-kit": "^0.31.10",
+    "vite": "^8.2.0",
+    "wrangler": "^4.123.0"
   }
 }

@@ -1,0 +1,12 @@
+# 复制为 .dev.vars（已被 .gitignore 忽略），供 wrangler dev 本地使用
+
+# Cloudflare Access（本地不经过 Access 时可留空；为空时 admin API 依赖 ADMIN_DEV_TOKEN）
+ACCESS_TEAM_DOMAIN=
+ACCESS_AUD=
+
+# 本地开发令牌：设置后可通过 `X-Admin-Token` 头访问 /api/admin/*（仅本地回退用）
+ADMIN_DEV_TOKEN=dev-token-change-me
+
+# R2 S3 协议密钥（P4，本地测试贴图上传时填）
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=

@@ -1,0 +1,38 @@
+# ============================================================
+# 小礼工坊 · Cloudflare Worker 全栈配置
+# 静态资产（dist/）+ Hono API（worker/index.ts）单部署单元
+# ============================================================
+
+name = "xiaoli-blog"
+main = "worker/index.ts"
+compatibility_date = "2026-08-16"
+
+# ---------- 静态资产：Vite 构建产物，未命中资产回退 SPA（/admin 等前端路由） ----------
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/img/*"]
+
+# ---------- D1 数据库 ----------
+# 首次使用：`wrangler d1 create blog-db`，把返回的 database_id 填到下面
+[[d1_databases]]
+binding = "DB"
+database_name = "blog-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "drizzle"
+
+# ---------- R2 图片桶（P4） ----------
+# 首次使用：`wrangler r2 bucket create blog-images`
+# 读写走 aws4fetch S3 协议（见 worker/lib/s3.ts），密钥用 secrets：
+#   wrangler secret put R2_ACCESS_KEY_ID
+#   wrangler secret put R2_SECRET_ACCESS_KEY
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "blog-images"
+
+# ---------- Cloudflare Access（P2，生产在 Zero Trust 控制台配置） ----------
+# 团队域名（形如 "xxx" → https://xxx.cloudflareaccess.com）与应用 AUD
+[vars]
+ACCESS_TEAM_DOMAIN = ""
+ACCESS_AUD = ""

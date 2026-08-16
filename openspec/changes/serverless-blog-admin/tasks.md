@@ -1,10 +1,10 @@
 ## 1. P1 基础设施与数据层
 
-- [ ] 1.1 安装依赖：hono、drizzle-orm、drizzle-kit、wrangler、zod、vditor、react-markdown、remark-gfm、rehype-sanitize；package.json 增加 `db:generate`、`db:migrate`、`seed`、`deploy` 脚本
-- [ ] 1.2 编写 wrangler.toml：Worker 名、D1 绑定（DB）、R2 绑定（IMAGES，P4 用）、static assets 配置（dist/ 目录 + not_found_handling 单页回退）
-- [ ] 1.3 Drizzle schema：modules / posts / comments 三表（含 FK cascade、ip_hash、status、views 默认值），`drizzle.config.ts` 指向 D1
-- [ ] 1.4 生成并执行迁移到本地 D1（wrangler d1 migrations apply），验证三表结构与索引（posts.slug 唯一、posts.module_id、comments.post_id、comments.status）
-- [ ] 1.5 seed 脚本：读 `src/config/blog.js` 导出数据灌入 D1（slug 生成、excerpt 作为正文占位、全部 published），执行后输出行数比对报告
+- [x] 1.1 安装依赖：hono、drizzle-orm、drizzle-kit、wrangler、zod、vditor、react-markdown、remark-gfm、rehype-sanitize；package.json 增加 `db:generate`、`db:migrate`、`seed`、`deploy` 脚本
+- [x] 1.2 编写 wrangler.toml：Worker 名、D1 绑定（DB）、R2 绑定（IMAGES，P4 用）、static assets 配置（dist/ 目录 + not_found_handling 单页回退）
+- [x] 1.3 Drizzle schema：modules / posts / comments 三表（含 FK cascade、ip_hash、status、views 默认值），`drizzle.config.ts` 指向 D1
+- [x] 1.4 生成并执行迁移到本地 D1（wrangler d1 migrations apply），验证三表结构与索引（posts.slug 唯一、posts.module_id、comments.post_id、comments.status）
+- [x] 1.5 seed 脚本：读 `src/config/blog.js` 导出数据灌入 D1（slug 生成、excerpt 作为正文占位、全部 published），执行后输出行数比对报告
 
 ## 2. P1 公开 API 与前台切换
 
