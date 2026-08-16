@@ -8,13 +8,13 @@
 
 ## 2. P1 公开 API 与前台切换
 
-- [ ] 2.1 Worker 入口（worker/index.ts）：Hono app、静态资产服务、`/api/public` 路由挂载、全局错误处理（500 JSON）、404 兜底
-- [ ] 2.2 公开读端点：`GET /api/public/modules`（sort 升序 + 文章数）、`GET /api/public/posts`（limit≤50、moduleId 筛选、日期倒序、不含正文）、`GET /api/public/posts/:slug`（仅 published，含 bodyMd）
-- [ ] 2.3 公开端点边缘缓存：GET 响应 s-maxage=60；POST 与 404 不缓存
-- [ ] 2.4 前台 fetch 层：`src/lib/api.js`（getModules/getPosts/getPost），SWR 缓存封装（内存 + localStorage、TTL 5min）、错误重试
-- [ ] 2.5 HomePage/PostCard/ArticleModal 数据源切换：移除 `blog.js` import，改用 fetch + 骨架屏占位（保留 `blog.js` 作为 feature flag 回退开关）
-- [ ] 2.6 ArticleModal 正文渲染：react-markdown + remark-gfm + rehype-sanitize，样式接入现有 tokens（代码块、表格、图片懒加载）
-- [ ] 2.7 P1 联调验收：`wrangler dev` 本地全流程（seed → API → 前台渲染无回归），部署到 CF 并绑自定义域名，浏览器验证
+- [x] 2.1 Worker 入口（worker/index.ts）：Hono app、静态资产服务、`/api/public` 路由挂载、全局错误处理（500 JSON）、404 兜底
+- [x] 2.2 公开读端点：`GET /api/public/modules`（sort 升序 + 文章数）、`GET /api/public/posts`（limit≤50、moduleId 筛选、日期倒序、不含正文）、`GET /api/public/posts/:slug`（仅 published，含 bodyMd）
+- [x] 2.3 公开端点边缘缓存：GET 响应 s-maxage=60；POST 与 404 不缓存
+- [x] 2.4 前台 fetch 层：`src/lib/api.js`（getModules/getPosts/getPost），SWR 缓存封装（内存 + localStorage、TTL 5min）、错误重试
+- [x] 2.5 HomePage/PostCard/ArticleModal 数据源切换：移除 `blog.js` import，改用 fetch + 骨架屏占位（保留 `blog.js` 作为 feature flag 回退开关）
+- [x] 2.6 ArticleModal 正文渲染：react-markdown + remark-gfm + rehype-sanitize，样式接入现有 tokens（代码块、表格、图片懒加载）
+- [ ] 2.7 P1 联调验收：`wrangler dev` 本地全流程（seed → API → 前台渲染无回归）已通过；部署到 CF 并绑自定义域名待 `wrangler login`（收尾统一处理）
 
 ## 3. P2 后台鉴权与管理 API
 

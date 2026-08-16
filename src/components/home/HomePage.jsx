@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ALL_POSTS, MODULES, POST_COUNT, SITE } from "../../config/blog.js";
+import { SITE } from "../../config/blog.js";
+import { useModules, usePosts } from "../../hooks/useBlogData.js";
 import ArticleModal from "./ArticleModal.jsx";
 import PostCard from "./PostCard.jsx";
+import SkeletonCard from "./SkeletonCard.jsx";
 import {
 	IconArrowRight,
 	IconFeather,
@@ -13,8 +15,35 @@ import {
 const LATEST_LIMIT = 6;
 
 export default function HomePage() {
-	const [activeModuleId, setActiveModuleId] = useState(null);
-	const [selected, setSelected] = useState(null); // { post, module }
+	const [activeModuleSlug, setActiveModuleSlug] = useState(null);
+	const [selected, setSelected] = useState(null); // { post }
+
+	const {
+		data: modules,
+		loading: modulesLoading,
+		error: modulesError,
+		retry: retryModules,
+	} = useModules();
+
+	const activeModule = useMemo(
+		() => (activeModuleSlug ? modules?.find((m) => m.slug === activeModuleSlug) ?? null : null),
+		[modules, activeModuleSlug],
+	);
+
+	const {
+		data: posts,
+		loading: postsLoading,
+		error: postsError,
+		retry: retryPosts,
+	} = usePosts({
+		moduleId: activeModule ? activeModule.slug : undefined,
+		limit: activeModule ? undefined : LATEST_LIMIT,
+	});
+
+	const postCount = useMemo(
+		() => modules?.reduce((n, m) => n + (m.postCount ?? 0), 0),
+		[modules],
+	);
 
 	const reducedMotion = useMemo(
 		() =>
@@ -23,20 +52,9 @@ export default function HomePage() {
 		[],
 	);
 
-	const activeModule = activeModuleId
-		? MODULES.find((m) => m.id === activeModuleId)
-		: null;
-
-	const latestPosts = useMemo(() => {
-		if (activeModule) {
-			return ALL_POSTS.filter((p) => p.moduleId === activeModule.id);
-		}
-		return ALL_POSTS.slice(0, LATEST_LIMIT);
-	}, [activeModule]);
-
 	const handleModuleClick = useCallback(
-		(moduleId) => {
-			setActiveModuleId((prev) => (prev === moduleId ? null : moduleId));
+		(moduleSlug) => {
+			setActiveModuleSlug((prev) => (prev === moduleSlug ? null : moduleSlug));
 			document.getElementById("latest")?.scrollIntoView({
 				behavior: reducedMotion ? "auto" : "smooth",
 			});
@@ -44,10 +62,7 @@ export default function HomePage() {
 		[reducedMotion],
 	);
 
-	const handleOpen = useCallback(
-		(post, module) => setSelected({ post, module }),
-		[],
-	);
+	const handleOpen = useCallback((post) => setSelected({ post }), []);
 	const handleClose = useCallback(() => setSelected(null), []);
 
 	/* 滚动进入视口淡入（prefers-reduced-motion 下直接显示） */
@@ -87,7 +102,92 @@ export default function HomePage() {
 			io.disconnect();
 			window.removeEventListener("scroll", onScroll);
 		};
-	}, [reducedMotion, activeModuleId]);
+	}, [reducedMotion, activeModuleSlug]);
+
+	/* ---------- 渲染辅助 ---------- */
+	const renderPostGrid = () => {
+		if (postsLoading) {
+			return (
+				<div className="post-grid">
+					{Array.from({ length: LATEST_LIMIT }).map((_, i) => (
+						<SkeletonCard key={i} className="post-card" />
+					))}
+				</div>
+			);
+		}
+		if (postsError && !posts) {
+			return (
+				<div className="empty-tip">
+					<p>文章加载失败，请检查网络后重试。</p>
+					<button type="button" className="btn btn--ghost" onClick={retryPosts}>
+						重试
+					</button>
+				</div>
+			);
+		}
+		if (!posts || posts.length === 0) {
+			return <p className="empty-tip">这个栏目暂时没有文章。</p>;
+		}
+		return (
+			<div className="post-grid">
+				{posts.map((post) => (
+					<PostCard key={post.slug ?? `${post.moduleId}-${post.title}`} post={post} onOpen={handleOpen} />
+				))}
+			</div>
+		);
+	};
+
+	const renderModuleGrid = () => {
+		if (modulesLoading) {
+			return (
+				<div className="module-grid">
+					{Array.from({ length: 8 }).map((_, i) => (
+						<SkeletonCard key={i} className="module-card" />
+					))}
+				</div>
+			);
+		}
+		if (modulesError && !modules) {
+			return (
+				<div className="empty-tip">
+					<p>栏目加载失败，请检查网络后重试。</p>
+					<button type="button" className="btn btn--ghost" onClick={retryModules}>
+						重试
+					</button>
+				</div>
+			);
+		}
+		return (
+			<div className="module-grid">
+				{(modules ?? []).map((module) => {
+					const Icon = MODULE_ICONS[module.icon] || IconFeather;
+					return (
+						<button
+							key={module.slug}
+							type="button"
+							className={`module-card reveal${activeModuleSlug === module.slug ? " is-active" : ""}`}
+							style={{
+								"--mod-accent": module.accent,
+								"--mod-accent-dark": module.accentDark,
+							}}
+							onClick={() => handleModuleClick(module.slug)}
+						>
+							<span className="module-card__icon">
+								<Icon />
+							</span>
+							<span className="module-card__body">
+								<span className="module-card__title">{module.title}</span>
+								<span className="module-card__blurb">{module.blurb}</span>
+								<span className="module-card__count">
+									{module.postCount} 篇文章
+								</span>
+							</span>
+						</button>
+					);
+				})}
+			</div>
+		);
+	};
 
 	return (
 		<div className="blog-root">
@@ -120,11 +220,11 @@ export default function HomePage() {
 					</div>
 					<ul className="hero-stats">
 						<li>
-							<strong>{MODULES.length}</strong>
+							<strong>{modules ? modules.length : "…"}</strong>
 							<span>个栏目</span>
 						</li>
 						<li>
-							<strong>{POST_COUNT}</strong>
+							<strong>{postCount ?? "…"}</strong>
 							<span>篇文章</span>
 						</li>
 						<li>
@@ -154,27 +254,14 @@ export default function HomePage() {
 							<button
 								type="button"
 								className="btn btn--ghost"
-								onClick={() => setActiveModuleId(null)}
+								onClick={() => setActiveModuleSlug(null)}
 							>
 								清除筛选
 							</button>
 						)}
 					</div>
 
-					{latestPosts.length > 0 ? (
-						<div className="post-grid">
-							{latestPosts.map((post) => (
-								<PostCard
-									key={`${post.moduleId}-${post.title}`}
-									post={post}
-									module={MODULES.find((m) => m.id === post.moduleId)}
-									onOpen={handleOpen}
-								/>
-							))}
-						</div>
-					) : (
-						<p className="empty-tip">这个栏目暂时没有文章。</p>
-					)}
+					{renderPostGrid()}
 				</section>
 
 				{/* 文章栏目 */}
@@ -194,34 +281,7 @@ export default function HomePage() {
 						</div>
 					</div>
 
-					<div className="module-grid">
-						{MODULES.map((module) => {
-							const Icon = MODULE_ICONS[module.icon] || IconFeather;
-							return (
-								<button
-									key={module.id}
-									type="button"
-									className={`module-card reveal${activeModuleId === module.id ? " is-active" : ""}`}
-									style={{
-										"--mod-accent": module.accent,
-										"--mod-accent-dark": module.accentDark,
-									}}
-									onClick={() => handleModuleClick(module.id)}
-								>
-									<span className="module-card__icon">
-										<Icon />
-									</span>
-									<span className="module-card__body">
-										<span className="module-card__title">{module.title}</span>
-										<span className="module-card__blurb">{module.blurb}</span>
-										<span className="module-card__count">
-											{module.posts.length} 篇文章
-										</span>
-									</span>
-								</button>
-							);
-						})}
-					</div>
+					{renderModuleGrid()}
 				</section>
 
 				{/* 关于我 */}
@@ -292,11 +352,7 @@ export default function HomePage() {
 			</footer>
 
 			{selected && (
-				<ArticleModal
-					post={selected.post}
-					module={selected.module}
-					onClose={handleClose}
-				/>
+				<ArticleModal post={selected.post} onClose={handleClose} />
 			)}
 		</div>
 	);
