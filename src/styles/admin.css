@@ -336,6 +336,24 @@
 	gap: 12px;
 }
 
+/* ---------- 站点设置分组卡片 ---------- */
+.admin-settings-group {
+	padding: 16px;
+	margin-bottom: 16px;
+	background: #fff;
+	border: 1px solid #e2e8e4;
+	border-radius: 10px;
+}
+
+.admin-settings-group h2 {
+	margin: 0 0 12px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #edf2ee;
+	font-size: 15px;
+	font-weight: 700;
+	color: #1f2937;
+}
+
 .admin-modal-form__ops {
 	display: flex;
 	gap: 10px;

@@ -4,6 +4,7 @@ import PostList from "./PostList.jsx";
 import PostEdit from "./PostEdit.jsx";
 import ModuleManage from "./ModuleManage.jsx";
 import CommentReview from "./CommentReview.jsx";
+import SiteSettings from "./SiteSettings.jsx";
 
 /* ============================================================
    /admin 后台壳：内部视图切换（posts / modules / comments）
@@ -14,6 +15,7 @@ const NAV = [
 	{ id: "posts", label: "文章" },
 	{ id: "modules", label: "栏目" },
 	{ id: "comments", label: "评论" },
+	{ id: "settings", label: "站点设置" },
 ];
 
 export default function AdminApp() {
@@ -115,6 +117,7 @@ export default function AdminApp() {
 					))}
 				{view === "modules" && <ModuleManage guard={guard} />}
 				{view === "comments" && <CommentReview guard={guard} />}
+				{view === "settings" && <SiteSettings guard={guard} />}
 			</main>
 		</div>
 	);
