@@ -151,7 +151,7 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 │   └── lib/                    # db / cache（边缘缓存失效）/ r2（原生 binding）
 ├── scripts/
 │   ├── seed.mjs                # blog.js 快照 → D1（幂等，行数比对报告）
-│   ├── copy-vditor.mjs         # vditor dist → public/vditor（自托管）
+│   ├── copy-vditor.mjs         # vditor dist → public/vditor/dist（自托管）
 │   └── backup.sh               # wrangler d1 export 定期备份
 ├── public/
 │   ├── wool/                   # xiaoli-home 羊毛背景图（3 张 PNG）
