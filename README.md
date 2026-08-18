@@ -193,13 +193,6 @@ three.js 场景：书桌 + 立方显示器（`computer_head.glb`，屏幕辉光�
     └── styles/                 # tokens/base/home/room/landing/admin
 ```
 
-## 设计系统
-
-由 ui-ux-pro-max 技能生成并持久化：
-
-- `design-system/blog_os/MASTER.md` — 全局设计规则
-- `design-system/blog_os/pages/home.md` — 首页覆盖规则
-
 ## 验证情况
 
 `npm run build` 后由无头 Chrome 验证（`.shots/capture-boot-flow.mjs` +

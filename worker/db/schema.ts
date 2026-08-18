@@ -2,7 +2,7 @@ import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /* ============================================================
    小礼工坊 D1 数据模型（SQLite via Drizzle）
-   modules / posts / comments 三表
+   modules / posts / comments / site_settings 四表
    ============================================================ */
 
 export const modules = sqliteTable("modules", {
