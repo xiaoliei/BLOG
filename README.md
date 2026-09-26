@@ -1,9 +1,6 @@
 # 小礼工坊 — 个人博客（React / Vite / Cloudflare Workers 全栈）
 
-站点由启动页与 3D 房间主页组成：启动页含星空、3D 方形地球与像素月球，
-点击后经 3D 方形地球旋转放大转场进入 3D 房间主页——博客页面以真透视
-贴在房间显示器的屏幕上；页面本体为「导航 + Hero + 文章列表 + 栏目 +
-关于 + 页脚」结构，配色采用绿色 Hero 色带、浅色羊毛纹理、蓝色页脚色带。
+启动页保留星空、方形地球和时钟。点击进入后，同一 Three.js 渲染器驱动地球放大、穿过方块云层和港镇落地。港镇有书店、工坊、河岸小屋、旅行车站和山坡天文台，点击建筑自动聚焦并阅读文章摘要。前台采用用户确认的明亮卡通像素风。`#home` 可直接打开世界，`#home/<地点>` 可直达对应地点。`prefers-reduced-motion` 会跳过飞行。WebGL 不可用时提供静态概念图与地点目录。`design/concepts/harbor-panorama-v2-cartoon.png` 是概念参考，不是网页截图。`npm run build` 只构建，不自动部署。
 
 内容（栏目/文章/评论）存储在 Cloudflare D1，由 `/admin` 网页后台
 （Vditor 编辑器）管理；前台运行时经 `/api/public/*` 拉取。
@@ -27,7 +24,7 @@ npm run deploy        # 构建并部署到 Cloudflare Workers
 
 ```
 浏览器
-  ├─ /                前台 SPA（启动页 3D + 3D 房间主页，懒加载）
+  ├─ /                前台 SPA（启动页 → 3D 像素港镇，懒加载）
   ├─ /admin/*         后台 SPA（独立 chunk：Vditor 编辑器/栏目/评论审核）
   └─ /api/public/*    读者 API（Hono，s-maxage=60 边缘缓存）
   └─ /api/admin/*     管理 API（Cloudflare Access JWT 鉴权）
@@ -97,116 +94,33 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 
 - 日常发文/栏目/评论审核：访问 `域名/admin`（Access 验证后进入）
 - 站点名/标语/开始时间/描述/邮箱/GitHub/首页区块文案/关于我/页脚：
-  后台「站点设置」页（D1 `site_settings` 表，前台经 `GET /api/public/settings` 读取）
+  后台「站点设置」页（D1 `site_settings` 表）；前台显示站名与关于作者内容，本期不展示旧首页区块
 - 静态回退默认值：`src/config/site-settings.js` 的 `DEFAULT_SETTINGS`（与 seed 一致）
 - 启动页文案：`src/config/site.js`
 - API 故障应急：浏览器控制台执行
   `localStorage.setItem('blog:data-source','static')` 切回静态数据源，
   删除该键恢复 API 模式
 
-## 页面结构（启动页 → 3D 房间主页）
+## 前台体验
 
-### 0. 启动页 LandingPage（星空 + 3D 方形地球 + 像素月球）
+- **启动页**：保留地球模型、星空、时钟与扫描线；点击、滚轮或键盘进入。加载场景时显示等待提示。
+- **入场**：同一 WebGL 画布与动画时钟，地球放大、方块云遮挡尺度交接、镜头落到港镇全景，约 4.2 秒。
+- **港镇**：五个可点击地点、鼠标选取、地点目录、返回全景和返回星球。桌面为侧边面板，手机为底部面板。文章从现有 API 获取；API 不可用时明确标注静态示例摘要并允许重试。
+- **兼容性**：直接链接 `#home` / `#home/books` / `#home/workshop` / `#home/cottage` / `#home/station` / `#home/observatory`；浏览器返回、键盘 Esc、减少动态效果。WebGL 失败展示静态港镇与可用目录。
+- **管理**：`/admin` 独立加载，文章、栏目、评论与站点设置以及 Worker 路由、D1 和 R2 结构继续保留。
 
-- 3D 方形地球（`mc_head.glb`）待机摆动，左上角像素月球同步联动
-- 点击任意处 / 滚轮 / 方向键触发：文本淡出 → 3D 方形地球旋转放大至满屏 →
-  **穿屏淡出**（地球继续略微放大，同时启动层整体淡出，揭开下方 3D 房间，
-  相机随即聚焦飞向显示器屏幕，Hero 元素依次入场）
-- `prefers-reduced-motion` 下跳过动画直接进入
-- URL `#home` 可跳过启动页直达首页；刷新 `#home` 同样直达
+## 主要文件
 
-### 1. 3D 房间主页（RoomHome，数据来自 API）
+- `src/components/world/WorldApp.jsx`：前台界面、地点内容与路由
+- `src/components/world/createWorld.js`：单渲染器、相机、转场与点击
+- `src/components/world/buildTown.js`：体素港镇与动态道具
+- `src/components/world/places.js`：地点、栏目和聚焦镜头配置
+- `src/components/landing/`：星空、时钟及启动页装饰组件
+- `src/lib/api.js`：公开内容 API 与静态示例回退
+- `src/admin/`、`worker/`、`drizzle/`：保留的后台和数据服务
+- `public/models/mc_head.glb`：启动页方形地球
+- `public/world/harbor-preview.webp`：WebGL 降级预览
 
-three.js 场景：书桌 + 立方显示器（`computer_head.glb`，屏幕辉光呼吸）、
-键盘鼠标、台灯、咖啡杯、盆栽、转椅，悬浮于深色雾气背景中，
-配主光/补光/轮廓光与软阴影。博客页面经 **matrix3d 门户**以真透视贴在
-显示器屏幕四边形上——融入 3D 场景的同时仍是普通 DOM，
-任意距离可点击/滚动；房间从页面加载即常驻挂载，停在入场位零等待交接。
+## 验证
 
-- **全景态**：拖拽环绕查看（OrbitControls，限定角度/距离范围）；
-  点「聚焦屏幕阅读 ▸」相机平滑飞至屏幕正前方阅读位
-- **聚焦态**：「◂ 返回全景」飞回全景视角，门户自动跟随填满视野
-- 初始化失败时显示错误卡片（不白屏）
-
-门户内的页面本体结构：
-
-1. **绿色 Hero**（`#4CAF50` + 底部羊毛饰条）
-   - 顶部透明导航（最新文章 / 文章栏目 / 关于我）
-   - 站名、标语、CTA（浏览最新文章 / 查看栏目）、栏目与文章统计
-2. **最新文章**：按日期倒序展示 6 篇（骨架屏加载占位），白色卡片
-   （模块色侧条、日期、标签、摘要）；点击卡片打开详情弹层
-   （markdown 正文渲染 + 评论区 + 浏览量计数，`Esc` / 遮罩关闭）
-3. **文章栏目**：栏目卡片点击可筛选该栏目文章
-4. **关于我**：作者卡片 + 联系 CTA（邮件 / GitHub）
-5. **蓝色页脚**（`#0E77A4` + 顶部羊毛饰条）
-
-### 2. 后台 `/admin`（Access 保护，独立懒加载 chunk）
-
-- 文章管理：列表（状态筛选/浏览量）、Vditor 编辑（贴图直接上传 R2）、
-  草稿/发布/下架，失败保稿
-- 栏目管理：增删改（非空栏目删除需先迁移文章）
-- 评论审核：pending/approved/rejected 队列，一键放行/拒绝/删除
-
-## 目录结构
-
-```
-├── index.html                  # 入口（中文字体、meta、theme-color #4CAF50）
-├── wrangler.toml               # Worker 配置（只声明绑定名称，资源/值在 Cloudflare 后台）
-├── .dev.vars.example           # 环境变量模板（本地复制为 .dev.vars，已 gitignore）
-├── drizzle.config.ts           # Drizzle Kit 配置（SQLite → D1）
-├── drizzle/                    # 生成的 SQL 迁移（wrangler d1 migrations）
-├── worker/                     # Cloudflare Worker（Hono API）
-│   ├── index.ts                # 入口：路由挂载、静态资产兜底、全局错误
-│   ├── env.d.ts                # Env 类型（DB/ASSETS/IMAGES/ACCESS_*/R2_*）
-│   ├── db/schema.ts            # modules/posts/comments 三表 schema
-│   ├── routes/public.ts        # /api/public/*（栏目/文章/详情/浏览量/评论）
-│   ├── routes/admin.ts         # /api/admin/*（文章/栏目/评论 CRUD）
-│   ├── routes/images.ts        # /img/* 公开读 + /api/admin/upload 上传
-│   ├── middleware/access.ts    # CF Access JWT 验证（本地 X-Admin-Token 回退）
-│   └── lib/                    # db / cache（边缘缓存失效）/ r2（原生 binding）
-├── scripts/
-│   ├── seed.mjs                # blog.js 快照 → D1（幂等，行数比对报告）
-│   ├── copy-vditor.mjs         # vditor dist → public/vditor/dist（自托管）
-│   └── backup.sh               # wrangler d1 export 定期备份
-├── public/
-│   ├── wool/               # 羊毛纹理背景图（3 张 PNG）
-│   └── models/            # mc_head.glb（启动页方形地球）/ computer_head.glb（房间显示器）
-└── src/
-    ├── main.jsx                # React 入口（样式导入 + admin.css）
-    ├── App.jsx                 # /admin 前缀分流 + landing→home 三阶段
-    ├── admin/                  # 后台 SPA（独立 chunk：列表/编辑/栏目/评论）
-    ├── config/blog.js          # 静态内容快照（seed 源）
-    ├── config/site-settings.js # 站点设置默认值（单一来源：前台/Worker/seed）
-    ├── config/site.js          # 启动页系统文案（BOOT / 版本 / 状态栏数据）
-    ├── hooks/useBlogData.js    # modules/posts 数据 hooks（骨架/错误/重试）
-    ├── lib/api.js              # API 客户端 + SWR 缓存 + 浏览/评论提交
-    ├── components/home/
-    │   ├── RoomHome.jsx        # 3D 房间主页（three.js 场景 + matrix3d 门户）
-    │   ├── HomePage.jsx        # 博客页面编排（骨架屏 + 错误重试，贴在显示器屏幕上）
-    │   ├── PostCard.jsx        # 文章卡片
-    │   ├── ArticleModal.jsx    # 详情弹层（markdown + 评论区）
-    │   ├── MarkdownBody.jsx    # react-markdown + gfm + sanitize
-    │   ├── SkeletonCard.jsx    # 骨架占位卡片
-    │   └── icons.jsx           # SVG 图标集（Lucide 风格，无 emoji）
-    ├── components/landing/     # 启动页组件（3D 方形地球/星空/时钟/扫描线）
-    ├── lib/                    # scene.js / stars.js（Three.js 工具）
-    └── styles/                 # tokens/base/home/room/landing/admin
-```
-
-## 验证情况
-
-`npm run build` 后由无头 Chrome 验证（`.shots/capture-boot-flow.mjs` +
-`.shots/capture-handoff.mjs` + `.shots/capture-home.mjs`）：
-
-- 启动页流程：3D 场景正常渲染（像素采样非背景亮点充足）；点击后
-  3D 方形地球缩放转场启动，覆盖全屏后房间主页在启动层下方挂载、
-  启动层淡出后相机聚焦飞向屏幕；桌面 / 移动 / 减弱动态偏好 /
-  直达 `#home` 四种路径均无控制台错误
-- 房间交接与门户：聚焦飞行完成后门户内博客页（Hero/文章卡）可交互，
-  「返回全景」/「聚焦屏幕阅读」按钮切换正常，无控制台错误
-- 桌面 1440×900 与移动 390×844 均正常渲染，无控制台错误
-- 像素级采样确认：Hero 绿 `rgb(76,175,80)`、页脚蓝 `rgb(14,119,164)`、
-  两处羊毛饰条与中部羊毛纹理均正确显示
-- 最新文章 6 篇 / 栏目 8 个；点击文章卡打开弹层（`Esc` 关闭）；
-  点击栏目筛选（如「技术深潜」→ 4 篇），清除筛选恢复 6 篇
-- 滚动淡入全部触发；桌面与移动端均无横向滚动
+运行 `node --test tests/world.test.mjs` 验证地点直达、动画缓动、场景实例化和点击范围；运行 `npm run build` 验证前后端打包。已在本地浏览器检查桌面及 390×844 手机全景、五个地点内容面板、键盘返回与浏览器历史。实景图保存在 `.impeccable/review/`；浏览器渲染帧率会显示在画布的 `data-fps` 调试属性中。构建与本地预览不会触发部署。

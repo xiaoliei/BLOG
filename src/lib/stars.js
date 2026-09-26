@@ -9,6 +9,7 @@ export function setStarsPaused(v) {
 
 export function startStars(canvas) {
   const ctx = canvas.getContext('2d');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let w = 0;
   let h = 0;
   let raf = 0;
@@ -61,7 +62,7 @@ export function startStars(canvas) {
 
     for (const s of stars) {
       // 呼吸闪烁：alpha 在 0 ~ 1 之间平滑起伏
-      const tw = Math.abs(Math.sin(sec * s.speed + s.phase));
+      const tw = reducedMotion ? 0.7 : Math.abs(Math.sin(sec * s.speed + s.phase));
       ctx.globalAlpha = 0.08 + tw * 0.9;
       ctx.fillStyle = s.color;
       ctx.beginPath();
@@ -70,7 +71,7 @@ export function startStars(canvas) {
     }
 
     // 偶尔的白色流星（点缀）
-    if (sec - lastShoot > 6 + Math.random() * 5 && !shooting) {
+    if (!reducedMotion && sec - lastShoot > 6 + Math.random() * 5 && !shooting) {
       spawnShooting();
       lastShoot = sec;
     }
@@ -96,7 +97,7 @@ export function startStars(canvas) {
     }
 
     ctx.globalAlpha = 1;
-    raf = requestAnimationFrame(frame);
+    if (!reducedMotion) raf = requestAnimationFrame(frame);
   }
 
   resize();
