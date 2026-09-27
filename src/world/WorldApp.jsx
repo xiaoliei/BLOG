@@ -6,6 +6,7 @@ import { useSystemClock } from '../hooks/useSystemClock.js';
 import LandingClock from '../components/landing/LandingClock.jsx';
 import Starfield from '../components/landing/Starfield.jsx';
 import ScreenOverlays from '../components/landing/ScreenOverlays.jsx';
+import Moon from '../components/landing/Moon.jsx';
 import './world.css';
 
 function Icon({ name, ...props }) {
@@ -97,6 +98,7 @@ export default function WorldApp(){
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt="卡通像素港镇概念预览：书店、工坊、车站与天文台沿海岸展开"/>}
     <canvas ref={canvas} className="world-canvas" aria-label="像素港镇三维场景，可使用地点目录探索" style={{visibility:fallback?'hidden':'visible'}}/>
     {!sceneVisible&&<div className={`landing-root world-landing-ui ${phase==='entering'?'is-entering':''}`}>
+      <Moon/>
       <div className="world-clock"><LandingClock time={clock.time} date={clock.date}/></div>
       {phase!=='entering'&&<button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?'直接浏览港镇':'点击进入像素世界'}<span aria-hidden="true">↓</span></button>}
     </div>}

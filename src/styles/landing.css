@@ -255,4 +255,33 @@
 	text-transform: uppercase;
 }
 
+/* ---------- 像素月球锚点（复原旧版头颅左上角月球） ---------- */
+
+/* 锚定三维地球的「投影剪影」：地球有 ±34° 偏航 / 25° 俯仰 / 12° 滚转，
+   旋转后六边形剪影约为未旋转包围盒的 1.5 倍（实测 1280×800：剪影 223~230px，
+   未旋转包围盒 152px）。地球中心在视口中线上方 11.4vh，窄屏按 vw 上限连续收窄。
+   .float-cube 沿用旧版月球样式（左上角偏移 -12%、陨石坑、8° 倾角） */
+.world-moon-anchor {
+	position: absolute;
+	left: 50%;
+	top: calc(50% - 11.4vh);
+	width: min(28.5vh, 35.625vw);
+	aspect-ratio: 1;
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+
+/* 月球像素尺寸保持旧版约 2.3vh：锚点放大 1.5 倍后，宽度从 12% 改为 8% */
+.world-moon-anchor .float-cube {
+	width: 8%;
+}
+
+/* .float-cube 沿用上方旧版月球样式（左上角偏移 -12%、尺寸 5%、陨石坑） */
+
+/* 进入过渡时月球同步淡出，避免遮挡地球放大 */
+.world-landing-ui.is-entering .world-moon-anchor {
+	opacity: 0;
+	transition: opacity 0.35s ease;
+}
+
 
