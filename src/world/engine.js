@@ -13,16 +13,17 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = innerWidth >= 700;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  const scene = new THREE.Scene();scene.background=new THREE.Color('#82dafa');scene.fog=new THREE.Fog('#82dafa',75,180);
+  const scene = new THREE.Scene();scene.background=new THREE.Color('#82dafa');scene.fog=new THREE.Fog('#82dafa',140,300);
   scene.add(new THREE.HemisphereLight('#f0fcff','#83a263',2.25));
-  const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-24,45,30);sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-31,right:31,top:31,bottom:-31,near:1,far:100});sun.shadow.normalBias=.055;scene.add(sun);
+  const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-40,75,45);sun.castShadow=true;
+  sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:180});sun.shadow.normalBias=.055;scene.add(sun);
   const town = buildTown(scene);
   const space = new THREE.Scene();
   space.add(new THREE.HemisphereLight('#c6eeff','#23354d',2.1));
   const earthLight=new THREE.DirectionalLight('#ffffff',3);earthLight.position.set(-4,7,9);space.add(earthLight);
   const earth=new THREE.Group();space.add(earth);earth.position.set(0,1.5,0);
-  const camera = new THREE.PerspectiveCamera(40,1,.08,600);
+  const inspectionView=diagnostics.get('view');
+  const camera = inspectionView?new THREE.OrthographicCamera(-50,50,43,-43,.08,600):new THREE.PerspectiveCamera(40,1,.08,600);
   const curtainScene=new THREE.Scene(), curtainCamera=new THREE.OrthographicCamera(-1,1,1,-1,.1,10);
   curtainCamera.position.z=3;
   const cloudMaterial=new THREE.MeshBasicMaterial({color:'#e7f7ff'}), cloudGeometry=new THREE.BoxGeometry(1,1,1);
@@ -42,18 +43,22 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const target=new THREE.Vector3(), moveFrom=new THREE.Vector3(), targetFrom=new THREE.Vector3();
   const desired=new THREE.Vector3(),desiredTarget=new THREE.Vector3();
   function homePose() {
+    if(inspectionView){
+      const poses={top:[0,130,.001],front:[0,55,100],east:[100,55,0],back:[0,55,-100],west:[-100,55,0]};
+      desired.set(...(poses[inspectionView]||poses.front));desiredTarget.set(0,5,0);return;
+    }
     const mobile=aspect<.85;
-    const distance=(mobile?50/aspect:51)*zoom;
+    const distance=(mobile?85/aspect:82)*zoom;
     const angle=.28+yaw;
-    desired.set(Math.sin(angle)*distance, mobile?distance*.63:29,Math.cos(angle)*distance);
-    desiredTarget.set(0,3,mobile?0:0);
+    desired.set(Math.sin(angle)*distance, mobile?distance*.63:51,Math.cos(angle)*distance);
+    desiredTarget.set(0,6,0);
   }
   function placePose(id) {
     const p=PLACE_MAP[id]; if(!p){homePose();return;}
     const [x,y,z]=p.position; const mobile=aspect<.85;
-    desired.set(x+(mobile?13:10),y+(mobile?17:11),z+(mobile?36:18));
+    desired.set(x+(mobile?17:15),y+(mobile?23:17),z+(mobile?49:29));
     // Leave the right third (desktop) or bottom third (phone) for real DOM content.
-    desiredTarget.set(x+(mobile?0:4),y+(mobile?.5:3),z);
+    desiredTarget.set(x+(mobile?0:6),y+(mobile?1:4),z);
   }
   function applyPose(){if(selected)placePose(selected);else homePose();}
   function moveTo(id,instant=false) {
@@ -63,7 +68,12 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   }
   function resize() {
     width=canvas.clientWidth||1;height=canvas.clientHeight||1;aspect=width/height;
-    renderer.setSize(width,height,false);camera.aspect=aspect;camera.updateProjectionMatrix();
+    renderer.setSize(width,height,false);camera.aspect=aspect;
+    // Phone overview moves further back: keep the island outside the fog band.
+    const fogOffset=aspect<.85?85/aspect-82:0;
+    scene.fog.near=140+fogOffset;scene.fog.far=300+fogOffset;
+    if(camera.isOrthographicCamera){const half=Math.max(39,36/aspect);camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;}
+    camera.updateProjectionMatrix();
     if(phase==='world'||phase==='focused')moveTo(selected,true);
   }
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
@@ -122,14 +132,14 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       // Zoom into the same front-facing coastal patch. Curtains mask the scale change.
       cover=smooth((t-.23)/.18)*(1-smooth((t-.57)/.2));
       if(t<.49){activeScene=space;const a=smooth(t/.49);camera.position.set(0,0,18-13*a);target.set(0,1.5*a,0);earth.rotation.set(.44*(1-a),-.6*(1-a),-.205*(1-a));earth.scale.setScalar(Math.min(1,aspect*1.25)*(1+a*.7));}
-      else{activeScene=scene;homePose();const a=ease((t-.49)/.51);camera.position.lerpVectors(new THREE.Vector3(2,62,22),desired,a);target.lerpVectors(new THREE.Vector3(0,3,-3),desiredTarget,a);}
+      else{activeScene=scene;homePose();const a=ease((t-.49)/.51);camera.position.lerpVectors(new THREE.Vector3(2,105,35),desired,a);target.lerpVectors(new THREE.Vector3(0,6,-5),desiredTarget,a);}
       camera.lookAt(target);
       if(t>=1){moveTo(null,true);emitPhase('world');}
     }else{
       if(fly){const a=ease((clock-fly.at)/fly.duration);camera.position.lerpVectors(moveFrom,fly.to,a);target.lerpVectors(targetFrom,fly.target,a);if(a>=1)fly=null;}
       camera.lookAt(target);
     }
-    if(activeScene===scene)town.update(reducedMotion?0:clock);
+    if(activeScene===scene)town.update(reducedMotion?0:clock, diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
     renderer.setClearColor(activeScene===space?0x000000:0x82dafa,activeScene===space?0:1);
     renderer.render(activeScene,camera);
     if(cover>0){curtainLeft.position.x=-2.5*(1-cover);curtainRight.position.x=2.5*(1-cover);renderer.autoClear=false;renderer.clearDepth();renderer.render(curtainScene,curtainCamera);renderer.autoClear=true;}

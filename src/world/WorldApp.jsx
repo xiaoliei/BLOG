@@ -67,6 +67,7 @@ export default function WorldApp(){
   const sceneVisible=phase==='world'||phase==='focused';
   const selected=PLACE_MAP[route.place];
   const debug=new URLSearchParams(location.search).has('worldDebug');
+  const inspection=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('view');
   function visit(id){location.hash=id?`home/${id}`:'home';}
   function close(){visit(null);requestAnimationFrame(()=>nav.current?.querySelector(`[data-place="${route.place}"]`)?.focus());}
   useEffect(()=>{
@@ -91,7 +92,7 @@ export default function WorldApp(){
     return()=>{active=false;engine.current?.dispose();engine.current=null;window.removeEventListener('hashchange',hash);window.removeEventListener('keydown',key);motion.removeEventListener('change',reduce);};
   },[]);
   function enter(){if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
-  return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''}`} data-phase={phase}>
+  return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${inspection?'is-inspecting':''}`} data-phase={phase}>
     {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield/><ScreenOverlays/></div>}
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt="卡通像素港镇概念预览：书店、工坊、车站与天文台沿海岸展开"/>}
     <canvas ref={canvas} className="world-canvas" aria-label="像素港镇三维场景，可使用地点目录探索" style={{visibility:fallback?'hidden':'visible'}}/>

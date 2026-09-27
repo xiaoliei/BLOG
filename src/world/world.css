@@ -62,3 +62,4 @@
  .world-label{font-size:9px!important;padding:4px 7px}.place-panel{top:auto;bottom:105px;left:12px;right:12px;width:auto;height:37%;max-height:340px;padding:12px 18px 0;border-radius:10px}.place-panel-top{margin:0}.place-panel h2{font-size:21px}.place-description{margin:4px 0 10px;font-size:11px}.place-panel-footer{padding:8px 0}.has-place .world-camera{bottom:auto;top:90px;left:18px}.world-post{padding:12px 0}.world-error{top:78px;font-size:11px;align-items:flex-start}.world-clock{top:56%}
 }
 @media(prefers-reduced-motion:reduce){.place-panel{animation:none}}
+.world-app.is-inspecting :is(.world-header,.world-intro,.world-camera,.world-nav,.world-help,.world-stats){display:none}

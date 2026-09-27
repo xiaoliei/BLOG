@@ -13,9 +13,9 @@ export function createKit() {
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = color; ctx.fillRect(0, 0, 16, 16);
-      for (let i = 0; i < 40; i++) {
-        ctx.fillStyle = random() > .5 ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.07)';
-        ctx.fillRect(Math.floor(random() * 8) * 2, Math.floor(random() * 8) * 2, 2, 2);
+      for (let i = 0; i < 14; i++) {
+        ctx.fillStyle = random() > .5 ? 'rgba(255,255,255,.055)' : 'rgba(0,0,0,.055)';
+        ctx.fillRect(Math.floor(random() * 4) * 4, Math.floor(random() * 4) * 4, 4, 4);
       }
       map = new THREE.CanvasTexture(canvas); map.magFilter = map.minFilter = THREE.NearestFilter;
       map.colorSpace = THREE.SRGBColorSpace; map.generateMipmaps = false;

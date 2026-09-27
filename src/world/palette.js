@@ -1,0 +1,1 @@
+export const C = { grass: '#7cbe35', grass2: '#6ca92f', dirt: '#bf8e50', sand: '#edd99d', stone: '#8e9b99', path: '#b9c3bd', wood: '#ad753d', trim: '#744c2c', cream: '#f1dbaa', white: '#f0eee0', glass: '#7cbfd1', dark: '#2b4449', leaf: '#519c37' };
