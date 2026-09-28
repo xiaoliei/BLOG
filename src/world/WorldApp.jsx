@@ -112,6 +112,6 @@ export default function WorldApp(){
       {selected&&<PlacePanel key={selected.id} place={selected} onClose={close}/>}
     </>}
     {error&&<div className="world-error" role="status"><span>{error}</span><button onClick={()=>location.reload()}>重新载入</button><button aria-label="关闭提示" onClick={()=>setError(null)}><Icon name="close" width="16" height="16"/></button></div>}
-    {debug&&stats&&<output className="world-stats">{stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · {phase}</output>}
+    {debug&&stats&&<output className="world-stats">{stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · ready {stats.readyMs??'…'} ms · {phase}</output>}
   </main>;
 }

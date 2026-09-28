@@ -4,6 +4,7 @@ import { buildTown } from './town.js';
 import { PLACE_MAP, clamp, smooth, ease } from './places.js';
 
 export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, initialRoute, reducedMotion }) {
+  const bootAt=performance.now();let readyMs=null;
   // Development-only fault injection exercises the same public recovery paths.
   const diagnostics=import.meta.env.DEV&&new URLSearchParams(location.search).has('worldDebug')?new URLSearchParams(location.search):new URLSearchParams();
   if(diagnostics.get('renderer')==='off')throw new Error('WebGL disabled for recovery verification');
@@ -17,7 +18,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   scene.add(new THREE.HemisphereLight('#f0fcff','#83a263',2.25));
   const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-40,75,45);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:180});sun.shadow.normalBias=.055;scene.add(sun);
-  const town = buildTown(scene);
+  const town = buildTown(scene,{compact:innerWidth<700});
   const space = new THREE.Scene();
   space.add(new THREE.HemisphereLight('#c6eeff','#23354d',2.1));
   const earthLight=new THREE.DirectionalLight('#ffffff',3);earthLight.position.set(-4,7,9);space.add(earthLight);
@@ -115,7 +116,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       gltf.scene.traverse(o=>{if(o.isMesh){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{m.metalness=0;m.roughness=1;});}});
       // Upload town textures and shaders before the user can launch the flight.
       const rt=new THREE.WebGLRenderTarget(32,32);homePose();camera.position.copy(desired);camera.lookAt(desiredTarget);renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);rt.dispose();
-      ready=true;if(phase==='loading')emitPhase('idle');else if(phase==='world'||phase==='focused'){moveTo(selected,true);onPhase(phase);}onReady();
+      readyMs=Math.round(performance.now()-bootAt);ready=true;if(phase==='loading')emitPhase('idle');else if(phase==='world'||phase==='focused'){moveTo(selected,true);onPhase(phase);}onReady();
       if(previewFrame!==null){start=clock;emitPhase('entering');}
     }catch(error){if(!disposed)onError('地球资源未能载入。可以直接浏览港镇，或重新载入。',true);}
     finally{clearTimeout(timeout);}
@@ -147,7 +148,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     const cameraState=fly||phase==='entering'?'moving':'settled';
     if(canvas.dataset.cameraState!==cameraState)canvas.dataset.cameraState=cameraState;
     stats.frames++;stats.seconds+=elapsed;
-    if(stats.seconds>2){onStats({fps:Math.round(stats.frames/stats.seconds),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles});stats.frames=0;stats.seconds=0;}
+    if(stats.seconds>2){onStats({fps:Math.round(stats.frames/stats.seconds),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,readyMs});stats.frames=0;stats.seconds=0;}
   }
   if(initialRoute.home){moveTo(selected,true);phase=selected?'focused':'world';}raf=requestAnimationFrame(tick);prepare();
   return {enter,navigate,rotate,reset(){yaw=0;zoom=1;moveTo(null);},setReducedMotion(value){reducedMotion=value;if(value&&phase==='entering'){activeScene=scene;moveTo(null,true);emitPhase('world');}},dispose(){

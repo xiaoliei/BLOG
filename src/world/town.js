@@ -4,7 +4,7 @@ import { createLayout, GRID, RAIL, DOCK, trainAt, buildingAt } from './layout.js
 import { buildBuildings } from './buildings.js';
 import { C } from './palette.js';
 
-export function buildTown(scene) {
+export function buildTown(scene, { compact = false } = {}) {
   const kit=createKit(), layout=createLayout();
   const root=new THREE.Group(); scene.add(root);
   const b=kit.batch(root), box=b.box, animated=[], pickables=[], extraResources=[];
@@ -37,6 +37,20 @@ export function buildTown(scene) {
       }
     }
   }
+  // Projecting buttresses: broad low shelves, offset middle blocks and broken tops.
+  // Each block reaches below sea level, so side views never expose floating rocks.
+  layout.rockClusters.forEach((c,i)=>{
+    const tangent=[-c.dz,c.dx],stone=i%2?'#929f9f':'#a6b0aa';
+    const pieces=[{out:.7,along:0,w:3.4,d:2.8,h:c.height*.3},
+      {out:.55,along:-.65,w:2.3,d:2.35,h:c.height*.66},
+      {out:.45,along:.95,w:1.65,d:1.7,h:c.height*.46},
+      {out:.2,along:-.85,w:1.45,d:1.45,h:c.height*.92}];
+    pieces.forEach((p,j)=>{
+      const x=c.x+c.dx*p.out+tangent[0]*p.along,z=c.z+c.dz*p.out+tangent[1]*p.along;
+      box(x,p.h/2-.18,z,c.dx?p.d:p.w,p.h+.36,c.dz?p.d:p.w,j%2?stone:'#b1bab3');
+      if(j===2)box(x,p.h+.06,z,c.dx?p.d:p.w,.12,c.dz?p.d:p.w,C.grass2);
+    });
+  });
   // Every trunk base is sampled from the exact column that is rendered.
   function tree({x,z,y,type,scale:s}) {
     const shrub=type==='shrub',pink=type==='cherry',birch=type==='birch';
@@ -77,6 +91,7 @@ export function buildTown(scene) {
   for(const c of layout.cells) {
     if(c.kind!=='grass'||c.islet||buildingAt(c.x,c.z,1.3)||Math.abs(c.z-RAIL.z)<2.5&&c.x<RAIL.right+1)continue;
     if(layout.nearestPath(c.x,c.z).distance<1.25)continue;
+    if(compact&&(Math.round(c.x/GRID)+Math.round(c.z/GRID))%2!==0)continue;
     if(kit.random()<.105)flower(c.x,c.height,c.z,['#f4d33b','#faf5d7','#f16861'][Math.floor(kit.random()*3)]);
     else if(kit.random()<.15){for(let i=0;i<3;i++)box(c.x+(i-1)*.15,c.height+.18+i*.04,c.z,.08,.36+i*.08,.16,i%2?'#58a832':'#81c941');}
     else if(kit.random()<.016)box(c.x,c.height+.18,c.z,.5,.36,.45,'#a2aba0');
@@ -173,7 +188,7 @@ export function buildTown(scene) {
     for(const [dx,dz] of [[1,0],[0,1]])if(!layout.at(cell.x+dx*GRID,cell.z+dz*GRID))box(cell.x+dx*.55,-.09,cell.z+dz*.55,dx?.13:.6,.03,dz?.13:.6,'#a0e0ec',false);
   }
   const ripples=new THREE.Group();root.add(ripples);const rb=kit.batch(ripples);
-  for(let i=0;i<480;i++){const x=kit.random()*240-130,z=kit.random()*170-80;if(layout.at(x,z))continue;rb.box(x,-.13,z,kit.random()*2+.4,.02,.14,i%2?'#69cce9':'#46bde3',false);}
+  for(let i=0;i<(compact?180:480);i++){const x=kit.random()*240-130,z=kit.random()*170-80;if(layout.at(x,z))continue;rb.box(x,-.13,z,kit.random()*2+.4,.02,.14,i%2?'#69cce9':'#46bde3',false);}
   rb.flush();animated.push(t=>{ripples.position.x=Math.sin(t*.3)*.12;});
   b.flush();
   const smoke=new THREE.Group();smoke.position.set(22.43,15.9,4.2);root.add(smoke);const sm=kit.batch(smoke);

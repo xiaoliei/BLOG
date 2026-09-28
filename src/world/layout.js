@@ -112,6 +112,21 @@ export function createLayout(){
     }
     if(!changed)break;
   }
+  const rockClusters=[];
+  const shoreFaces=[];
+  for(const c of cells)if(c.kind==='grass'&&c.height>2.5&&nearestPath(c.x,c.z).distance>2.4){
+    for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const n=at(c.x+dx*GRID,c.z+dz*GRID);
+      if(!n||n.kind==='sand')shoreFaces.push({...c,dx,dz});
+    }
+  }
+  // A few deliberately large rock groups interrupt the small voxel shoreline.
+  for(const [hx,hz] of [[-6,-22],[-7,-15],[-3,-7],[3,-18],[28,-20],[28,-10],[28,2],[25,14],[15,14],[-17,30],[-25,20],[-28,2]]){
+    const faces=shoreFaces.filter(c=>!(c.x<RAIL.right+3&&Math.abs(c.z-RAIL.z)<3));
+    const face=faces.reduce((best,c)=>!best||Math.hypot(c.x-hx,c.z-hz)<Math.hypot(best.x-hx,best.z-hz)?c:best,null);
+    if(!face||rockClusters.some(c=>Math.hypot(c.x-face.x,c.z-face.z)<4))continue;
+    rockClusters.push(face);
+  }
   const trees=[];
   function plant(x,z,type='oak',scale=1){
     x=snap(x);z=snap(z);const cell=at(x,z);if(!cell||cell.kind!=='grass')return false;
@@ -129,5 +144,5 @@ export function createLayout(){
     plant(x,z,i%7===0?'birch':'shrub',.45+(i%3)*.1);
   }
   for(const isle of ISLETS)if(isle.tree){const cell=at(isle.x,isle.z);if(cell)trees.push({x:snap(isle.x),z:snap(isle.z),y:cell.height,type:'oak',scale:.9});}
-  return {cells,at,trees,nearestPath,samples};
+  return {cells,at,trees,nearestPath,samples,rockClusters};
 }
