@@ -136,7 +136,9 @@ export function createLayout(){
   }
   // Reference's three lush garden zones, with a large cherry tree west of the bookshop.
   plant(-25,13,'cherry',1.45);
-  const authored=[[-23,-23],[-23,-15],[-24,-8],[-25,-1],[-22,3],[-15,-9],[-11,-13],[-9,-3],[-11,3],[-24,24],[-18,26],[-9,25],[-11,21],[-23,20],[6,-17],[8,-9],[7,-3],[17,-12],[22,-9],[24,-2],[24,13],[25,-22],[11,-30],[21,-30],[-24,-29],[-10,-30]];
+  // Keep the east-slope tree on the upper terrace. At x=6 it sat on the
+  // lower cliff shelf, where the upper ledge hid its trunk from the town view.
+  const authored=[[-23,-23],[-23,-15],[-24,-8],[-25,-1],[-22,3],[-15,-9],[-11,-13],[-9,-3],[-11,3],[-24,24],[-18,26],[-9,25],[-11,21],[-23,20],[9,-17],[8,-9],[7,-3],[17,-12],[22,-9],[24,-2],[24,13],[25,-22],[11,-30],[21,-30],[-24,-29],[-10,-30]];
   authored.forEach(([x,z],i)=>plant(x,z,i%6===2?'birch':'oak',.85+(i%3)*.12));
   // Small shrubs fill the gardens without hiding building silhouettes or paths.
   for(let i=0;i<105;i++){
