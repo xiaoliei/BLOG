@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLACES, readWorldRoute, smooth, ease } from '../src/world/places.js';
+import { PLACES, placeForModule, readWorldRoute, smooth, ease } from '../src/world/places.js';
 import { MODULES } from '../src/config/blog.js';
 import { createLayout, GRID, RAIL, DOCK, TRAIN_HALF_LENGTH, trainAt } from '../src/world/layout.js';
 
@@ -21,6 +21,10 @@ test('landing, direct home, unknown destination and malformed routes are determi
   assert.deepEqual(readWorldRoute('#home/unknown'),{home:true,place:null});
   assert.deepEqual(readWorldRoute('#home/a/b'),{home:false,place:null});
   assert.deepEqual(readWorldRoute('#homepage'),{home:false,place:null});
+  assert.deepEqual(readWorldRoute('#post/hello-world'),{home:true,place:null,post:'hello-world'});
+  assert.deepEqual(readWorldRoute('#post/a/b'),{home:false,place:null});
+  for(const place of PLACES)for(const module of place.modules)assert.equal(placeForModule(module)?.id,place.id);
+  assert.equal(placeForModule('unknown'),null);
 });
 test('camera interpolation stays bounded and monotonic for frame delays and endpoints',()=>{
   for(const fn of [smooth,ease]){

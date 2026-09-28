@@ -7,7 +7,12 @@ export const PLACES = [
   { id: 'observatory', name: '山坡天文台', short: '天文台', color: '#4865a3', position: [17, 12, -23], size: [7, 9, 7], modules: ['about'], description: '在世界的高处，认识这座小镇的建造者。', detail: '关于小礼' },
 ];
 export const PLACE_MAP = Object.fromEntries(PLACES.map(p => [p.id, p]));
+export function placeForModule(moduleSlug) {
+  return PLACES.find(place => place.modules.includes(moduleSlug)) || null;
+}
 export function readWorldRoute(hash) {
+  const post = /^#post\/([a-z0-9-]+)$/.exec(hash);
+  if (post) return { home: true, place: null, post: post[1] };
   const match = /^#home(?:\/([^/]+))?$/.exec(hash);
   return { home: Boolean(match), place: match && PLACE_MAP[match[1]] ? match[1] : null };
 }

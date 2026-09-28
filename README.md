@@ -1,6 +1,6 @@
 # 小礼工坊 — 个人博客（React / Vite / Cloudflare Workers 全栈）
 
-启动页保留星空、方形地球和时钟。点击进入后，同一 Three.js 渲染器驱动地球放大、穿过方块云层和港镇落地。港镇有书店、工坊、河岸小屋、旅行车站和山坡天文台，点击建筑自动聚焦并阅读文章摘要。前台采用用户确认的明亮卡通像素风。`#home` 可直接打开世界，`#home/<地点>` 可直达对应地点。`prefers-reduced-motion` 会跳过飞行。WebGL 不可用时提供静态概念图与地点目录。`design/concepts/harbor-panorama-v2-cartoon.png` 是概念参考，不是网页截图。`npm run build` 只构建，不自动部署。
+启动页保留星空、方形地球和时钟。点击进入后，同一 Three.js 渲染器驱动地球放大、穿过方块云层和港镇落地。港镇有书店、工坊、河岸小屋、旅行车站和山坡天文台，点击建筑自动聚焦并浏览文章摘要，再进入纸页阅读正文与留言。前台采用用户确认的明亮卡通像素风。`#home` 可直接打开世界，`#home/<地点>` 可直达对应地点，`#post/<slug>` 可直达正文。`prefers-reduced-motion` 会跳过飞行。WebGL 不可用时提供静态概念图与地点目录。`design/concepts/harbor-panorama-v2-cartoon.png` 是概念参考，不是网页截图。`npm run build` 只构建，不自动部署。
 
 内容（栏目/文章/评论）存储在 Cloudflare D1，由 `/admin` 网页后台
 （Vditor 编辑器）管理；前台运行时经 `/api/public/*` 拉取。
@@ -105,16 +105,17 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 
 - **启动页**：保留地球模型、星空、时钟与扫描线；点击、滚轮或键盘进入。加载场景时显示等待提示。
 - **入场**：同一 WebGL 画布与动画时钟，地球放大、方块云遮挡尺度交接、镜头落到港镇全景，约 4.2 秒。
-- **港镇**：五个可点击地点、鼠标选取、地点目录、返回全景和返回星球。桌面为侧边面板，手机为底部面板。文章从现有 API 获取；API 不可用时明确标注静态示例摘要并允许重试。
-- **兼容性**：直接链接 `#home` / `#home/books` / `#home/workshop` / `#home/cottage` / `#home/station` / `#home/observatory`；浏览器返回、键盘 Esc、减少动态效果。WebGL 失败展示静态港镇与可用目录。
+- **港镇与阅读**：五个可点击地点、地点目录、返回全景和返回星球。桌面地点摘要在侧边面板，手机在底部面板；正文在覆盖港镇的纸页中显示，包含相邻文章、已审核留言及投稿表单。API 不可用时明确标注静态示例摘要并允许重试，示例摘要不提供正文入口。
+- **兼容性**：直接链接 `#home` / `#home/bookshop` / `#home/workshop` / `#home/cottage` / `#home/station` / `#home/observatory` / `#post/<slug>`；浏览器返回、键盘 Esc、减少动态效果。WebGL 失败展示静态港镇与可用目录。
 - **管理**：`/admin` 独立加载，文章、栏目、评论与站点设置以及 Worker 路由、D1 和 R2 结构继续保留。
 
 ## 主要文件
 
-- `src/components/world/WorldApp.jsx`：前台界面、地点内容与路由
-- `src/components/world/createWorld.js`：单渲染器、相机、转场与点击
-- `src/components/world/buildTown.js`：体素港镇与动态道具
-- `src/components/world/places.js`：地点、栏目和聚焦镜头配置
+- `src/world/WorldApp.jsx`：前台界面、地点内容与路由
+- `src/world/ArticleReader.jsx`：正文、相邻文章与留言
+- `src/world/engine.js`：单渲染器、相机、转场与点击
+- `src/world/town.js`：体素港镇与动态道具
+- `src/world/places.js`：地点、栏目和聚焦镜头配置
 - `src/components/landing/`：星空、时钟及启动页装饰组件
 - `src/lib/api.js`：公开内容 API 与静态示例回退
 - `src/admin/`、`worker/`、`drizzle/`：保留的后台和数据服务
