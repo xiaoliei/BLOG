@@ -22,6 +22,8 @@ npm run deploy        # 构建并部署到 Cloudflare Workers
 
 ## 架构
 
+港湾运行时加载独立格子存档，支持半砖、楼梯、竖半砖、柱子、栅栏、多格门与自定义模型。修改场景后运行 `npm run world:generate`，使用 `npm run world:validate` 和 `npm run test:world` 验证。坐标、模型扩展与存档说明见 [港湾格子世界设计](design/grid-world.md)。
+
 ```
 浏览器
   ├─ /                前台 SPA（启动页 → 3D 像素港镇，懒加载）

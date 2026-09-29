@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PLACES, placeForModule, readWorldRoute, smooth, ease } from '../src/world/places.js';
+import { HARBOR_PLACES } from '../src/world/harbor-layout.js';
 import { MODULES } from '../src/config/blog.js';
 import { createLayout, GRID, RAIL, DOCK, TRAIN_HALF_LENGTH, trainAt } from '../src/world/layout.js';
 
@@ -11,7 +12,7 @@ test('all five places have distinct routes, stable spatial positions and existin
   assert.equal(new Set(PLACES.map(p=>p.id)).size,5);
   for(const p of PLACES){
     assert.deepEqual(readWorldRoute(`#home/${p.id}`),{home:true,place:p.id});
-    assert.equal(p.position.length,3);assert.ok(p.position.every(Number.isFinite));
+    const spatial=HARBOR_PLACES.find(s=>s.id===p.id);assert.equal(spatial.position.length,3);assert.ok(spatial.position.every(Number.isFinite));
     for(const module of p.modules)assert.ok(MODULES.some(m=>m.id===module),`missing category: ${module}`);
   }
 });
@@ -40,11 +41,11 @@ test('trees root on rendered land, and never in the track loading gauge or build
     const cell=layout.at(tree.x,tree.z);
     assert.ok(cell,JSON.stringify(tree));assert.equal(cell.kind,'grass');assert.equal(tree.y,cell.height);
     if(tree.x<RAIL.right+2)assert.ok(Math.abs(tree.z-RAIL.z)>RAIL.halfWidth+2*tree.scale, 'tree canopy enters railway');
-    for(const place of PLACES)assert.ok(Math.abs(tree.x-place.position[0])>place.size[0]/2||Math.abs(tree.z-place.position[2])>place.size[2]/2,'tree intersects building');
+    for(const place of HARBOR_PLACES)assert.ok(Math.abs(tree.x-place.position[0])>place.size[0]/2||Math.abs(tree.z-place.position[2])>place.size[2]/2,'tree intersects building');
   }
 });
 test('all building foundations are supported by level land across their complete footprints',()=>{
-  for(const place of PLACES){
+  for(const place of HARBOR_PLACES){
     for(let x=place.position[0]-place.size[0]/2;x<=place.position[0]+place.size[0]/2;x+=GRID/2)
       for(let z=place.position[2]-place.size[2]/2;z<=place.position[2]+place.size[2]/2;z+=GRID/2){
         const cell=layout.at(x,z);assert.ok(cell,place.id+' hangs over water');assert.equal(cell.height,place.position[1],place.id+' foundation is uneven');
@@ -58,7 +59,7 @@ test('entire three-car train remains on rails, clears terrain and buildings, sto
     for(let x=left;x<right;x+=.5)for(const z of [RAIL.z-RAIL.halfWidth,RAIL.z,RAIL.z+RAIL.halfWidth]){
       const cell=layout.at(x,z);assert.ok(!cell||cell.height<RAIL.top-.3,'train intersects terrain');
     }
-    for(const place of PLACES){
+    for(const place of HARBOR_PLACES){
       // Extra half unit includes roof overhangs, not just wall footprints.
       assert.ok(right<place.position[0]-place.size[0]/2-.5||left>place.position[0]+place.size[0]/2+.5||Math.abs(RAIL.z-place.position[2])>place.size[2]/2+.5+RAIL.halfWidth,'train intersects '+place.id);
     }

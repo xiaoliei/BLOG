@@ -1,4 +1,5 @@
-import { PLACES, clamp, smooth } from './places.js';
+import { clamp, smooth } from './places.js';
+import { HARBOR_PLACES as PLACES } from './harbor-layout.js';
 
 // Measured against harbor-top-layout-v1: north at -Z, harbour mouth at +Z.
 // All renderers, vegetation and clearance tests consume this one terrain model.

@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildTown } from './town.js';
-import { PLACE_MAP, clamp, smooth, ease } from './places.js';
+import { PLACES, clamp, smooth, ease } from './places.js';
+import { parseWorld } from './data.js';
+import { decodeMesh, sourceDigest } from './mesh-cache.js';
 
 export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, initialRoute, reducedMotion }) {
   const bootAt=performance.now();let readyMs=null;
@@ -13,12 +15,12 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   renderer.setPixelRatio(Math.min(devicePixelRatio, innerWidth < 700 ? 1.35 : 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = innerWidth >= 700;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();scene.background=new THREE.Color('#82dafa');scene.fog=new THREE.Fog('#82dafa',140,300);
   scene.add(new THREE.HemisphereLight('#f0fcff','#83a263',2.25));
   const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-40,75,45);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:180});sun.shadow.normalBias=.055;scene.add(sun);
-  const town = buildTown(scene,{compact:innerWidth<700});
+  let town = null;
   const space = new THREE.Scene();
   space.add(new THREE.HemisphereLight('#c6eeff','#23354d',2.1));
   const earthLight=new THREE.DirectionalLight('#ffffff',3);earthLight.position.set(-4,7,9);space.add(earthLight);
@@ -55,11 +57,13 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     desiredTarget.set(0,6,0);
   }
   function placePose(id) {
-    const p=PLACE_MAP[id]; if(!p){homePose();return;}
+    const p=town?.placeMap[id]; if(!p){homePose();return;}
     const [x,y,z]=p.position; const mobile=aspect<.85;
-    desired.set(x+(mobile?17:15),y+(mobile?23:17),z+(mobile?49:29));
+    const offset=mobile?p.camera?.mobileOffset:p.camera?.desktopOffset;
+    const focus=mobile?p.camera?.mobileTarget:p.camera?.desktopTarget;
+    desired.set(x+(offset?.[0]??(mobile?17:15)),y+(offset?.[1]??(mobile?23:17)),z+(offset?.[2]??(mobile?49:29)));
     // Leave the right third (desktop) or bottom third (phone) for real DOM content.
-    desiredTarget.set(x+(mobile?0:6),y+(mobile?1:4),z);
+    desiredTarget.set(x+(focus?.[0]??(mobile?0:6)),y+(focus?.[1]??(mobile?1:4)),z+(focus?.[2]??0));
   }
   function applyPose(){if(selected)placePose(selected);else homePose();}
   function moveTo(id,instant=false) {
@@ -91,7 +95,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   function rotate(delta){if(phase!=='world')return;yaw=clamp(yaw+delta,-1.1,1.1);moveTo(null);}
   function wheel(event){if(phase==='idle'){if(Math.abs(event.deltaY)>4)enter();return;}if(phase!=='world')return;event.preventDefault();zoom=clamp(zoom+event.deltaY*.0006,.75,1.3);moveTo(null);}
   const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
-  function intersect(e){const rect=canvas.getBoundingClientRect();ndc.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);return ray.intersectObjects(town.pickables,false)[0]?.object.userData.place;}
+  function intersect(e){if(!town)return null;const rect=canvas.getBoundingClientRect();ndc.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);return town.pick(ray.intersectObjects(town.pickables,false)[0])?.place;}
   function down(e){if(e.button!==0)return;pointer={x:e.clientX,y:e.clientY,last:e.clientX,moved:false};canvas.setPointerCapture(e.pointerId);}
   function move(e){
     if(pointer){if(Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>8)pointer.moved=true;if(pointer.moved&&phase==='world'){yaw=clamp(yaw-(e.clientX-pointer.last)*.004,-1.1,1.1);moveTo(null,true);}pointer.last=e.clientX;}
@@ -104,6 +108,20 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;};document.addEventListener('visibilitychange',onVisibility);
   const loadAbort=new AbortController();const timeout=setTimeout(()=>loadAbort.abort(),12000);
   async function prepare(){
+    try{
+      const meshRequest=fetch(`${import.meta.env.BASE_URL}world/harbor.mesh.json`,{signal:loadAbort.signal}).then(r=>r.ok?r.text():null).catch(()=>null);
+      const path=diagnostics.get('world')==='missing'?'missing.world.json':'harbor.world.json';
+      const response=await fetch(`${import.meta.env.BASE_URL}world/${path}`,{signal:loadAbort.signal});
+      if(!response.ok)throw new Error(`World HTTP ${response.status}`);
+      const text=await response.text();if(disposed)return;
+      const world=parseWorld(text);if(disposed)return;
+      if(world.places.length!==PLACES.length||PLACES.some(p=>!world.places.some(s=>s.id===p.id)))throw new Error('World/blog place mismatch');
+      let preparedMesh=null;
+      try{const meshText=await meshRequest;if(meshText)preparedMesh=decodeMesh(meshText,await sourceDigest(text));}catch{/* A stale/missing derived cache is rebuilt from the validated save. */}
+      if(disposed)return;
+      town=buildTown(scene,world,{compact:innerWidth<700,preparedMesh});
+      if(phase==='world'||phase==='focused')moveTo(selected,true);
+    }catch(error){clearTimeout(timeout);if(!disposed)onError('港湾存档未能载入，已切换为静态预览。地点目录仍可使用。');return;}
     try{
       if(diagnostics.get('loadDelay'))await new Promise(resolve=>setTimeout(resolve,clamp(Number(diagnostics.get('loadDelay')),0,5000)));
       if(disposed)return;
@@ -140,11 +158,11 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       if(fly){const a=ease((clock-fly.at)/fly.duration);camera.position.lerpVectors(moveFrom,fly.to,a);target.lerpVectors(targetFrom,fly.target,a);if(a>=1)fly=null;}
       camera.lookAt(target);
     }
-    if(activeScene===scene)town.update(reducedMotion?0:clock, diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
+    if(activeScene===scene)town?.update(reducedMotion?0:clock, diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
     renderer.setClearColor(activeScene===space?0x000000:0x82dafa,activeScene===space?0:1);
     renderer.render(activeScene,camera);
     if(cover>0){curtainLeft.position.x=-2.5*(1-cover);curtainRight.position.x=2.5*(1-cover);renderer.autoClear=false;renderer.clearDepth();renderer.render(curtainScene,curtainCamera);renderer.autoClear=true;}
-    if((phase==='world'||phase==='focused')&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(PLACE_MAP).map(p=>{const v=new THREE.Vector3(p.position[0],p.position[1]+p.size[1]+.6,p.position[2]).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
+    if(town&&(phase==='world'||phase==='focused')&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(town.placeMap).map(p=>{const v=new THREE.Vector3(...p.label).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
     const cameraState=fly||phase==='entering'?'moving':'settled';
     if(canvas.dataset.cameraState!==cameraState)canvas.dataset.cameraState=cameraState;
     stats.frames++;stats.seconds+=elapsed;
@@ -154,6 +172,6 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   return {enter,navigate,rotate,reset(){yaw=0;zoom=1;moveTo(null);},setReducedMotion(value){reducedMotion=value;if(value&&phase==='entering'){activeScene=scene;moveTo(null,true);emitPhase('world');}},dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
     canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
-    town.dispose();space.traverse(o=>{o.geometry?.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{m?.map?.dispose();m?.dispose();});});cloudGeometry.dispose();cloudMaterial.dispose();sun.shadow.map?.dispose();renderer.dispose();
+    town?.dispose();space.traverse(o=>{o.geometry?.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{m?.map?.dispose();m?.dispose();});});cloudGeometry.dispose();cloudMaterial.dispose();sun.shadow.map?.dispose();renderer.dispose();
   }};
 }
