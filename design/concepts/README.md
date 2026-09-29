@@ -1,4 +1,4 @@
-# 小礼港镇 · 已确认的概念
+# 像素域 · 已确认的概念
 
 用户已确认 `harbor-panorama-v2-cartoon.png`：明亮白昼、卡通方块、粗颗粒像素纹理、鲜绿草地、蓝色水面、平直方块云。
 
@@ -8,7 +8,7 @@ v1 的写实黄昏效果已被替代，不作为实现目标。实际场景以 T
 
 以用户附图为风格参考：LARGE simple block units, hard cubic silhouettes, bright saturated lime grass, sky blue water, nearest-neighbor low-resolution pixel textures, sunny cyan sky, rectangular white clouds, simple clean game lighting. Avoid realistic stonework, weathered materials, cinematic sunset, raytraced reflections, depth of field and dense microdetail.
 
-构图：斜俯视海岸港镇；近景绿色屋顶书店、中央红屋顶小屋、右侧橙色工坊、左后蓝屋顶车站与黄色列车、右后山坡蓝色天文台；樱花树、码头、帆船、花草和街猫。无商标、无游戏主角、无 UI。
+构图：斜俯视海岸像素域；近景绿色屋顶书店、中央红屋顶小屋、右侧橙色工坊、左后蓝屋顶车站与黄色列车、右后山坡蓝色天文台；樱花树、码头、帆船、花草和街猫。无商标、无游戏主角、无 UI。
 
 ## 动画实现分镜
 
@@ -16,7 +16,7 @@ v1 的写实黄昏效果已被替代，不作为实现目标。实际场景以 T
 
 0.35–2.1 秒：地球放大，逐渐转向落点，近景方块云进入。
 
-2.1–3.2 秒：云层遮住尺度交接，镜头从高处接近港镇。
+2.1–3.2 秒：云层遮住尺度交接，镜头从高处接近像素域。
 
 3.2–4.2 秒：云层离开，镜头减速停在全景位，地点标签与目录出现。
 

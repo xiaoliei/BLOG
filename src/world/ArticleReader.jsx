@@ -65,7 +65,7 @@ function Comments({ slug }) {
   </section>;
 }
 
-export default function ArticleReader({ slug, onResolvedPlace, onReturn, onNavigatePost }) {
+export default function ArticleReader({ slug, siteName, islandName, onResolvedPlace, onReturn, onNavigatePost }) {
   const [article, setArticle] = useState({ status: 'loading', post: null });
   const [retry, setRetry] = useState(0);
   const [neighbors, setNeighbors] = useState([]);
@@ -119,19 +119,19 @@ export default function ArticleReader({ slug, onResolvedPlace, onReturn, onNavig
     <div className="reader-scroll" ref={scrollRef}>
       <div className="reader-shell">
         <nav className="reader-top" aria-label="文章导航">
-          <button type="button" ref={closeRef} onClick={() => onReturn(place?.id || null)}>← 返回{place?.name || '港镇'}</button>
-          <span>小礼工坊 <span aria-hidden="true">/</span> 港镇手记</span>
+          <button type="button" ref={closeRef} onClick={() => onReturn(place?.id || null)}>← 返回{place?.name || islandName}</button>
+          <span>{siteName} <span aria-hidden="true">/</span> {islandName}手记</span>
         </nav>
         {article.status === 'loading' && <div className="reader-state" role="status"><span className="reader-cube" aria-hidden="true" />正在展开这篇故事…</div>}
         {article.status !== 'ready' && article.status !== 'loading' && <div className="reader-state" role="status">
           <h1>{article.status === 'missing' ? '这篇文章暂时找不到' : article.status === 'unavailable' ? '示例文章暂无正文' : '正文暂时无法载入'}</h1>
           <p>{article.status === 'missing' ? '文章可能已下线，或链接地址有误。' : article.status === 'unavailable' ? '当前使用的静态示例只有摘要。连接内容服务后可阅读完整文章。' : '网络似乎开了小差，请稍后重试。'}</p>
           {article.status === 'error' && <button type="button" onClick={() => setRetry(n => n + 1)}>重新载入</button>}
-          <button type="button" onClick={() => onReturn(null)}>返回港镇</button>
+          <button type="button" onClick={() => onReturn(null)}>返回{islandName}</button>
         </div>}
         {article.status === 'ready' && <>
           <header className="reader-header" style={{ '--reader-accent': place?.color || '#318047' }}>
-            <p className="reader-kicker"><span className="reader-kicker-square" aria-hidden="true" />{article.post.moduleTitle || place?.name || '港镇手记'}</p>
+            <p className="reader-kicker"><span className="reader-kicker-square" aria-hidden="true" />{article.post.moduleTitle || place?.name || `${islandName}手记`}</p>
             <h1 ref={headingRef} tabIndex={-1}>{article.post.title}</h1>
             <div className="reader-meta"><time dateTime={article.post.date}>{article.post.date}</time><span>约 {article.post.readTime || 1} 分钟</span>{Array.isArray(article.post.tags) && article.post.tags.length > 0 && <span>{article.post.tags.join(' · ')}</span>}</div>
             {article.post.excerpt && <p className="reader-deck">{article.post.excerpt}</p>}
@@ -141,7 +141,7 @@ export default function ArticleReader({ slug, onResolvedPlace, onReturn, onNavig
           <nav className="reader-neighbors" aria-label="继续阅读">
             {previous && <a href={`#post/${previous.slug}`} onClick={event => { event.preventDefault(); onNavigatePost(previous.slug, place?.id); }}><small>上一篇</small><strong>{previous.title}</strong></a>}
             {next && <a href={`#post/${next.slug}`} onClick={event => { event.preventDefault(); onNavigatePost(next.slug, place?.id); }}><small>下一篇</small><strong>{next.title}</strong></a>}
-            <button type="button" onClick={() => onReturn(place?.id || null)}>返回{place?.name || '港镇'} →</button>
+            <button type="button" onClick={() => onReturn(place?.id || null)}>返回{place?.name || islandName} →</button>
           </nav>
           <Comments key={slug} slug={slug} />
         </>}

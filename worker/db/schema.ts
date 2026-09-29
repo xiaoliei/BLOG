@@ -66,6 +66,9 @@ export const siteSettings = sqliteTable("site_settings", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	name: text("name").notNull(),
 	tagline: text("tagline").notNull().default(""),
+	/* 世界（岛屿） */
+	islandName: text("island_name").notNull().default("像素域"),
+	islandTagline: text("island_tagline").notNull().default("文字、代码，和一座小小的世界。"),
 	/** 开始年份（四位整数） */
 	since: integer("since").notNull(),
 	description: text("description").notNull().default(""),

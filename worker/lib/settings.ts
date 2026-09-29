@@ -19,6 +19,8 @@ export function settingsFromRow(row?: SiteSettingsRow): SiteSettingsWithMeta {
 	return {
 		name: row.name,
 		tagline: row.tagline,
+		islandName: row.islandName,
+		islandTagline: row.islandTagline,
 		since: row.since,
 		description: row.description,
 		author: row.author,
@@ -42,6 +44,8 @@ export function settingsValues(input: Partial<SiteSettings>): SiteSettings {
 	return {
 		name: input.name ?? DEFAULT_SETTINGS.name,
 		tagline: input.tagline ?? DEFAULT_SETTINGS.tagline,
+		islandName: input.islandName ?? DEFAULT_SETTINGS.islandName,
+		islandTagline: input.islandTagline ?? DEFAULT_SETTINGS.islandTagline,
 		since: input.since ?? DEFAULT_SETTINGS.since,
 		description: input.description ?? DEFAULT_SETTINGS.description,
 		author: input.author ?? DEFAULT_SETTINGS.author,

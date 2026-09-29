@@ -5,7 +5,7 @@ import { PLACES, clamp, smooth, ease } from './places.js';
 import { parseWorld } from './data.js';
 import { decodeMesh, sourceDigest } from './mesh-cache.js';
 
-export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, initialRoute, reducedMotion }) {
+export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, initialRoute, reducedMotion, islandNameRef }) {
   const bootAt=performance.now();let readyMs=null;
   // Development-only fault injection exercises the same public recovery paths.
   const diagnostics=import.meta.env.DEV&&new URLSearchParams(location.search).has('worldDebug')?new URLSearchParams(location.search):new URLSearchParams();
@@ -121,7 +121,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       if(disposed)return;
       town=buildTown(scene,world,{compact:innerWidth<700,preparedMesh});
       if(phase==='world'||phase==='focused')moveTo(selected,true);
-    }catch(error){clearTimeout(timeout);if(!disposed)onError('港湾存档未能载入，已切换为静态预览。地点目录仍可使用。');return;}
+    }catch(error){clearTimeout(timeout);if(!disposed)onError(`${islandNameRef.current}的存档未能载入，已切换为静态预览。地点目录仍可使用。`);return;}
     try{
       if(diagnostics.get('loadDelay'))await new Promise(resolve=>setTimeout(resolve,clamp(Number(diagnostics.get('loadDelay')),0,5000)));
       if(disposed)return;
@@ -136,7 +136,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       const rt=new THREE.WebGLRenderTarget(32,32);homePose();camera.position.copy(desired);camera.lookAt(desiredTarget);renderer.setRenderTarget(rt);renderer.render(scene,camera);renderer.setRenderTarget(null);rt.dispose();
       readyMs=Math.round(performance.now()-bootAt);ready=true;if(phase==='loading')emitPhase('idle');else if(phase==='world'||phase==='focused'){moveTo(selected,true);onPhase(phase);}onReady();
       if(previewFrame!==null){start=clock;emitPhase('entering');}
-    }catch(error){if(!disposed)onError('地球资源未能载入。可以直接浏览港镇，或重新载入。',true);}
+    }catch(error){if(!disposed)onError(`地球资源未能载入。可以直接浏览${islandNameRef.current}，或重新载入。`,true);}
     finally{clearTimeout(timeout);}
   }
   function tick(now){

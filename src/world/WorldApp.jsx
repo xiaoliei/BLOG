@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { createWorldEngine } from './engine.js';
 import { PLACES, PLACE_MAP, readWorldRoute } from './places.js';
-import { getPosts, getStaticPosts } from '../lib/api.js';
+import { getPosts, getStaticPosts, getSettings, getStaticSettings } from '../lib/api.js';
 import { useSystemClock } from '../hooks/useSystemClock.js';
 import LandingClock from '../components/landing/LandingClock.jsx';
 import Starfield from '../components/landing/Starfield.jsx';
@@ -26,7 +26,7 @@ function Icon({ name, ...props }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{paths[name]||paths.home}</svg>;
 }
 
-function PlacePanel({ place, onClose, onOpenPost, onScroll, restoreScroll, returnPostSlug, onFocusRestored }) {
+function PlacePanel({ place, islandName, onClose, onOpenPost, onScroll, restoreScroll, returnPostSlug, onFocusRestored }) {
   const [content,setContent]=useState({status:'loading',posts:[]});
   const [retry,setRetry]=useState(0);
   const heading=useRef(null),list=useRef(null);
@@ -63,7 +63,7 @@ function PlacePanel({ place, onClose, onOpenPost, onScroll, restoreScroll, retur
       {content.status==='ready'&&!content.posts.length&&<p className="content-message">这里的故事还在准备中，先去别处逛逛吧。</p>}
       {content.posts.map((post,i)=><article className="world-post" key={post.slug||`${post.title}-${i}`}><div className="post-meta"><time dateTime={post.date}>{post.date}</time><span>{post.moduleTitle}</span></div><h3>{post.title}</h3><p>{post.excerpt}</p>{content.status==='ready'&&post.slug&&<a href={`#post/${post.slug}`} data-post={post.slug} onClick={event=>{event.preventDefault();onOpenPost(post.slug,place.id);}}>阅读正文 <span aria-hidden="true">→</span></a>}</article>)}
     </div>
-    <footer className="place-panel-footer"><span>港镇手记 · 文章摘要</span><button onClick={onClose}>继续逛逛 <Icon name="right" width="15" height="15"/></button></footer>
+    <footer className="place-panel-footer"><span>{islandName}手记 · 文章摘要</span><button onClick={onClose}>继续逛逛 <Icon name="right" width="15" height="15"/></button></footer>
   </aside>;
 }
 
@@ -76,6 +76,9 @@ export default function WorldApp(){
   const canvas=useRef(null),engine=useRef(null),nav=useRef(null);
   const placeScroll=useRef(new Map()),returnPostSlug=useRef(null),routeRef=useRef(initialRoute.current),articlePlaceRef=useRef(null);
   const [focusPostSlug,setFocusPostSlug]=useState(null);
+  const [settings,setSettings]=useState(getStaticSettings);
+  const islandNameRef=useRef(settings.islandName);
+  islandNameRef.current=settings.islandName;
   const clock=useSystemClock();
   const sceneVisible=phase==='world'||phase==='focused';
   const selected=PLACE_MAP[route.place];
@@ -107,11 +110,17 @@ export default function WorldApp(){
   const resolvedArticlePlace=useCallback(id=>{articlePlaceRef.current=id;if(id)engine.current?.navigate({home:true,place:id});},[]);
   const focusRestored=useCallback(()=>{returnPostSlug.current=null;setFocusPostSlug(null);},[]);
   useEffect(()=>{
+    let alive=true;
+    getSettings().then(data=>{if(alive&&data)setSettings(data);}).catch(()=>{});
+    return()=>{alive=false;};
+  },[]);
+  useEffect(()=>{
     let active=true;
     const motion=matchMedia('(prefers-reduced-motion: reduce)');
     try{
       engine.current=createWorldEngine(canvas.current,{
         initialRoute:initialRoute.current,reducedMotion:motion.matches,
+        islandNameRef,
         onReady:()=>{if(active)setReady(true);},
         onPhase:next=>{if(!active)return;setPhase(next);if(next==='world'&&!readWorldRoute(location.hash).home)location.hash='home';},
         onSelect:id=>visit(id),onLabels:l=>{if(active)setLabels(l);},onStats:s=>{if(active)setStats(s);},
@@ -131,23 +140,23 @@ export default function WorldApp(){
   function enter(){if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
   return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''}`} data-phase={phase}>
     {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield/><ScreenOverlays/></div>}
-    {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt="卡通像素港镇概念预览：书店、工坊、车站与天文台沿海岸展开"/>}
-    <canvas ref={canvas} className="world-canvas" aria-label="像素港镇三维场景，可使用地点目录探索" aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
+    {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
+    <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
     {!sceneVisible&&<div className={`landing-root world-landing-ui ${phase==='entering'?'is-entering':''}`}>
       <Moon/>
       <div className="world-clock"><LandingClock time={clock.time} date={clock.date}/></div>
-      {phase!=='entering'&&<button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?'直接浏览港镇':'点击进入像素世界'}<span aria-hidden="true">↓</span></button>}
+      {phase!=='entering'&&<button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?`直接浏览${settings.islandName}`:'点击进入像素世界'}<span aria-hidden="true">↓</span></button>}
     </div>}
     {sceneVisible&&<div className="world-chrome" inert={!!route.post} aria-hidden={route.post?'true':undefined}>
-      <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label="小礼工坊，回到全景"><Icon name="home" width="30" height="30"/><span><strong>小礼工坊</strong><small>文字、代码，和一座小小的世界。</small></span></a><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><Icon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
-      {!selected&&<div className="world-intro"><h1>今天，去哪里逛逛？</h1><p>点击一栋建筑，发现里面的故事。</p></div>}
+      <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label={`${settings.name}，回到全景`}><Icon name="home" width="30" height="30"/><span><strong>{settings.name}</strong><small>{settings.islandTagline}</small></span></a><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><Icon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
+      {!selected&&<div className="world-intro"><h1>欢迎来到{settings.islandName}</h1><p>今天，去哪里逛逛？点击一栋建筑，发现里面的故事。</p></div>}
       {!fallback&&!selected&&<div className="world-labels">{labels.map(label=><button key={label.id} className="world-label" style={{left:label.x,top:label.y,display:label.visible?'':'none'}} onClick={()=>visit(label.id)} tabIndex={-1} aria-hidden="true">{PLACE_MAP[label.id].short}<span/></button>)}</div>}
       {!fallback&&<div className="world-camera" aria-label="镜头控制"><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(-.25)} aria-label="向左环视"><Icon name="left"/></button><button className="world-icon-button" onClick={()=>{if(selected)close();else engine.current?.reset();}} aria-label="回到全景"><Icon name="home"/></button><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(.25)} aria-label="向右环视"><Icon name="right"/></button></div>}
-      <nav className="world-nav" ref={nav} aria-label="港镇地点目录">{PLACES.map(p=><button key={p.id} data-place={p.id} aria-current={route.place===p.id?'location':undefined} onClick={()=>visit(p.id)} style={{'--place-color':p.color}}><Icon name={p.id}/><span>{p.short}</span><span className="nav-dot"/></button>)}</nav>
+      <nav className="world-nav" ref={nav} aria-label={`${settings.islandName}地点目录`}>{PLACES.map(p=><button key={p.id} data-place={p.id} aria-current={route.place===p.id?'location':undefined} onClick={()=>visit(p.id)} style={{'--place-color':p.color}}><Icon name={p.id}/><span>{p.short}</span><span className="nav-dot"/></button>)}</nav>
       {!selected&&<p className="world-help">{fallback?'静态预览 · 使用目录探索':'拖动环视 · 滚轮缩放'}<span>慢慢逛，不着急。</span></p>}
-      {selected&&<PlacePanel key={selected.id} place={selected} onClose={close} onOpenPost={openPost} onScroll={top=>placeScroll.current.set(selected.id,top)} restoreScroll={placeScroll.current.get(selected.id)} returnPostSlug={focusPostSlug} onFocusRestored={focusRestored}/>}
+      {selected&&<PlacePanel key={selected.id} place={selected} islandName={settings.islandName} onClose={close} onOpenPost={openPost} onScroll={top=>placeScroll.current.set(selected.id,top)} restoreScroll={placeScroll.current.get(selected.id)} returnPostSlug={focusPostSlug} onFocusRestored={focusRestored}/>}
     </div>}
-    {route.post&&<Suspense fallback={<div className="reader-boot" role="status">正在展开这篇故事…</div>}><ArticleReader slug={route.post} onResolvedPlace={resolvedArticlePlace} onReturn={returnFromPost} onNavigatePost={navigatePost}/></Suspense>}
+    {route.post&&<Suspense fallback={<div className="reader-boot" role="status">正在展开这篇故事…</div>}><ArticleReader slug={route.post} siteName={settings.name} islandName={settings.islandName} onResolvedPlace={resolvedArticlePlace} onReturn={returnFromPost} onNavigatePost={navigatePost}/></Suspense>}
     {error&&<div className="world-error" role="status"><span>{error}</span><button onClick={()=>location.reload()}>重新载入</button><button aria-label="关闭提示" onClick={()=>setError(null)}><Icon name="close" width="16" height="16"/></button></div>}
     {debug&&stats&&<output className="world-stats">{stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · ready {stats.readyMs??'…'} ms · {phase}</output>}
   </main>;

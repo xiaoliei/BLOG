@@ -56,7 +56,7 @@ const existingPosts = countOf("posts");
 
 /* ---------- 2. 站点设置：DEFAULT_SETTINGS upsert（幂等，始终执行） ---------- */
 const s = DEFAULT_SETTINGS;
-const settingsStmt = `INSERT INTO site_settings (id, name, tagline, since, description, author, email, github, latest_sub, modules_sub, about_title, about_text, footer_brand, footer_tagline, footer_nav_title, footer_contact_title, footer_bottom, updated_at) VALUES (1, ${q(s.name)}, ${q(s.tagline)}, ${s.since}, ${q(s.description)}, ${q(s.author)}, ${q(s.email)}, ${q(s.github)}, ${q(s.latestSub)}, ${q(s.modulesSub)}, ${q(s.aboutTitle)}, ${q(s.aboutText)}, ${q(s.footerBrand)}, ${q(s.footerTagline)}, ${q(s.footerNavTitle)}, ${q(s.footerContactTitle)}, ${q(s.footerBottom)}, ${q(now)}) ON CONFLICT(id) DO NOTHING;`;
+const settingsStmt = `INSERT INTO site_settings (id, name, tagline, island_name, island_tagline, since, description, author, email, github, latest_sub, modules_sub, about_title, about_text, footer_brand, footer_tagline, footer_nav_title, footer_contact_title, footer_bottom, updated_at) VALUES (1, ${q(s.name)}, ${q(s.tagline)}, ${q(s.islandName)}, ${q(s.islandTagline)}, ${s.since}, ${q(s.description)}, ${q(s.author)}, ${q(s.email)}, ${q(s.github)}, ${q(s.latestSub)}, ${q(s.modulesSub)}, ${q(s.aboutTitle)}, ${q(s.aboutText)}, ${q(s.footerBrand)}, ${q(s.footerTagline)}, ${q(s.footerNavTitle)}, ${q(s.footerContactTitle)}, ${q(s.footerBottom)}, ${q(now)}) ON CONFLICT(id) DO NOTHING;`;
 
 const tmp = mkdtempSync(join(tmpdir(), "blog-seed-"));
 const sqlFile = join(tmp, "seed.sql");

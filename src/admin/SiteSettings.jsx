@@ -22,6 +22,13 @@ const GROUPS = [
 		],
 	},
 	{
+		title: "世界（岛屿）",
+		fields: [
+			["islandName", "岛屿名", "input"],
+			["islandTagline", "岛屿副标语", "input"],
+		],
+	},
+	{
 		title: "区块文案",
 		fields: [
 			["latestSub", "「最新文章」下方描述", "textarea"],

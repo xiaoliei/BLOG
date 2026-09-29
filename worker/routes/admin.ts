@@ -65,6 +65,8 @@ const settingsPatch = z
 	.object({
 		name: z.string().trim().min(1, "站名必填").max(60),
 		tagline: z.string().trim().max(120),
+		islandName: z.string().trim().min(1, "岛屿名必填").max(30),
+		islandTagline: z.string().trim().max(60),
 		since: z.number().int().min(1900, "开始时间为 1900–2100 的四位年份").max(2100),
 		description: z.string().trim().max(300),
 		author: z.string().trim().max(60),
