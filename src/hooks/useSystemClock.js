@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SYS_INIT } from '../config/site';
+import { localDate } from '../lib/local-time.js';
 
 const BOOT_AT = Date.now();
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -48,7 +49,7 @@ export function useSystemClock() {
   const { now, sys } = state;
   return {
     time: `${pad2(now.getHours())}:${pad2(now.getMinutes())}`,
-    date: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ${DAYS[now.getDay()]}`,
+    date: `${localDate(now)} ${DAYS[now.getDay()]}`,
     coords: sys.coords,
     uptime: `UP ${fmtUptime(Date.now() - BOOT_AT)}`,
     upSpeed: `${sys.net.up.toFixed(2)} MB/s`,

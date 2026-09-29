@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "./api.js";
+import { localDateTime } from "../lib/local-time.js";
 
 /* 评论审核队列：pending / approved / rejected 筛选，放行 / 拒绝 / 删除 */
 
@@ -89,7 +90,7 @@ export default function CommentReview({ guard }) {
 									{row.status === "pending" ? "待审核" : row.status === "approved" ? "已放行" : "已拒绝"}
 								</span>
 								<span className="admin-review__time admin-table__mono">
-									{String(row.createdAt).slice(0, 16).replace("T", " ")}
+									{localDateTime(row.createdAt)}
 								</span>
 							</div>
 							<p className="admin-review__body">{row.body}</p>

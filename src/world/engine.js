@@ -4,6 +4,7 @@ import { buildTown } from './town.js';
 import { PLACES, clamp, smooth, ease } from './places.js';
 import { parseWorld } from './data.js';
 import { decodeMesh, sourceDigest } from './mesh-cache.js';
+import { localDateAtMinutes, localWorldTime } from '../lib/local-time.js';
 
 export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, initialRoute, reducedMotion, islandNameRef }) {
   const bootAt=performance.now();let readyMs=null;
@@ -17,9 +18,22 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   renderer.shadowMap.enabled = innerWidth >= 700;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();scene.background=new THREE.Color('#82dafa');scene.fog=new THREE.Fog('#82dafa',140,300);
-  scene.add(new THREE.HemisphereLight('#f0fcff','#83a263',2.25));
+  const ambient=new THREE.HemisphereLight('#f0fcff','#83a263',2.25);scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-40,75,45);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:180});sun.shadow.normalBias=.055;scene.add(sun);
+  let lastLightingUpdate=0, timeOverrideMinutes=null;
+  function updateLocalLighting(force=false){
+    const now=Date.now();
+    if(!force&&now-lastLightingUpdate<15000)return;
+    lastLightingUpdate=now;
+    const current=new Date(now);
+    const state=localWorldTime(timeOverrideMinutes===null?current:localDateAtMinutes(timeOverrideMinutes,current));
+    scene.background.set(state.sky);scene.fog.color.set(state.sky);
+    ambient.intensity=state.ambient;
+    sun.intensity=state.sun;sun.color.set(state.light);
+    sun.position.set(state.sunX,state.elevation,state.sunZ);
+  }
+  updateLocalLighting(true);
   let town = null;
   const space = new THREE.Scene();
   space.add(new THREE.HemisphereLight('#c6eeff','#23354d',2.1));
@@ -105,7 +119,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const cancel=()=>{pointer=null;};
   const lost=e=>{e.preventDefault();onError('三维画面已中断，可以继续使用地点目录，或重新载入。');};
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('wheel',wheel,{passive:false});canvas.addEventListener('webglcontextlost',lost);
-  const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;};document.addEventListener('visibilitychange',onVisibility);
+  const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;if(visibility==='visible')updateLocalLighting(true);};document.addEventListener('visibilitychange',onVisibility);
   const loadAbort=new AbortController();const timeout=setTimeout(()=>loadAbort.abort(),12000);
   async function prepare(){
     try{
@@ -143,6 +157,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(disposed)return;raf=requestAnimationFrame(tick);
     if(visibility==='hidden')return;
     const elapsed=timeBase===null?0:(now-timeBase)/1000;const dt=Math.min(elapsed,.06);timeBase=now;clock+=dt;
+    updateLocalLighting();
     let cover=0;
     if(phase==='loading'||phase==='idle'){
       camera.position.set(0,0,18);target.set(0,0,0);camera.lookAt(target);earth.scale.setScalar(Math.min(1,aspect*1.25));earth.position.set(0,1.5,0);earth.rotation.set(.44+(reducedMotion?0:Math.sin(clock*.5)*.025),-.6,-.205);
@@ -159,7 +174,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       camera.lookAt(target);
     }
     if(activeScene===scene)town?.update(reducedMotion?0:clock, diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
-    renderer.setClearColor(activeScene===space?0x000000:0x82dafa,activeScene===space?0:1);
+    renderer.setClearColor(activeScene===space?0x000000:scene.background,activeScene===space?0:1);
     renderer.render(activeScene,camera);
     if(cover>0){curtainLeft.position.x=-2.5*(1-cover);curtainRight.position.x=2.5*(1-cover);renderer.autoClear=false;renderer.clearDepth();renderer.render(curtainScene,curtainCamera);renderer.autoClear=true;}
     if(town&&(phase==='world'||phase==='focused')&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(town.placeMap).map(p=>{const v=new THREE.Vector3(...p.label).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
@@ -169,7 +184,11 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(stats.seconds>2){onStats({fps:Math.round(stats.frames/stats.seconds),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,readyMs});stats.frames=0;stats.seconds=0;}
   }
   if(initialRoute.home){moveTo(selected,true);phase=selected?'focused':'world';}raf=requestAnimationFrame(tick);prepare();
-  return {enter,navigate,rotate,reset(){yaw=0;zoom=1;moveTo(null);},setReducedMotion(value){reducedMotion=value;if(value&&phase==='entering'){activeScene=scene;moveTo(null,true);emitPhase('world');}},dispose(){
+  return {enter,navigate,rotate,reset(){yaw=0;zoom=1;moveTo(null);},setTimeOverride(minutes){
+    if(!import.meta.env.DEV)return;
+    timeOverrideMinutes=Number.isInteger(minutes)&&minutes>=0&&minutes<1440?minutes:null;
+    updateLocalLighting(true);
+  },setReducedMotion(value){reducedMotion=value;if(value&&phase==='entering'){activeScene=scene;moveTo(null,true);emitPhase('world');}},dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
     canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
     town?.dispose();space.traverse(o=>{o.geometry?.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{m?.map?.dispose();m?.dispose();});});cloudGeometry.dispose();cloudMaterial.dispose();sun.shadow.map?.dispose();renderer.dispose();

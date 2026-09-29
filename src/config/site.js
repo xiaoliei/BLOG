@@ -8,7 +8,6 @@ export const SITE = {
 	version: "v2.0.4",
 	session: "0x8F2A",
 	mode: "BOOT",
-	timezone: "UTC+8",
 };
 
 /* 状态栏初始系统数据（坐标会缓慢漂移，网络速率会抖动，与 demo 一致） */

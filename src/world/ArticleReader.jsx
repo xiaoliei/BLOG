@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import { getComments, getPost, getPosts, submitComment, submitViewOnce } from '../lib/api.js';
 import { placeForModule } from './places.js';
+import { localDateTime } from '../lib/local-time.js';
 import './reader.css';
 
 function Comments({ slug }) {
@@ -48,7 +49,7 @@ function Comments({ slug }) {
     {items.status === 'loading' && <p className="reader-note">正在载入留言…</p>}
     {items.status === 'error' && <p className="reader-note">留言暂时无法载入。 <button type="button" onClick={() => setRetry(n => n + 1)}>重新载入</button></p>}
     {items.status === 'ready' && (items.rows.length ? <ol className="reader-comment-list">{items.rows.map(item => <li key={item.id}>
-      <div><strong>{item.author}</strong><time dateTime={item.createdAt}>{String(item.createdAt).slice(0, 10)}</time></div>
+      <div><strong>{item.author}</strong><time dateTime={item.createdAt}>{localDateTime(item.createdAt)}</time></div>
       <p>{item.body}</p>
     </li>)}</ol> : <p className="reader-note">还没有留言，欢迎写下第一条。</p>)}
     <form className="reader-comment-form" onSubmit={send}>

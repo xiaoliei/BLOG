@@ -3,6 +3,7 @@ import { createWorldEngine } from './engine.js';
 import { PLACES, PLACE_MAP, readWorldRoute } from './places.js';
 import { getPosts, getStaticPosts, getSettings, getStaticSettings } from '../lib/api.js';
 import { useSystemClock } from '../hooks/useSystemClock.js';
+import { localDateAtMinutes, localWorldTime } from '../lib/local-time.js';
 import LandingClock from '../components/landing/LandingClock.jsx';
 import Starfield from '../components/landing/Starfield.jsx';
 import ScreenOverlays from '../components/landing/ScreenOverlays.jsx';
@@ -80,6 +81,12 @@ export default function WorldApp(){
   const islandNameRef=useRef(settings.islandName);
   islandNameRef.current=settings.islandName;
   const clock=useSystemClock();
+  const timeDebugEnabled=import.meta.env.DEV&&new URLSearchParams(location.search).get('debug')==='true';
+  const [debugMinutes,setDebugMinutes]=useState(null);
+  const actualMinutes=Number(clock.time.slice(0,2))*60+Number(clock.time.slice(3,5));
+  const shownMinutes=debugMinutes??actualMinutes;
+  const shownTime=`${String(Math.floor(shownMinutes/60)).padStart(2,'0')}:${String(shownMinutes%60).padStart(2,'0')}`;
+  const shownWorldTime=localWorldTime(localDateAtMinutes(shownMinutes));
   const sceneVisible=phase==='world'||phase==='focused';
   const selected=PLACE_MAP[route.place];
   const debug=new URLSearchParams(location.search).has('worldDebug');
@@ -137,8 +144,9 @@ export default function WorldApp(){
     window.addEventListener('hashchange',hash);window.addEventListener('keydown',key);motion.addEventListener('change',reduce);
     return()=>{active=false;engine.current?.dispose();engine.current=null;window.removeEventListener('hashchange',hash);window.removeEventListener('keydown',key);motion.removeEventListener('change',reduce);};
   },[]);
+  useEffect(()=>{if(timeDebugEnabled)engine.current?.setTimeOverride(debugMinutes);},[timeDebugEnabled,debugMinutes]);
   function enter(){if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
-  return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''}`} data-phase={phase}>
+  return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-time-phase={shownWorldTime.phase} style={{'--world-scene-text':shownWorldTime.ink}}>
     {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield/><ScreenOverlays/></div>}
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
     <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
@@ -148,7 +156,8 @@ export default function WorldApp(){
       {phase!=='entering'&&<button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?`直接浏览${settings.islandName}`:'点击进入像素世界'}<span aria-hidden="true">↓</span></button>}
     </div>}
     {sceneVisible&&<div className="world-chrome" inert={!!route.post} aria-hidden={route.post?'true':undefined}>
-      <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label={`${settings.name}，回到全景`}><Icon name="home" width="30" height="30"/><span><strong>{settings.name}</strong><small>{settings.islandTagline}</small></span></a><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><Icon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
+      <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label={`${settings.name}，回到全景`}><Icon name="home" width="30" height="30"/><span><strong>{settings.name}</strong><small>{settings.islandTagline}</small></span></a><div className="world-local-time" aria-label={`${debugMinutes===null?'设备当地时间':'模拟当地时间'} ${clock.date} ${shownTime}`}><time>{shownTime}</time><span>{debugMinutes===null?'当地时间':'模拟时间'}</span></div><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><Icon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
+      {timeDebugEnabled&&!inspection&&!fallback&&<section className="world-time-debug" aria-label="时间调试面板"><div className="world-time-debug-head"><strong>时间预览</strong><output>{shownTime}</output></div><label htmlFor="world-time-slider">拖动查看天空与光照</label><input id="world-time-slider" type="range" min="0" max="1439" step="1" value={shownMinutes} onChange={event=>setDebugMinutes(Number(event.target.value))}/><div className="world-time-presets">{[[360,'清晨'],[720,'正午'],[1080,'傍晚'],[1380,'夜晚']].map(([minutes,label])=><button key={minutes} type="button" onClick={()=>setDebugMinutes(minutes)}>{label}</button>)}</div><button className="world-time-reset" type="button" disabled={debugMinutes===null} onClick={()=>setDebugMinutes(null)}>恢复设备时间</button></section>}
       {!selected&&<div className="world-intro"><h1>欢迎来到{settings.islandName}</h1><p>今天，去哪里逛逛？点击一栋建筑，发现里面的故事。</p></div>}
       {!fallback&&!selected&&<div className="world-labels">{labels.map(label=><button key={label.id} className="world-label" style={{left:label.x,top:label.y,display:label.visible?'':'none'}} onClick={()=>visit(label.id)} tabIndex={-1} aria-hidden="true">{PLACE_MAP[label.id].short}<span/></button>)}</div>}
       {!fallback&&<div className="world-camera" aria-label="镜头控制"><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(-.25)} aria-label="向左环视"><Icon name="left"/></button><button className="world-icon-button" onClick={()=>{if(selected)close();else engine.current?.reset();}} aria-label="回到全景"><Icon name="home"/></button><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(.25)} aria-label="向右环视"><Icon name="right"/></button></div>}

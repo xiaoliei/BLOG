@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "vditor/dist/index.css";
 import { adminFetch, getDevToken } from "./api.js";
+import { localDate } from "../lib/local-time.js";
 
 /* ============================================================
    文章编辑页：表单 + Vditor（动态 import，仅 admin chunk）
@@ -12,7 +13,7 @@ const EMPTY_FORM = {
 	title: "",
 	slug: "",
 	moduleId: "",
-	date: new Date().toISOString().slice(0, 10),
+	date: "",
 	tags: "",
 	readTime: 3,
 	excerpt: "",
@@ -21,7 +22,7 @@ const EMPTY_FORM = {
 
 export default function PostEdit({ initial, onBack, guard }) {
 	const isNew = initial.id == null;
-	const [form, setForm] = useState(EMPTY_FORM);
+	const [form, setForm] = useState(() => ({ ...EMPTY_FORM, date: localDate() }));
 	const [status, setStatus] = useState("draft"); // 当前文章状态（编辑已有文章时加载）
 	const [modules, setModules] = useState([]);
 	const [toast, setToast] = useState(null); // { kind: 'ok' | 'err', text }
