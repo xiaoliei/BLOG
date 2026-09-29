@@ -80,6 +80,17 @@ registerModel('stairs',{defaults:{facing:'south',half:'bottom',shape:'straight'}
 registerModel('pillar',{defaults:{axis:'y',width:.375},properties:{axis:enumOf('x','y','z'),width:enumOf(.25,.375,.5,.75,1)},boxes:p=>{
   const a=(1-p.width)/2;return [p.axis==='y'?box(a,0,a,p.width,1,p.width):p.axis==='x'?box(0,a,a,1,p.width,p.width):box(a,a,0,p.width,p.width,1)];
 }});
+registerModel('birch-log',{defaults:{variant:0},properties:{variant:integer(0,3)},boxes:p=>{
+ const shift=[0,.18,.36,.09][p.variant],out=[box(0,0,0,1,1,1,'#eee8d4')];
+ // Small bark marks sit on all four faces. Their stagger changes per segment,
+ // while the pale trunk remains continuous from one cell to the next.
+ const y0=.18+shift%0.42,y1=.68-(shift*.45)%0.28;
+ out.push(box(.18,y0,0,.28,.11,.035,'#687472'),box(.63,y1,0,.19,.09,.035,'#87918d'));
+ out.push(box(.52,y0+.18,.965,.27,.1,.035,'#687472'),box(.16,y1-.16,.965,.21,.08,.035,'#9aa39e'));
+ out.push(box(0,y1,.18,.035,.1,.28,'#687472'),box(.965,y0+.08,.55,.035,.09,.21,'#87918d'));
+ out.push(box(.36,.03,0,.13,.94,.025,'#f6f0df'));
+ return out;
+}});
 registerModel('fence',{support:'bottom',connects:true,defaults:{},boxes:(_,connections)=>{
  const out=[box(.35,0,.35,.3,1,.3)];
  for(const side of connections)for(const y of [.25,.7])out.push(rotateBox(box(.425,y,.5,.15,.15,.5),DIRECTIONS.indexOf(side)));

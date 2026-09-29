@@ -154,7 +154,10 @@ export function generateHarbor() {
   const base=Math.ceil(h*2),shrub=t.type==='shrub',trunk=Math.max(1,Math.round((shrub?.6:3.7)*t.scale*2));
   // A full soil cap provides a precise root surface on former half-height terrain.
   if(h*2!==base)put([x,base-1,z],C.grass);
-  for(let i=0;i<trunk;i++)if(!world.getOccupant([x,base+i,z]))put([x,base+i,z],t.type==='birch'?(i%3===1?'#858f80':'#eee8d4'):C.wood,'pillar',{width:shrub?.5:1});
+  for(let i=0;i<trunk;i++)if(!world.getOccupant([x,base+i,z])){
+   if(t.type==='birch')put([x,base+i,z],'#eee8d4','birch-log',{variant:((i+x-z)%4+4)%4});
+   else put([x,base+i,z],C.wood,'pillar',{width:shrub?.5:1});
+  }
   const step=Math.max(1,Math.round((shrub?.65:1)*t.scale*2)),palette=t.type==='cherry'?['#f291c8','#f7acda','#e97eba']:['#5baa36','#74bd40','#499d32'];
   for(let ix=-2;ix<=2;ix++)for(let iz=-2;iz<=2;iz++)for(let iy=0;iy<3;iy++){
    if(Math.abs(ix)+Math.abs(iz)>(iy===2?2:3)||iy===0&&Math.abs(ix)+Math.abs(iz)>2)continue;
