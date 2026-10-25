@@ -8,9 +8,14 @@
 .reader-boot{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:#fffdf4;color:#315f4d;font-size:14px}
 .world-canvas{display:block;width:100%;height:100%;position:absolute;inset:0;z-index:2;touch-action:none}
 .world-landing-background{z-index:0}
-.world-landing-ui{z-index:3;background:none;pointer-events:none}
-.world-clock{position:absolute;top:60%;left:0;right:0;transition:opacity .35s}
-.world-landing-ui.is-entering .world-clock{opacity:0}
+.world-landing-ui{z-index:3;background:none;pointer-events:none;opacity:var(--entry-ui,1)}
+.world-clock{position:absolute;top:60%;left:0;right:0}
+.world-landing-background :is(#stars,.vignette,.scanlines){opacity:calc(1 - var(--entry-atmosphere,0))}
+.world-chrome :is(.world-header,.world-intro,.world-time-debug){opacity:var(--entry-header,1)}
+.world-labels{opacity:var(--entry-labels,1)}
+.world-chrome :is(.world-nav,.world-camera,.world-help){opacity:var(--entry-navigation,1)}
+.world-app[data-phase="entering"] .world-chrome *{pointer-events:none!important}
+.world-app[data-entry-preview] .landing-clock .colon{animation:none}
 .world-enter{position:absolute;bottom:6%;left:50%;transform:translateX(-50%);background:none;color:#d1dedf!important;font-size:12px!important;letter-spacing:2px;padding:16px 24px;white-space:nowrap;pointer-events:auto}
 .world-enter span{display:block;margin-top:10px;color:#dba563;font-size:21px}
 .world-fallback{position:absolute;width:100%;height:100%;object-fit:cover}

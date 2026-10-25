@@ -278,10 +278,6 @@
 
 /* .float-cube 沿用上方旧版月球样式（左上角偏移 -12%、尺寸 5%、陨石坑） */
 
-/* 进入过渡时月球同步淡出，避免遮挡地球放大 */
-.world-landing-ui.is-entering .world-moon-anchor {
-	opacity: 0;
-	transition: opacity 0.35s ease;
-}
+/* 月球、时钟和入口由 world-landing-ui 的统一过场进度同步淡出。 */
 
 

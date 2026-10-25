@@ -9,12 +9,12 @@ import { useEffect, useRef } from 'react';
    独立驱动同样的摆动曲线，位置锚定在三维地球视口投影的
    左上角（见 landing.css 的 .world-moon-anchor）。
    ============================================================ */
-export default function Moon() {
+export default function Moon({ staticFrame = false }) {
   const cubeRef = useRef(null);
 
   useEffect(() => {
     const cube = cubeRef.current;
-    if (!cube) return undefined;
+    if (!cube || staticFrame) return undefined;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
     let raf;
     const start = performance.now();
@@ -26,7 +26,7 @@ export default function Moon() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [staticFrame]);
 
   return (
     <div className="world-moon-anchor" aria-hidden="true">

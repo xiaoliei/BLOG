@@ -3,6 +3,22 @@ import { meshWorld } from './mesher.js';
 import { worldToCell } from './data.js';
 import { modelDefinition, DIRECTIONS, rotatePoint } from './models.js';
 
+export function buildFaceGeometry(faces, cellSize, colorGain = 1) {
+ const positions=[],normals=[],colors=[],uvs=[],owners=[];
+ for(const face of faces){
+  const {axis,sign,plane,rect,color,place,instance}=face,u=(axis+1)%3,v=(axis+2)%3;
+  const c=new THREE.Color(color).multiplyScalar(colorGain),normal=[0,0,0];normal[axis]=sign;
+  const corners=[[rect[0],rect[1]],[rect[2],rect[1]],[rect[2],rect[3]],[rect[0],rect[3]]];
+  for(const index of sign===1?[0,1,2,0,2,3]:[0,2,1,0,3,2]){
+   const p=[];p[axis]=plane*cellSize;p[u]=corners[index][0]*cellSize;p[v]=corners[index][1]*cellSize;
+   positions.push(...p);normals.push(...normal);colors.push(c.r,c.g,c.b);uvs.push(corners[index][0]/4,corners[index][1]/4);
+  }
+  owners.push({place,instance},{place,instance});
+ }
+ const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geometry.computeBoundingSphere();
+ return {geometry,owners};
+}
+
 export function renderWorld(world,preparedMesh=null) {
  const root=new THREE.Group(),pickables=[],resources=[];
  // Independent seeded samples reproduce the old soft pixel mottling. A larger
@@ -38,18 +54,7 @@ export function renderWorld(world,preparedMesh=null) {
   }
  }
  for(const chunk of regions.values()){
-  const positions=[],normals=[],colors=[],uvs=[],owners=[];
-  for(const face of chunk.faces){
-   const {axis,sign,plane,rect,color,place,instance}=face,u=(axis+1)%3,v=(axis+2)%3;
-   const c=new THREE.Color(color).multiplyScalar(chunk.transparent?1:textureGain),normal=[0,0,0];normal[axis]=sign;
-   const corners=[[rect[0],rect[1]],[rect[2],rect[1]],[rect[2],rect[3]],[rect[0],rect[3]]];
-   for(const index of sign===1?[0,1,2,0,2,3]:[0,2,1,0,3,2]){
-    const p=[];p[axis]=plane*world.cellSize;p[u]=corners[index][0]*world.cellSize;p[v]=corners[index][1]*world.cellSize;
-    positions.push(...p);normals.push(...normal);colors.push(c.r,c.g,c.b);uvs.push(corners[index][0]/4,corners[index][1]/4);
-   }
-   owners.push({place,instance},{place,instance});
-  }
-  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geometry.computeBoundingSphere();
+  const {geometry,owners}=buildFaceGeometry(chunk.faces,world.cellSize,chunk.transparent?1:textureGain);
   const mesh=new THREE.Mesh(geometry,chunk.surface==='glass'?glass:chunk.surface==='wood'?wood:opaque);mesh.castShadow=!chunk.transparent;mesh.receiveShadow=true;
   mesh.userData.owners=owners;root.add(mesh);pickables.push(mesh);resources.push(geometry);
  }
@@ -70,7 +75,7 @@ export function renderWorld(world,preparedMesh=null) {
   entries.forEach(({anchor},i)=>mesh.setMatrixAt(i,matrix.makeTranslation(...anchor.map(v=>v*world.cellSize))));
   mesh.userData.custom={state,entries};mesh.castShadow=mesh.receiveShadow=true;mesh.computeBoundingSphere();root.add(mesh);pickables.push(mesh);resources.push(mesh,geometry,material);
  }
- return {root,pickables,pick(hit){
+ return {root,pickables,colorGain:textureGain,materialForFace(face){return face.transparent?glass:woodColors.has(face.color)?wood:opaque;},pick(hit){
   if(!hit)return null;
   const custom=hit.object.userData.custom;if(custom){const entry=custom.entries[hit.instanceId];return {place:custom.state.place??null,instance:entry.instance,cell:[...entry.anchor]};}
   const owner=hit.object.userData.owners?.[hit.faceIndex];if(!owner)return null;

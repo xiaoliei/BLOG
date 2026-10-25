@@ -74,13 +74,17 @@ export default function WorldApp(){
   const [phase,setPhase]=useState(initialRoute.current.home?'world':'loading');
   const [ready,setReady]=useState(false),[error,setError]=useState(null),[fallback,setFallback]=useState(false),[skipEarth,setSkipEarth]=useState(false);
   const [labels,setLabels]=useState([]),[stats,setStats]=useState(null);
-  const canvas=useRef(null),engine=useRef(null),nav=useRef(null);
+  const canvas=useRef(null),engine=useRef(null),nav=useRef(null),root=useRef(null),keyboardEntry=useRef(false);
+  const lastEntryVisuals=useRef({}),directEntry=useRef(false);
   const placeScroll=useRef(new Map()),returnPostSlug=useRef(null),routeRef=useRef(initialRoute.current),articlePlaceRef=useRef(null);
   const [focusPostSlug,setFocusPostSlug]=useState(null);
   const [settings,setSettings]=useState(getStaticSettings);
   const islandNameRef=useRef(settings.islandName);
   islandNameRef.current=settings.islandName;
-  const clock=useSystemClock();
+  const debug=new URLSearchParams(location.search).has('worldDebug');
+  const entryPreview=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('entryFrame');
+  const liveClock=useSystemClock(),previewClock=useRef(liveClock);
+  const clock=entryPreview?previewClock.current:liveClock;
   const timeDebugEnabled=import.meta.env.DEV&&new URLSearchParams(location.search).get('debug')==='true';
   const [debugMinutes,setDebugMinutes]=useState(null);
   const actualMinutes=Number(clock.time.slice(0,2))*60+Number(clock.time.slice(3,5));
@@ -88,8 +92,8 @@ export default function WorldApp(){
   const shownTime=`${String(Math.floor(shownMinutes/60)).padStart(2,'0')}:${String(shownMinutes%60).padStart(2,'0')}`;
   const shownWorldTime=localWorldTime(localDateAtMinutes(shownMinutes));
   const sceneVisible=phase==='world'||phase==='focused';
+  const entering=phase==='entering';
   const selected=PLACE_MAP[route.place];
-  const debug=new URLSearchParams(location.search).has('worldDebug');
   const inspection=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('view');
   function visit(id){location.hash=id?`home/${id}`:'home';}
   function close(){visit(null);requestAnimationFrame(()=>nav.current?.querySelector(`[data-place="${route.place}"]`)?.focus());}
@@ -116,6 +120,12 @@ export default function WorldApp(){
   }
   const resolvedArticlePlace=useCallback(id=>{articlePlaceRef.current=id;if(id)engine.current?.navigate({home:true,place:id});},[]);
   const focusRestored=useCallback(()=>{returnPostSlug.current=null;setFocusPostSlug(null);},[]);
+  const updateEntryVisuals=useCallback(visuals=>{
+    const node=root.current;if(!node)return;
+    for(const [name,value] of Object.entries(visuals))if(name!=='seconds'&&lastEntryVisuals.current[name]!==value){
+      node.style.setProperty(`--entry-${name}`,String(value));lastEntryVisuals.current[name]=value;
+    }
+  },[]);
   useEffect(()=>{
     let alive=true;
     getSettings().then(data=>{if(alive&&data)setSettings(data);}).catch(()=>{});
@@ -129,33 +139,44 @@ export default function WorldApp(){
         initialRoute:initialRoute.current,reducedMotion:motion.matches,
         islandNameRef,
         onReady:()=>{if(active)setReady(true);},
-        onPhase:next=>{if(!active)return;setPhase(next);if(next==='world'&&!readWorldRoute(location.hash).home)location.hash='home';},
+        onEntryProgress:visuals=>{if(active)updateEntryVisuals(visuals);},
+        onPhase:next=>{
+          if(!active)return;setPhase(next);
+          if(next==='world'&&!readWorldRoute(location.hash).home){
+            location.hash='home';
+            if(keyboardEntry.current)requestAnimationFrame(()=>nav.current?.querySelector('button')?.focus({preventScroll:true}));
+            keyboardEntry.current=false;
+          }
+        },
         onSelect:id=>visit(id),onLabels:l=>{if(active)setLabels(l);},onStats:s=>{if(active)setStats(s);},
-        onError:(message,earthOnly)=>{if(active){setError(message);if(earthOnly)setSkipEarth(true);else{setFallback(true);engine.current?.dispose();engine.current=null;setPhase(readWorldRoute(location.hash).home?'world':'idle');}setReady(true);}},
+        onError:(message,earthOnly)=>{if(active){setError(message);directEntry.current=true;if(earthOnly)setSkipEarth(true);else{
+          updateEntryVisuals({ui:1,atmosphere:0,header:1,labels:1,navigation:1});
+          setFallback(true);engine.current?.dispose();engine.current=null;setPhase(readWorldRoute(location.hash).home?'world':'idle');
+        }setReady(true);}},
       });
     }catch{setFallback(true);setReady(true);setError('当前设备无法显示三维画面，已切换为静态预览。地点目录仍可使用。');setPhase(initialRoute.current.home?'world':'idle');}
     const hash=()=>{const next=readWorldRoute(location.hash);routeRef.current=next;if(next.post)articlePlaceRef.current=history.state?.articlePlace||history.state?.articleOrigin||null;setRoute(next);engine.current?.navigate(next);if(!engine.current)setPhase(next.home?'world':'idle');};
     const key=e=>{
       if(e.key==='Escape'&&routeRef.current.post){e.preventDefault();returnFromPost(routeRef.current.articlePlace||null);return;}
       if(e.key==='Escape'&&readWorldRoute(location.hash).place){visit(null);nav.current?.querySelector('button')?.focus();}
-      if((e.key==='Enter'||e.key===' ')&&!readWorldRoute(location.hash).home&&e.target===document.body){e.preventDefault();engine.current?.enter();}
+      if((e.key==='Enter'||e.key===' ')&&!readWorldRoute(location.hash).home&&e.target===document.body){e.preventDefault();keyboardEntry.current=true;if(engine.current&&!directEntry.current)engine.current.enter();else visit(null);}
     };
     const reduce=()=>engine.current?.setReducedMotion(motion.matches);
     window.addEventListener('hashchange',hash);window.addEventListener('keydown',key);motion.addEventListener('change',reduce);
     return()=>{active=false;engine.current?.dispose();engine.current=null;window.removeEventListener('hashchange',hash);window.removeEventListener('keydown',key);motion.removeEventListener('change',reduce);};
   },[]);
   useEffect(()=>{if(timeDebugEnabled)engine.current?.setTimeOverride(debugMinutes);},[timeDebugEnabled,debugMinutes]);
-  function enter(){if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
-  return <main className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-time-phase={shownWorldTime.phase} style={{'--world-scene-text':shownWorldTime.ink}}>
-    {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield/><ScreenOverlays/></div>}
+  function enter(event){keyboardEntry.current=event?.detail===0;if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
+  return <main ref={root} className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-entry-preview={entryPreview||undefined} data-time-phase={shownWorldTime.phase} style={{'--world-scene-text':shownWorldTime.ink}}>
+    {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield staticFrame={entryPreview}/><ScreenOverlays/></div>}
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
     <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
-    {!sceneVisible&&<div className={`landing-root world-landing-ui ${phase==='entering'?'is-entering':''}`}>
-      <Moon/>
+    {!sceneVisible&&<div className="landing-root world-landing-ui" inert={entering} aria-hidden={entering?'true':undefined}>
+      <Moon staticFrame={entryPreview}/>
       <div className="world-clock"><LandingClock time={clock.time} date={clock.date}/></div>
-      {phase!=='entering'&&<button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?`直接浏览${settings.islandName}`:'点击进入像素世界'}<span aria-hidden="true">↓</span></button>}
+      <button className="world-enter" disabled={!ready} onClick={enter}>{!ready?'正在准备你的方块世界…':skipEarth||fallback?`直接浏览${settings.islandName}`:'点击进入像素世界'}<span aria-hidden="true">↓</span></button>
     </div>}
-    {sceneVisible&&<div className="world-chrome" inert={!!route.post} aria-hidden={route.post?'true':undefined}>
+    {(sceneVisible||entering)&&<div className="world-chrome" inert={!!route.post||entering} aria-hidden={route.post||entering?'true':undefined}>
       <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label={`${settings.name}，回到全景`}><Icon name="home" width="30" height="30"/><span><strong>{settings.name}</strong><small>{settings.islandTagline}</small></span></a><div className="world-local-time" aria-label={`${debugMinutes===null?'设备当地时间':'模拟当地时间'} ${clock.date} ${shownTime}`}><time>{shownTime}</time><span>{debugMinutes===null?'当地时间':'模拟时间'}</span></div><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><Icon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
       {timeDebugEnabled&&!inspection&&!fallback&&<section className="world-time-debug" aria-label="时间调试面板"><div className="world-time-debug-head"><strong>时间预览</strong><output>{shownTime}</output></div><label htmlFor="world-time-slider">拖动查看天空与光照</label><input id="world-time-slider" type="range" min="0" max="1439" step="1" value={shownMinutes} onChange={event=>setDebugMinutes(Number(event.target.value))}/><div className="world-time-presets">{[[360,'清晨'],[720,'正午'],[1080,'傍晚'],[1380,'夜晚']].map(([minutes,label])=><button key={minutes} type="button" onClick={()=>setDebugMinutes(minutes)}>{label}</button>)}</div><button className="world-time-reset" type="button" disabled={debugMinutes===null} onClick={()=>setDebugMinutes(null)}>恢复设备时间</button></section>}
       {!selected&&<div className="world-intro"><h1>欢迎来到{settings.islandName}</h1><p>今天，去哪里逛逛？点击一栋建筑，发现里面的故事。</p></div>}

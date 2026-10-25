@@ -6,7 +6,7 @@
   "scripts": {
     "world:generate": "node scripts/world-generate.mjs",
     "world:validate": "node scripts/world-validate.mjs",
-    "test:world": "node --test scripts/world.test.mjs scripts/grid-world.test.mjs",
+    "test:world": "node --test scripts/world.test.mjs scripts/grid-world.test.mjs scripts/entry-flight.test.mjs",
     "dev": "vite",
     "build": "node scripts/copy-vditor.mjs && vite build",
     "preview": "vite preview",

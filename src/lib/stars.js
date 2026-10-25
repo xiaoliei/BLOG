@@ -7,9 +7,11 @@ export function setStarsPaused(v) {
   paused = v;
 }
 
-export function startStars(canvas) {
+export function startStars(canvas, { staticFrame = false } = {}) {
   const ctx = canvas.getContext('2d');
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = staticFrame || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let seed = 1729;
+  const random = staticFrame ? () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; } : Math.random;
   let w = 0;
   let h = 0;
   let raf = 0;
@@ -20,12 +22,12 @@ export function startStars(canvas) {
 
   function makeStar() {
     return {
-      x: Math.random(),
-      y: Math.random(),
-      r: Math.random() * 1.2 + 0.5, // 0.5 ~ 1.7
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.8 + Math.random() * 1.6, // 呼吸闪烁角速度 rad/s（周期约 2.6~7.8s）
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      x: random(),
+      y: random(),
+      r: random() * 1.2 + 0.5, // 0.5 ~ 1.7
+      phase: random() * Math.PI * 2,
+      speed: 0.8 + random() * 1.6, // 呼吸闪烁角速度 rad/s（周期约 2.6~7.8s）
+      color: COLORS[Math.floor(random() * COLORS.length)],
     };
   }
 
@@ -38,6 +40,7 @@ export function startStars(canvas) {
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (reducedMotion && raf) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
   }
 
   function spawnShooting() {
