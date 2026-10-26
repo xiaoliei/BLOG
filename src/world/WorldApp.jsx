@@ -92,7 +92,7 @@ export default function WorldApp(){
   const shownMinutes=debugMinutes??actualMinutes;
   const shownTime=`${String(Math.floor(shownMinutes/60)).padStart(2,'0')}:${String(shownMinutes%60).padStart(2,'0')}`;
   const shownWorldTime=localWorldTime(localDateAtMinutes(shownMinutes));
-  const sceneVisible=phase==='world'||phase==='focused';
+  const sceneVisible=phase==='world'||phase==='focused'||phase==='leaving';
   const entering=phase==='entering';
   const selected=PLACE_MAP[route.place];
   const inspection=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('view');
@@ -170,7 +170,7 @@ export default function WorldApp(){
   useEffect(()=>{if(timeDebugEnabled)engine.current?.setTimeOverride(debugMinutes);},[timeDebugEnabled,debugMinutes]);
   function enter(event){keyboardEntry.current=event?.detail===0;if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
   return <main ref={root} className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-entry-preview={entryPreview||undefined} data-time-phase={shownWorldTime.phase} style={{'--world-scene-text':shownWorldTime.ink}}>
-    {!sceneVisible&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield staticFrame={entryPreview}/><ScreenOverlays/></div>}
+    {(!sceneVisible||phase==='leaving')&&<div className="landing-root world-landing-background" aria-hidden="true"><Starfield staticFrame={entryPreview}/><ScreenOverlays/></div>}
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
     <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
     {!sceneVisible&&<div className="landing-root world-landing-ui" inert={entering} aria-hidden={entering?'true':undefined}>

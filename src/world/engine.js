@@ -5,7 +5,7 @@ import { parseWorld } from './data.js';
 import { decodeMesh, sourceDigest } from './mesh-cache.js';
 import { localDateAtMinutes, localWorldTime } from '../lib/local-time.js';
 import { ENTRY_DURATION, createEntryFlight, sampleEntryFlight, entryVisuals, smootherstep } from './entry-flight.js';
-import { buildEntryWorld, orbitalPose } from './entry-world.js';
+import { buildEntryWorld, idlePlanetRotation, orbitalPose } from './entry-world.js';
 
 const YAW_LIMIT=1.1,ZOOM_MIN=.75,ZOOM_MAX=1.3,ROTATE_MARGIN=.12;
 const GLIDE_STALE_MS=120,GLIDE_CLAMP=.8,GLIDE_NUDGE=.45,GLIDE_DECAY=9,GLIDE_STOP=.05;
@@ -106,6 +106,24 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     emitRotateBounds();
     entrySeconds=ENTRY_DURATION;progress(ENTRY_DURATION);emitPhase('world');
   }
+  // Leaving replays the entry flight mirrored: the flight is built from the
+  // orbital rest pose to the current view, then sampled on a reversed clock,
+  // so planet spin, ocean, fog and UI all unwind through the same formulas.
+  function leave(){
+    if(!ready||!entryWorld||reducedMotion||!['world','focused'].includes(phase))return false;
+    if(phase==='leaving')return true;
+    entryDestination.copy(camera.position);entryTarget.copy(target);
+    const orbit=orbitalPose(aspect,entryWorld.seaLevel);
+    entryFlight=createEntryFlight(orbit.position,orbit.target,entryDestination,entryTarget);
+    entryRotation=idlePlanetRotation(clock);
+    selected=null;fly=null;retarget=null;yawVelocity=0;pointers.clear();pinch=null;
+    start=clock;entrySeconds=ENTRY_DURATION;progress(ENTRY_DURATION);emitPhase('leaving');
+    return true;
+  }
+  function finishLeave(){
+    entryFlight=null;retarget=null;fly=null;selected=null;yaw=0;zoom=1;yawVelocity=0;
+    idlePose();emitPhase('idle');
+  }
   function resize() {
     width=canvas.clientWidth||1;height=canvas.clientHeight||1;aspect=width/height;
     const orbit=orbitalPose(aspect,entryWorld?.seaLevel??-.18,0);orbitDistance=orbit.position.distanceTo(orbit.target);
@@ -113,19 +131,24 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(camera.isOrthographicCamera){const half=Math.max(39,36/aspect);camera.left=-half*aspect;camera.right=half*aspect;camera.top=half;camera.bottom=-half;}
     camera.updateProjectionMatrix();
     if(phase==='world'||phase==='focused')moveTo(selected,true);
-    else if(phase==='entering'&&entryFlight){
-      flightDestination();homePose();
+    else if((phase==='entering'||phase==='leaving')&&entryFlight){
+      flightDestination();
+      const orbit=orbitalPose(aspect,entryWorld?.seaLevel??-.18);
+      if(phase==='entering')homePose();else idlePose();
       retarget={at:clock,position:entryDestination.clone(),target:entryTarget.clone(),to:desired.clone(),toTarget:desiredTarget.clone()};
+      if(phase==='leaving'){retarget.to.set(orbit.position.x,orbit.position.y,orbit.position.z);retarget.toTarget.copy(orbit.target);}
     }else idlePose();
   }
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
   function emitPhase(next){phase=next;onPhase(next);}
   function enter(){
-    if(!ready||!['idle','loading'].includes(phase))return;
+    if(!ready||!['idle','loading','leaving'].includes(phase))return;
     if(reducedMotion){finishEntry();return;}
+    // Cutting a leave short starts from wherever the unwind has reached, so
+    // the planet simply turns back around instead of snapping to its rest.
+    entryRotation=entryWorld?.captureRotation();
     homePose();entryDestination.copy(desired);entryTarget.copy(desiredTarget);
     entryFlight=createEntryFlight(camera.position,target,desired,desiredTarget);
-    entryRotation=entryWorld?.captureRotation();
     start=clock;entrySeconds=0;fly=null;retarget=null;progress(0);emitPhase('entering');
   }
   function navigate(route){
@@ -133,9 +156,12 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       // The hash written by entry completion echoes back here. Do not launch
       // another 1.15-second flight at the already settled overview.
       if((phase==='world'||phase==='focused')&&selected===route.place)return;
-      const instant=['loading','idle','entering'].includes(phase);
+      const instant=['loading','idle','entering','leaving'].includes(phase);
       entryWorld?.setWorld();
       entryFlight=null;retarget=null;progress(ENTRY_DURATION);moveTo(route.place,instant);emitPhase(route.place?'focused':'world');
+    }else if(leave()){
+      // The world camera is unwinding back to the planet; only the hash echo
+      // is left to settle, and re-entering must be able to cut it short.
     }else {
       selected=null;entryFlight=null;retarget=null;fly=null;yaw=0;zoom=1;yawVelocity=0;pointers.clear();pinch=null;entrySeconds=0;progress(0);
       idlePose();
@@ -212,7 +238,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     }
     pointer=null;
     if(moved)return;
-    if(phase==='idle')enter();else if(phase==='world'||phase==='focused'){const id=intersect(e);if(id)onSelect(id);}
+    if(phase==='leaving')enter();
+    else if(phase==='idle')enter();else if(phase==='world'||phase==='focused'){const id=intersect(e);if(id)onSelect(id);}
   }
   const cancel=e=>{pointers.delete(e.pointerId);pinch=null;pointer=null;yawVelocity=0;};
   // Capture can be lost without pointercancel/up; drop just that stale entry.
@@ -273,6 +300,18 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       camera.position.copy(pose.position);target.copy(pose.target);visuals=progress(entrySeconds);
       camera.lookAt(target);
       if(entrySeconds>=ENTRY_DURATION&&previewFrame===null&&!retarget)finishEntry();
+    }else if(phase==='leaving'){
+      // Reverse of the entry: seconds count down to zero while the flight is
+      // mirrored (orbital rest -> current view), so visuals unwind unchanged.
+      entrySeconds=Math.max(0,ENTRY_DURATION-(clock-start));
+      flightDestination();
+      const movingTarget=entryWorld?entryWorld.worldPoint(entryTarget):entryTarget;
+      const movingDestination=entryDestination.clone().sub(entryTarget).add(movingTarget);
+      const pose=sampleEntryFlight(entryFlight,entrySeconds,movingDestination,movingTarget);
+      entryWorld?.setEntry(entrySeconds,entryRotation);
+      camera.position.copy(pose.position);target.copy(pose.target);visuals=progress(entrySeconds);
+      camera.lookAt(target);
+      if(entrySeconds<=0&&previewFrame===null&&!retarget)finishLeave();
     }else{
       if(fly){const a=ease((clock-fly.at)/fly.duration);camera.position.lerpVectors(moveFrom,fly.to,a);target.lerpVectors(targetFrom,fly.target,a);if(a>=1)fly=null;}
       // Drag-inertia glide: a short damped coast, stopping dead at a yaw limit.
@@ -290,7 +329,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     const fogOffset=aspect<.85?85/aspect-82:0;
     scene.fog.near=Math.exp(Math.log(orbitDistance*1.4)*(1-atmosphere)+Math.log(140+fogOffset)*atmosphere);
     scene.fog.far=Math.exp(Math.log(orbitDistance*2.8)*(1-atmosphere)+Math.log(300+fogOffset)*atmosphere);
-    if(phase==='entering'){
+    if(phase==='entering'||phase==='leaving'){
       // A portrait flight starts further out. Keep its actual focus outside
       // the fog ramp too, rather than letting the harbor dissolve mid-flight.
       const visibility=1-smootherstep((entrySeconds-3.15)/.8);
@@ -313,8 +352,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     const animationTime=reducedMotion?0:previewFrame!==null?entrySeconds:clock;
     town?.update(animationTime,diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
     renderer.setClearColor(skyColor,atmosphere);renderer.render(scene,camera);
-    if(town&&(phase==='world'||phase==='focused'||phase==='entering'&&visuals.labels>0)&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(town.placeMap).map(p=>{const point=new THREE.Vector3(...p.label);const v=(entryWorld?entryWorld.worldPoint(point):point).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
-    const cameraState=fly||phase==='entering'?'moving':'settled';
+    if(town&&(phase==='world'||phase==='focused'||(phase==='entering'||phase==='leaving')&&visuals.labels>0)&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(town.placeMap).map(p=>{const point=new THREE.Vector3(...p.label);const v=(entryWorld?entryWorld.worldPoint(point):point).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
+    const cameraState=fly||phase==='entering'||phase==='leaving'?'moving':'settled';
     if(canvas.dataset.cameraState!==cameraState)canvas.dataset.cameraState=cameraState;
     if(diagnostics.has('worldDebug')){
       canvas.dataset.frameTime=String(now);
@@ -332,7 +371,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(!import.meta.env.DEV)return;
     timeOverrideMinutes=Number.isInteger(minutes)&&minutes>=0&&minutes<1440?minutes:null;
     updateLocalLighting(true);
-  },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();},dispose(){
+  },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();if(value&&phase==='leaving')finishLeave();},dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
     canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',captureLost);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
     town?.dispose();entryWorld?.dispose();sun.shadow.map?.dispose();renderer.dispose();
