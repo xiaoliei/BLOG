@@ -11,6 +11,7 @@
 
 import { ALL_POSTS, MODULES } from "../config/blog.js";
 import { DEFAULT_SETTINGS } from "../config/site-settings.js";
+import { buildQuery, firstPayloadMessage } from "./http.js";
 
 const API_BASE = "/api/public";
 const TTL_MS = 5 * 60 * 1000;
@@ -151,11 +152,8 @@ export function getPosts({ moduleId, limit } = {}) {
 		if (limit != null) list = list.slice(0, limit);
 		return Promise.resolve(list);
 	}
-	const params = new URLSearchParams();
-	if (moduleId != null) params.set("moduleId", String(moduleId));
-	if (limit != null) params.set("limit", String(limit));
-	const qs = params.toString();
-	return swr(`posts:${qs}`, () => fetchJSON(`/posts${qs ? `?${qs}` : ""}`));
+	const qs = buildQuery({ moduleId, limit }); // "" 或 "?moduleId=…&limit=…"
+	return swr(`posts:${qs}`, () => fetchJSON(`/posts${qs}`));
 }
 
 export function getPost(slug) {
@@ -205,8 +203,8 @@ export async function submitComment(slug, { author, body, website = "" }) {
 	const payload = await res.json().catch(() => ({}));
 	if (res.status === 429) throw new Error(payload.message || "评论太频繁，请稍后再试");
 	if (!res.ok) {
-		const first = payload?.fields ? Object.values(payload.fields)[0]?.[0] : null;
-		throw new Error(first || payload.message || "提交失败，请稍后再试");
+		/* fields 校验表（{ field: [msg, ...] }）取第一条字段错误，其次 message */
+		throw new Error(firstPayloadMessage(payload, "提交失败，请稍后再试"));
 	}
 	return true;
 }

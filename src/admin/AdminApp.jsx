@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { adminFetch, getDevToken, setDevToken } from "./api.js";
+import { getDevToken, setDevToken } from "./api.js";
+import { Button } from "./components/Button.jsx";
 import PostList from "./PostList.jsx";
 import PostEdit from "./PostEdit.jsx";
 import ModuleManage from "./ModuleManage.jsx";
@@ -101,9 +102,7 @@ export default function AdminApp() {
 									value={tokenInput}
 									onChange={(e) => setTokenInput(e.target.value)}
 								/>
-								<button type="submit" className="admin-btn">
-									保存令牌
-								</button>
+								<Button type="submit">保存令牌</Button>
 							</form>
 						)}
 					</div>

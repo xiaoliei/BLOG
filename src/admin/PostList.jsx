@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { adminFetch } from "./api.js";
+import { useCallback, useState } from "react";
+import { adminFetch, adminQuery } from "./api.js";
+import { useAsyncResource } from "../hooks/useAsyncResource.js";
+import { Button } from "./components/Button.jsx";
+import { ErrorText, HintText } from "./components/Feedback.jsx";
+import { TabBar } from "./components/TabBar.jsx";
 
 /* 文章列表页：标题/栏目/状态/日期/浏览量列 + 状态筛选 + 新建 */
 const STATUS_TABS = [
@@ -9,78 +13,61 @@ const STATUS_TABS = [
 ];
 
 export default function PostList({ guard, onEdit, onNew }) {
-	const [rows, setRows] = useState(null);
 	const [status, setStatus] = useState("");
-	const [error, setError] = useState(null);
 	const [busyId, setBusyId] = useState(null);
 
-	const load = useCallback(() => {
-		guard(() => adminFetch(`/posts${status ? `?status=${status}` : ""}`))
-			.then(setRows)
-			.catch((e) => setError(e.message));
-	}, [guard, status]);
+	/* 列表加载：status 变化自动重查（等价原 useCallback(load, [guard, status])） */
+	const { data: rows, error, setError, refetch: load } = useAsyncResource({
+		fetcher: () => guard(() => adminFetch(`/posts${adminQuery({ status })}`)),
+		deps: [guard, status],
+	});
 
-	useEffect(load, [load]);
+	/* 通用行操作：执行后刷新列表，busyId 标记操作中的行 */
+	const runOp = useCallback(
+		async (row, makeOp) => {
+			setBusyId(row.id);
+			setError(null);
+			try {
+				await guard(makeOp());
+				load();
+			} catch (e) {
+				setError(e.message);
+			} finally {
+				setBusyId(null);
+			}
+		},
+		[guard, load, setError],
+	);
 
-	const togglePublish = async (row) => {
-		setBusyId(row.id);
-		setError(null);
-		try {
-			await guard(() =>
-				adminFetch(`/posts/${row.id}/${row.status === "published" ? "unpublish" : "publish"}`, {
-					method: "POST",
-				}),
-			);
-			load();
-		} catch (e) {
-			setError(e.message);
-		} finally {
-			setBusyId(null);
-		}
-	};
+	const togglePublish = (row) =>
+		runOp(row, () =>
+			adminFetch(`/posts/${row.id}/${row.status === "published" ? "unpublish" : "publish"}`, {
+				method: "POST",
+			}),
+		);
 
-	const remove = async (row) => {
+	const remove = (row) => {
 		if (!window.confirm(`删除「${row.title}」？关联评论将一并删除。`)) return;
-		setBusyId(row.id);
-		setError(null);
-		try {
-			await guard(() => adminFetch(`/posts/${row.id}`, { method: "DELETE" }));
-			load();
-		} catch (e) {
-			setError(e.message);
-		} finally {
-			setBusyId(null);
-		}
+		runOp(row, () => adminFetch(`/posts/${row.id}`, { method: "DELETE" }));
 	};
 
 	return (
 		<section className="admin-page">
 			<header className="admin-page__head">
 				<h1>文章管理</h1>
-				<button type="button" className="admin-btn admin-btn--primary" onClick={onNew}>
+				<Button variant="primary" onClick={onNew}>
 					＋ 新建文章
-				</button>
+				</Button>
 			</header>
 
-			<div className="admin-tabs">
-				{STATUS_TABS.map((t) => (
-					<button
-						key={t.id}
-						type="button"
-						className={`admin-tabs__item${status === t.id ? " is-active" : ""}`}
-						onClick={() => setStatus(t.id)}
-					>
-						{t.label}
-					</button>
-				))}
-			</div>
+			<TabBar tabs={STATUS_TABS} value={status} onChange={setStatus} />
 
-			{error && <p className="admin-error">{error}</p>}
+			<ErrorText>{error}</ErrorText>
 
 			{rows == null ? (
-				<p className="admin-hint">加载中…</p>
+				<HintText>加载中…</HintText>
 			) : rows.length === 0 ? (
-				<p className="admin-hint">暂无文章。</p>
+				<HintText>暂无文章。</HintText>
 			) : (
 				<table className="admin-table">
 					<thead>
@@ -110,22 +97,12 @@ export default function PostList({ guard, onEdit, onNew }) {
 								<td className="admin-table__mono">{row.date}</td>
 								<td className="admin-table__mono">{row.views}</td>
 								<td className="admin-table__ops">
-									<button
-										type="button"
-										className="admin-btn admin-btn--sm"
-										disabled={busyId === row.id}
-										onClick={() => togglePublish(row)}
-									>
+									<Button small disabled={busyId === row.id} onClick={() => togglePublish(row)}>
 										{row.status === "published" ? "下架" : "发布"}
-									</button>
-									<button
-										type="button"
-										className="admin-btn admin-btn--sm admin-btn--danger"
-										disabled={busyId === row.id}
-										onClick={() => remove(row)}
-									>
+									</Button>
+									<Button small variant="danger" disabled={busyId === row.id} onClick={() => remove(row)}>
 										删除
-									</button>
+									</Button>
 								</td>
 							</tr>
 						))}

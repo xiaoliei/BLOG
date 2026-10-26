@@ -3,7 +3,10 @@
    - 生产：CF Access 的 CF_Authorization cookie 自动随同域请求携带
    - 本地：读取 localStorage 的开发令牌，以 X-Admin-Token 头发送
      （wrangler dev 未配置 Access 团队域名时的回退路径）
+   - 错误解析与查询串拼接复用 src/lib/http.js（与公开 API 共用）
    ============================================================ */
+
+import { buildQuery, firstPayloadMessage } from "../lib/http.js";
 
 const TOKEN_KEY = "admin:dev-token";
 
@@ -48,10 +51,13 @@ export async function adminFetch(path, { method = "GET", body } = {}) {
 		} catch {
 			/* ignore */
 		}
-		const err = new Error(payload?.message || `请求失败（HTTP ${res.status}）`);
+		const err = new Error(firstPayloadMessage(payload, `请求失败（HTTP ${res.status}）`));
 		err.status = res.status;
 		err.payload = payload;
 		throw err;
 	}
 	return res.status === 204 ? null : res.json();
 }
+
+/** 列表类 GET 的查询串（如 ?status=draft）；无参数返回空串 */
+export const adminQuery = buildQuery;

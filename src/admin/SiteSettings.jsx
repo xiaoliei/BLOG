@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { adminFetch } from "./api.js";
+import { useAsyncResource } from "../hooks/useAsyncResource.js";
+import { useFlash } from "../hooks/useFlash.js";
+import { Button } from "./components/Button.jsx";
+import { ErrorText, HintText, Toasts } from "./components/Feedback.jsx";
+import { TextField, TextareaField } from "./components/Fields.jsx";
 
 /* ============================================================
    站点设置页：站点信息 / 区块文案 / 关于我 / 页脚 分组表单
@@ -57,27 +62,20 @@ const GROUPS = [
 export default function SiteSettings({ guard }) {
 	const [form, setForm] = useState(null);
 	const [dirty, setDirty] = useState({});
-	const [error, setError] = useState(null);
-	const [toast, setToast] = useState(null);
+	const { toast, flash } = useFlash();
 
-	const flash = useCallback((kind, text) => {
-		setToast({ kind, text });
-		window.setTimeout(() => setToast(null), 2600);
-	}, []);
-
-	const load = useCallback(() => {
-		guard(() => adminFetch("/settings"))
-			.then((data) => {
+	/* 设置加载：成功后重置脏标记（等价原 useCallback(load, [guard])） */
+	const { error, setError } = useAsyncResource({
+		fetcher: () =>
+			guard(() => adminFetch("/settings")).then((data) => {
 				setForm(data);
 				setDirty({});
-			})
-			.catch((e) => setError(e.message));
-	}, [guard]);
+			}),
+		deps: [guard],
+	});
 
-	useEffect(load, [load]);
-
-	const setField = (key) => (e) => {
-		const value = e.target.type === "number" ? Number(e.target.value) : e.target.value;
+	/* 写字段并标记脏（number 输入保留原 Number 转换） */
+	const setFieldValue = (key, value) => {
 		setForm((f) => ({ ...f, [key]: value }));
 		setDirty((d) => ({ ...d, [key]: true }));
 	};
@@ -109,47 +107,44 @@ export default function SiteSettings({ guard }) {
 			<header className="admin-page__head">
 				<h1>站点设置</h1>
 				<div className="admin-page__ops">
-					{toast && <p className={`admin-toast admin-toast--${toast.kind}`}>{toast.text}</p>}
-					<button
-						type="button"
-						className="admin-btn admin-btn--primary"
-						onClick={save}
-						disabled={!form || !dirtyCount}
-					>
+					<Toasts toast={toast} as="p" />
+					<Button variant="primary" onClick={save} disabled={!form || !dirtyCount}>
 						保存修改
-					</button>
+					</Button>
 				</div>
 			</header>
 
-			{error && <p className="admin-error">{error}</p>}
+			<ErrorText>{error}</ErrorText>
 
 			{!form ? (
-				<p className="admin-hint">加载中…</p>
+				<HintText>加载中…</HintText>
 			) : (
 				GROUPS.map((group) => (
 					<section key={group.title} className="admin-settings-group">
 						<h2>{group.title}</h2>
 						<div className="admin-form">
-							{group.fields.map(([key, label, kind]) => (
-								<label key={key} className="admin-field">
-									<span>{label}</span>
-									{kind === "textarea" ? (
-										<textarea
-											rows={3}
-											value={form[key] ?? ""}
-											onChange={setField(key)}
-										/>
-									) : (
-										<input
-											type={kind}
-											min={kind === "number" ? 1900 : undefined}
-											max={kind === "number" ? 2100 : undefined}
-											value={form[key] ?? ""}
-											onChange={setField(key)}
-										/>
-									)}
-								</label>
-							))}
+							{group.fields.map(([key, label, kind]) =>
+								kind === "textarea" ? (
+									<TextareaField
+										key={key}
+										label={label}
+										rows={3}
+										value={form[key] ?? ""}
+										onChange={(v) => setFieldValue(key, v)}
+									/>
+								) : (
+									/* kind 即输入类型（"input" 与原实现一致直传 type） */
+									<TextField
+										key={key}
+										label={label}
+										type={kind}
+										min={kind === "number" ? 1900 : undefined}
+										max={kind === "number" ? 2100 : undefined}
+										value={form[key] ?? ""}
+										onChange={(v) => setFieldValue(key, kind === "number" ? Number(v) : v)}
+									/>
+								),
+							)}
 						</div>
 					</section>
 				))

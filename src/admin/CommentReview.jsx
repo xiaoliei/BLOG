@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
-import { adminFetch } from "./api.js";
+import { useState } from "react";
+import { adminFetch, adminQuery } from "./api.js";
+import { useAsyncResource } from "../hooks/useAsyncResource.js";
+import { useFlash } from "../hooks/useFlash.js";
 import { localDateTime } from "../lib/local-time.js";
+import { Button } from "./components/Button.jsx";
+import { ErrorText, HintText, Toasts } from "./components/Feedback.jsx";
+import { TabBar } from "./components/TabBar.jsx";
 
 /* 评论审核队列：pending / approved / rejected 筛选，放行 / 拒绝 / 删除 */
 
@@ -12,24 +17,15 @@ const STATUS_TABS = [
 ];
 
 export default function CommentReview({ guard }) {
-	const [rows, setRows] = useState(null);
 	const [status, setStatus] = useState("pending");
-	const [error, setError] = useState(null);
-	const [toast, setToast] = useState(null);
 	const [busyId, setBusyId] = useState(null);
+	const { toast, flash } = useFlash();
 
-	const flash = useCallback((kind, text) => {
-		setToast({ kind, text });
-		window.setTimeout(() => setToast(null), 2600);
-	}, []);
-
-	const load = useCallback(() => {
-		guard(() => adminFetch(`/comments${status ? `?status=${status}` : ""}`))
-			.then(setRows)
-			.catch((e) => setError(e.message));
-	}, [guard, status]);
-
-	useEffect(load, [load]);
+	/* 列表加载：status 变化自动重查（等价原 useCallback(load, [guard, status])） */
+	const { data: rows, error, setError, refetch: load } = useAsyncResource({
+		fetcher: () => guard(() => adminFetch(`/comments${adminQuery({ status })}`)),
+		deps: [guard, status],
+	});
 
 	const act = async (row, action) => {
 		setBusyId(row.id);
@@ -40,9 +36,7 @@ export default function CommentReview({ guard }) {
 				await guard(() => adminFetch(`/comments/${row.id}`, { method: "DELETE" }));
 				flash("ok", "已删除");
 			} else {
-				await guard(() =>
-					adminFetch(`/comments/${row.id}`, { method: "PATCH", body: { action } }),
-				);
+				await guard(() => adminFetch(`/comments/${row.id}`, { method: "PATCH", body: { action } }));
 				flash("ok", action === "approve" ? "已放行，前台可见" : "已拒绝");
 			}
 			load();
@@ -57,28 +51,17 @@ export default function CommentReview({ guard }) {
 		<section className="admin-page">
 			<header className="admin-page__head">
 				<h1>评论审核</h1>
-				{toast && <span className={`admin-toast admin-toast--${toast.kind}`}>{toast.text}</span>}
+				<Toasts toast={toast} as="span" />
 			</header>
 
-			<div className="admin-tabs">
-				{STATUS_TABS.map((t) => (
-					<button
-						key={t.id}
-						type="button"
-						className={`admin-tabs__item${status === t.id ? " is-active" : ""}`}
-						onClick={() => setStatus(t.id)}
-					>
-						{t.label}
-					</button>
-				))}
-			</div>
+			<TabBar tabs={STATUS_TABS} value={status} onChange={setStatus} />
 
-			{error && <p className="admin-error">{error}</p>}
+			<ErrorText>{error}</ErrorText>
 
 			{rows == null ? (
-				<p className="admin-hint">加载中…</p>
+				<HintText>加载中…</HintText>
 			) : rows.length === 0 ? (
-				<p className="admin-hint">该状态下暂无评论。</p>
+				<HintText>该状态下暂无评论。</HintText>
 			) : (
 				<ul className="admin-review">
 					{rows.map((row) => (
@@ -96,33 +79,18 @@ export default function CommentReview({ guard }) {
 							<p className="admin-review__body">{row.body}</p>
 							<div className="admin-review__ops">
 								{row.status !== "approved" && (
-									<button
-										type="button"
-										className="admin-btn admin-btn--sm admin-btn--primary"
-										disabled={busyId === row.id}
-										onClick={() => act(row, "approve")}
-									>
+									<Button small variant="primary" disabled={busyId === row.id} onClick={() => act(row, "approve")}>
 										放行
-									</button>
+									</Button>
 								)}
 								{row.status === "pending" && (
-									<button
-										type="button"
-										className="admin-btn admin-btn--sm admin-btn--warn"
-										disabled={busyId === row.id}
-										onClick={() => act(row, "reject")}
-									>
+									<Button small variant="warn" disabled={busyId === row.id} onClick={() => act(row, "reject")}>
 										拒绝
-									</button>
+									</Button>
 								)}
-								<button
-									type="button"
-									className="admin-btn admin-btn--sm admin-btn--danger"
-									disabled={busyId === row.id}
-									onClick={() => act(row, "delete")}
-								>
+								<Button small variant="danger" disabled={busyId === row.id} onClick={() => act(row, "delete")}>
 									删除
-								</button>
+								</Button>
 							</div>
 						</li>
 					))}
