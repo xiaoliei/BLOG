@@ -3,12 +3,15 @@ import { buildTown } from './town.js';
 import { PLACES, clamp, ease } from './places.js';
 import { parseWorld } from './data.js';
 import { decodeMesh, sourceDigest } from './mesh-cache.js';
-import { localDateAtMinutes, localWorldTime } from '../lib/local-time.js';
 import { ENTRY_DURATION, createEntryFlight, sampleEntryFlight, entryVisuals, smootherstep } from './entry-flight.js';
 import { buildEntryWorld, idlePlanetRotation, orbitalPose } from './entry-world.js';
+import { computeHomePose, computePlacePose, trackedFlightTargets, projectLabels } from './engine-camera.js';
+import { createLightingRig } from './engine-lighting.js';
 
 const YAW_LIMIT=1.1,ZOOM_MIN=.75,ZOOM_MAX=1.3,ROTATE_MARGIN=.12;
 const GLIDE_STALE_MS=120,GLIDE_CLAMP=.8,GLIDE_NUDGE=.45,GLIDE_DECAY=9,GLIDE_STOP=.05;
+// 太空中的太阳方位：入场飞行（atmosphere≈0）时的光照起点，随大气混合过渡到地表位置。
+const SPACE_SUN_POSITION=new THREE.Vector3(-40,70,90);
 
 export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, onEntryProgress = () => {}, onRotateBounds = () => {}, initialRoute, reducedMotion, islandNameRef }) {
   const bootAt=performance.now();let readyMs=null;
@@ -25,21 +28,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const ambient=new THREE.HemisphereLight('#f0fcff','#83a263',2.25);scene.add(ambient);
   const sun = new THREE.DirectionalLight('#fff2d3',2.4);sun.position.set(-40,75,45);sun.castShadow=true;
   sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-48,right:48,top:48,bottom:-48,near:1,far:180});sun.shadow.normalBias=.055;scene.add(sun);
-  const frozenLightingDate=diagnostics.has('entryFrame')&&Number.isFinite(Number(diagnostics.get('entryFrame')))?new Date():null;
-  let lastLightingUpdate=0, timeOverrideMinutes=null, lighting;
-  const skyColor=new THREE.Color(),spaceLightColor=new THREE.Color('#ffffff'),spaceAmbientColor=new THREE.Color('#c6eeff');
-  const localAmbientColor=new THREE.Color('#f0fcff'),spaceSunPosition=new THREE.Vector3(-40,70,90);
-  const localSunColor=new THREE.Color(),localSunPosition=new THREE.Vector3();
-  function updateLocalLighting(force=false){
-    const now=Date.now();
-    if(!force&&now-lastLightingUpdate<15000)return;
-    lastLightingUpdate=now;
-    const current=frozenLightingDate||new Date(now);
-    lighting=localWorldTime(timeOverrideMinutes===null?current:localDateAtMinutes(timeOverrideMinutes,current));
-    skyColor.set(lighting.sky);scene.fog.color.copy(skyColor);
-    localSunColor.set(lighting.light);localSunPosition.set(lighting.sunX,lighting.elevation,lighting.sunZ);
-  }
-  updateLocalLighting(true);
+  // 时刻→天空/太阳参数的换算与 15 秒节流收敛到 engine-lighting.js。
+  const lighting=createLightingRig({scene,frozenDate:diagnostics.has('entryFrame')&&Number.isFinite(Number(diagnostics.get('entryFrame')))?new Date():null});
   let town = null, entryWorld = null;
   const inspectionView=diagnostics.get('view');
   const camera = inspectionView?new THREE.OrthographicCamera(-50,50,43,-43,.08,30000):new THREE.PerspectiveCamera(40,1,.08,30000);
@@ -52,27 +42,16 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const requestedFrame=Number(debugParams.get('entryFrame'));
   const previewFrame=debugParams.has('worldDebug')&&debugParams.has('entryFrame')&&Number.isFinite(requestedFrame)?clamp(requestedFrame):null;
   const target=new THREE.Vector3(), moveFrom=new THREE.Vector3(), targetFrom=new THREE.Vector3();
-  const desired=new THREE.Vector3(),desiredTarget=new THREE.Vector3();
   const entryDestination=new THREE.Vector3(),entryTarget=new THREE.Vector3();
+  const desired=new THREE.Vector3(),desiredTarget=new THREE.Vector3();
   function homePose() {
-    if(inspectionView){
-      const poses={top:[0,130,.001],front:[0,55,100],east:[100,55,0],back:[0,55,-100],west:[-100,55,0]};
-      desired.set(...(poses[inspectionView]||poses.front));desiredTarget.set(0,5,0);return;
-    }
-    const mobile=aspect<.85;
-    const distance=(mobile?85/aspect:82)*zoom;
-    const angle=.28+yaw;
-    desired.set(Math.sin(angle)*distance, mobile?distance*.63:51,Math.cos(angle)*distance);
-    desiredTarget.set(0,6,0);
+    const pose=computeHomePose({ inspectionView, aspect, zoom, yaw });
+    desired.set(...pose.position);desiredTarget.set(...pose.target);
   }
   function placePose(id) {
     const p=town?.placeMap[id]; if(!p){homePose();return;}
-    const [x,y,z]=p.position; const mobile=aspect<.85;
-    const offset=mobile?p.camera?.mobileOffset:p.camera?.desktopOffset;
-    const focus=mobile?p.camera?.mobileTarget:p.camera?.desktopTarget;
-    desired.set(x+(offset?.[0]??(mobile?17:15)),y+(offset?.[1]??(mobile?23:17)),z+(offset?.[2]??(mobile?49:29)));
-    // Leave the right third (desktop) or bottom third (phone) for real DOM content.
-    desiredTarget.set(x+(focus?.[0]??(mobile?0:6)),y+(focus?.[1]??(mobile?1:4)),z+(focus?.[2]??0));
+    const pose=computePlacePose(p,aspect);
+    desired.set(...pose.position);desiredTarget.set(...pose.target);
   }
   function applyPose(){if(selected)placePose(selected);else homePose();}
   function moveTo(id,instant=false) {
@@ -94,6 +73,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   function flightDestination() {
     if(retarget){
       const a=smootherstep((clock-retarget.at)/.7);
+      // retarget.position/target 是本地坐标快照；世界追踪统一在 tick 的
+      // trackedFlightTargets 一处做，这里只做本地空间的插值。
       entryDestination.lerpVectors(retarget.position,retarget.to,a);
       entryTarget.lerpVectors(retarget.target,retarget.toTarget,a);
       if(a>=1)retarget=null;
@@ -246,7 +227,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const captureLost=e=>{if(pointers.has(e.pointerId)){pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;if(!pointers.size){pointer=null;yawVelocity=0;}}};
   const lost=e=>{e.preventDefault();onError('三维画面已中断，可以继续使用地点目录，或重新载入。');};
   canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',captureLost);canvas.addEventListener('wheel',wheel,{passive:false});canvas.addEventListener('webglcontextlost',lost);
-  const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;if(visibility==='visible')updateLocalLighting(true);};document.addEventListener('visibilitychange',onVisibility);
+  const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;if(visibility==='visible')lighting.update(true);};document.addEventListener('visibilitychange',onVisibility);
   const loadAbort=new AbortController();const timeout=setTimeout(()=>loadAbort.abort(),12000);
   async function prepare(){
     try{
@@ -284,7 +265,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(disposed)return;raf=requestAnimationFrame(tick);
     if(visibility==='hidden')return;
     const elapsed=timeBase===null?0:(now-timeBase)/1000;const dt=Math.min(elapsed,.06);timeBase=now;clock+=dt;
-    updateLocalLighting();
+    lighting.update();
     let visuals;
     if(phase==='loading'||phase==='idle'){
       idlePose();visuals=progress(0);
@@ -292,10 +273,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       entrySeconds=previewFrame!==null?previewFrame*ENTRY_DURATION:Math.min(ENTRY_DURATION,clock-start);
       flightDestination();
       entryWorld?.setEntry(entrySeconds,entryRotation);
-      // Track the real island while its parent rotates, preserving the same
-      // spherical view direction and zoom distance rather than aiming at air.
-      const movingTarget=entryWorld?entryWorld.worldPoint(entryTarget):entryTarget;
-      const movingDestination=entryDestination.clone().sub(entryTarget).add(movingTarget);
+      const {movingTarget,movingDestination}=trackedFlightTargets(entryWorld,entryDestination,entryTarget);
       const pose=sampleEntryFlight(entryFlight,entrySeconds,movingDestination,movingTarget);
       camera.position.copy(pose.position);target.copy(pose.target);visuals=progress(entrySeconds);
       camera.lookAt(target);
@@ -305,8 +283,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       // mirrored (orbital rest -> current view), so visuals unwind unchanged.
       entrySeconds=Math.max(0,ENTRY_DURATION-(clock-start));
       flightDestination();
-      const movingTarget=entryWorld?entryWorld.worldPoint(entryTarget):entryTarget;
-      const movingDestination=entryDestination.clone().sub(entryTarget).add(movingTarget);
+      const {movingTarget,movingDestination}=trackedFlightTargets(entryWorld,entryDestination,entryTarget);
       const pose=sampleEntryFlight(entryFlight,entrySeconds,movingDestination,movingTarget);
       entryWorld?.setEntry(entrySeconds,entryRotation);
       camera.position.copy(pose.position);target.copy(pose.target);visuals=progress(entrySeconds);
@@ -339,11 +316,11 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       scene.fog.near=THREE.MathUtils.lerp(scene.fog.near,clearNear,visibility);
       scene.fog.far=THREE.MathUtils.lerp(scene.fog.far,clearFar,visibility);
     }
-    ambient.intensity=THREE.MathUtils.lerp(2.1,lighting.ambient,atmosphere);
-    ambient.color.copy(spaceAmbientColor).lerp(localAmbientColor,atmosphere);
-    sun.intensity=THREE.MathUtils.lerp(3,lighting.sun,atmosphere);
-    sun.color.copy(spaceLightColor).lerp(localSunColor,atmosphere);
-    sun.position.copy(spaceSunPosition).lerp(localSunPosition,atmosphere);
+    ambient.intensity=THREE.MathUtils.lerp(2.1,lighting.current.ambient,atmosphere);
+    ambient.color.copy(lighting.spaceAmbientColor).lerp(lighting.localAmbientColor,atmosphere);
+    sun.intensity=THREE.MathUtils.lerp(3,lighting.current.sun,atmosphere);
+    sun.color.copy(lighting.spaceLightColor).lerp(lighting.sunColor,atmosphere);
+    sun.position.copy(SPACE_SUN_POSITION).lerp(lighting.sunPosition,atmosphere);
     // The flight's focus-aware fog can extend beyond the ordinary home range.
     // Never clip the sea/planet before it has completely merged into the sky.
     const far=Math.max(600,scene.fog.far+50,orbitDistance*3*(1-atmosphere));
@@ -351,8 +328,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(camera.far!==far||camera.near!==near){camera.far=far;camera.near=near;camera.updateProjectionMatrix();}
     const animationTime=reducedMotion?0:previewFrame!==null?entrySeconds:clock;
     town?.update(animationTime,diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
-    renderer.setClearColor(skyColor,atmosphere);renderer.render(scene,camera);
-    if(town&&(phase==='world'||phase==='focused'||(phase==='entering'||phase==='leaving')&&visuals.labels>0)&&clock-labelsAt>.08){labelsAt=clock;onLabels(Object.values(town.placeMap).map(p=>{const point=new THREE.Vector3(...p.label);const v=(entryWorld?entryWorld.worldPoint(point):point).project(camera);return {id:p.id,x:(v.x+1)*width/2,y:(1-v.y)*height/2,visible:v.z<1&&v.x>-1&&v.x<1&&v.y>-1&&v.y<1};}));}
+    renderer.setClearColor(lighting.sky,atmosphere);renderer.render(scene,camera);
+    if(town&&(phase==='world'||phase==='focused'||(phase==='entering'||phase==='leaving')&&visuals.labels>0)&&clock-labelsAt>.08){labelsAt=clock;onLabels(projectLabels(town,entryWorld,camera,width,height));}
     const cameraState=fly||phase==='entering'||phase==='leaving'?'moving':'settled';
     if(canvas.dataset.cameraState!==cameraState)canvas.dataset.cameraState=cameraState;
     if(diagnostics.has('worldDebug')){
@@ -369,8 +346,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   if(initialRoute.home){moveTo(selected,true);phase=selected?'focused':'world';progress(ENTRY_DURATION);}else idlePose();raf=requestAnimationFrame(tick);prepare();
   return {enter,navigate,rotate,reset(){yaw=0;zoom=1;yawVelocity=0;moveTo(null);},setTimeOverride(minutes){
     if(!import.meta.env.DEV)return;
-    timeOverrideMinutes=Number.isInteger(minutes)&&minutes>=0&&minutes<1440?minutes:null;
-    updateLocalLighting(true);
+    lighting.setOverride(minutes);
   },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();if(value&&phase==='leaving')finishLeave();},dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
     canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',captureLost);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
