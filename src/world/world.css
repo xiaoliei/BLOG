@@ -58,6 +58,8 @@
 .world-help span{margin-left:20px}
 .world-camera{position:absolute;z-index:6;left:32px;bottom:52px;display:flex;background:#fffdf2;border-radius:7px;box-shadow:0 5px 20px #224f6520;padding:4px}
 .world-icon-button{display:grid;place-items:center;width:34px;height:34px;background:transparent;border-radius:5px}
+.world-app .world-icon-button:disabled{opacity:.32;cursor:default}
+.world-app .world-icon-button:disabled:hover{background:transparent}
 .world-icon-button:hover{background:#e9eddd}
 .place-panel{position:absolute;z-index:7;right:24px;top:100px;bottom:140px;width:350px;display:flex;flex-direction:column;background:var(--paper);border-radius:10px;box-shadow:0 12px 38px #14435630;overflow:hidden;padding:22px 25px 0;animation:panel-arrive .35s ease-out}
 @keyframes panel-arrive{from{transform:translateX(16px);opacity:.4}to{transform:translateX(0);opacity:1}}

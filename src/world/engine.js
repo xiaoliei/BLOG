@@ -7,7 +7,10 @@ import { localDateAtMinutes, localWorldTime } from '../lib/local-time.js';
 import { ENTRY_DURATION, createEntryFlight, sampleEntryFlight, entryVisuals, smootherstep } from './entry-flight.js';
 import { buildEntryWorld, orbitalPose } from './entry-world.js';
 
-export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, onEntryProgress = () => {}, initialRoute, reducedMotion, islandNameRef }) {
+const YAW_LIMIT=1.1,ZOOM_MIN=.75,ZOOM_MAX=1.3,ROTATE_MARGIN=.12;
+const GLIDE_STALE_MS=120,GLIDE_CLAMP=.8,GLIDE_NUDGE=.45,GLIDE_DECAY=9,GLIDE_STOP=.05;
+
+export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError, onStats, onLabels, onEntryProgress = () => {}, onRotateBounds = () => {}, initialRoute, reducedMotion, islandNameRef }) {
   const bootAt=performance.now();let readyMs=null;
   // Development-only fault injection exercises the same public recovery paths.
   const diagnostics=import.meta.env.DEV&&new URLSearchParams(location.search).has('worldDebug')?new URLSearchParams(location.search):new URLSearchParams();
@@ -43,7 +46,8 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   let disposed=false, ready=false, phase=initialRoute.home?'world':'loading', selected=initialRoute.place;
   let aspect=1, width=1,height=1, raf, start=0, clock=0, timeBase=null, fly=null, yaw=0, zoom=1, orbitDistance=8640;
   let visibility=document.visibilityState, entryFlight=null, entrySeconds=0, retarget=null, entryRotation=null;
-  let stats={frames:0,seconds:0,last:0}, labelsAt=0, pointer=null;
+  let stats={frames:0,seconds:0,last:0}, labelsAt=0, yawVelocity=0, rotateBounds='';
+  const pointers=new Map();let pointer=null,pinch=null;
   const debugParams=diagnostics;
   const requestedFrame=Number(debugParams.get('entryFrame'));
   const previewFrame=debugParams.has('worldDebug')&&debugParams.has('entryFrame')&&Number.isFinite(requestedFrame)?clamp(requestedFrame):null;
@@ -73,8 +77,10 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   function applyPose(){if(selected)placePose(selected);else homePose();}
   function moveTo(id,instant=false) {
     selected=id;applyPose();
+    if(id)yawVelocity=0;
     if(instant||reducedMotion){camera.position.copy(desired);target.copy(desiredTarget);fly=null;}
     else{moveFrom.copy(camera.position);targetFrom.copy(target);fly={at:clock,duration:1.15,to:desired.clone(),target:desiredTarget.clone()};}
+    emitRotateBounds();
   }
   function idlePose(time=clock) {
     const pose=orbitalPose(aspect,entryWorld?.seaLevel??-.18,reducedMotion?0:time);
@@ -97,6 +103,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     entryFlight=null;retarget=null;fly=null;selected=null;
     entryWorld?.setWorld();
     homePose();camera.position.copy(desired);target.copy(desiredTarget);camera.lookAt(target);
+    emitRotateBounds();
     entrySeconds=ENTRY_DURATION;progress(ENTRY_DURATION);emitPhase('world');
   }
   function resize() {
@@ -130,24 +137,88 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       entryWorld?.setWorld();
       entryFlight=null;retarget=null;progress(ENTRY_DURATION);moveTo(route.place,instant);emitPhase(route.place?'focused':'world');
     }else {
-      selected=null;entryFlight=null;retarget=null;fly=null;yaw=0;zoom=1;entrySeconds=0;progress(0);
+      selected=null;entryFlight=null;retarget=null;fly=null;yaw=0;zoom=1;yawVelocity=0;pointers.clear();pinch=null;entrySeconds=0;progress(0);
       idlePose();
+      emitRotateBounds();
       emitPhase(ready?'idle':'loading');
     }
   }
-  function rotate(delta){if(phase!=='world')return;yaw=clamp(yaw+delta,-1.1,1.1);moveTo(null);}
-  function wheel(event){if(phase==='idle'){if(Math.abs(event.deltaY)>4)enter();return;}if(phase!=='world')return;event.preventDefault();zoom=clamp(zoom+event.deltaY*.0006,.75,1.3);moveTo(null);}
+  function emitRotateBounds(){
+    const left=yaw>-YAW_LIMIT+ROTATE_MARGIN,right=yaw<YAW_LIMIT-ROTATE_MARGIN,zoomAtBound=zoom<ZOOM_MIN+ROTATE_MARGIN||zoom>ZOOM_MAX-ROTATE_MARGIN;
+    // Encode exactly what the buttons consume, or every side-disabled state
+    // collapses into the same cached string and the change never propagates.
+    const next=`${left?'l':''}${right?'r':''}`;
+    if(next!==rotateBounds){rotateBounds=next;onRotateBounds({canRotateLeft:left,canRotateRight:right,zoomAtBound});}
+  }
+  function rotate(delta){if(phase!=='world')return;yawVelocity=0;yaw=clamp(yaw+delta,-YAW_LIMIT,YAW_LIMIT);moveTo(null);emitRotateBounds();}
+  function wheel(event){
+    if(phase==='idle'){if(Math.abs(event.deltaY)>4)enter();return;}
+    if(phase!=='world')return;event.preventDefault();
+    zoom=clamp(zoom+event.deltaY*.0006,ZOOM_MIN,ZOOM_MAX);moveTo(null);emitRotateBounds();
+  }
   const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
   function intersect(e){if(!town)return null;const rect=canvas.getBoundingClientRect();ndc.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);return town.pick(ray.intersectObjects(town.pickables,false)[0])?.place;}
-  function down(e){if(e.button!==0)return;pointer={x:e.clientX,y:e.clientY,last:e.clientX,moved:false};canvas.setPointerCapture(e.pointerId);}
+  function pinchSpan(){const [a,b]=[...pointers.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+  function down(e){
+    if(e.pointerType==='mouse'&&e.button!==0)return;
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===2){pointer=null;yawVelocity=0;canvas.setPointerCapture(e.pointerId);pinch={span:pinchSpan(),zoom};return;}
+    if(pointers.size>2||e.button!==0)return;
+    pointer={x:e.clientX,y:e.clientY,last:e.clientX,lastT:e.timeStamp,moved:false,velocity:0,direction:0};
+    canvas.setPointerCapture(e.pointerId);
+  }
   function move(e){
-    if(pointer){if(Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>8)pointer.moved=true;if(pointer.moved&&phase==='world'){yaw=clamp(yaw-(e.clientX-pointer.last)*.004,-1.1,1.1);moveTo(null,true);}pointer.last=e.clientX;}
+    const record=pointers.get(e.pointerId);
+    if(record){record.x=e.clientX;record.y=e.clientY;}
+    if(pinch){
+      if(pointers.size<2){pinch=null;return;}
+      if(phase!=='world')return;
+      const span=pinchSpan();if(span>0&&pinch.span>0)zoom=clamp(pinch.zoom*pinch.span/span,ZOOM_MIN,ZOOM_MAX);
+      moveTo(null,true);emitRotateBounds();return;
+    }
+    if(pointer){
+      if(Math.hypot(e.clientX-pointer.x,e.clientY-pointer.y)>8)pointer.moved=true;
+      if(pointer.moved&&phase==='world'){
+        const step=e.clientX-pointer.last;
+        yaw=clamp(yaw-step*.004,-YAW_LIMIT,YAW_LIMIT);
+        // Track angular velocity (rad/s) for the release inertia glide.
+        const dt=(e.timeStamp-pointer.lastT)/1000;
+        if(dt>0){const instant=-step*.004/dt;pointer.velocity=pointer.velocity*.7+instant*.3;}
+        pointer.direction=step<0?1:step>0?-1:0;
+        if(yaw===-YAW_LIMIT||yaw===YAW_LIMIT)pointer.velocity=0;
+        moveTo(null,true);
+      }
+      pointer.last=e.clientX;pointer.lastT=e.timeStamp;
+    }
     else if(phase==='world'||phase==='focused')canvas.style.cursor=intersect(e)?'pointer':'grab';
   }
-  function up(e){if(!pointer)return;const moved=pointer.moved;pointer=null;if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);if(moved)return;if(phase==='idle')enter();else if(phase==='world'||phase==='focused'){const id=intersect(e);if(id)onSelect(id);}}
-  const cancel=()=>{pointer=null;};
+  function up(e){
+    if(pointers.has(e.pointerId)){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      // Pinch dissolves into a fresh single-finger drag; return before the
+      // lift handling below would treat the lifted finger as this pointer.
+      if(pointers.size===1){const [rest]=pointers.values();pointer={x:rest.x,y:rest.y,last:rest.x,lastT:e.timeStamp,moved:true,velocity:0,direction:0};return;}
+    }
+    if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
+    if(!pointer)return;
+    const moved=pointer.moved;
+    // Launch the inertia glide in the direction the drag ended with, unless
+    // the finger paused before lifting (stale velocity) or pushes a wall.
+    const stale=(e.timeStamp-pointer.lastT)>GLIDE_STALE_MS;
+    if(moved&&phase==='world'&&!stale&&!reducedMotion){
+      if(pointer.velocity)yawVelocity=clamp(pointer.velocity,-GLIDE_CLAMP,GLIDE_CLAMP);
+      else if(pointer.direction&&!rotateBounds.includes(pointer.direction===1?'r':'l'))yawVelocity=pointer.direction*GLIDE_NUDGE;
+    }
+    pointer=null;
+    if(moved)return;
+    if(phase==='idle')enter();else if(phase==='world'||phase==='focused'){const id=intersect(e);if(id)onSelect(id);}
+  }
+  const cancel=e=>{pointers.delete(e.pointerId);pinch=null;pointer=null;yawVelocity=0;};
+  // Capture can be lost without pointercancel/up; drop just that stale entry.
+  const captureLost=e=>{if(pointers.has(e.pointerId)){pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;if(!pointers.size){pointer=null;yawVelocity=0;}}};
   const lost=e=>{e.preventDefault();onError('三维画面已中断，可以继续使用地点目录，或重新载入。');};
-  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('wheel',wheel,{passive:false});canvas.addEventListener('webglcontextlost',lost);
+  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',captureLost);canvas.addEventListener('wheel',wheel,{passive:false});canvas.addEventListener('webglcontextlost',lost);
   const onVisibility=()=>{visibility=document.visibilityState;timeBase=null;if(visibility==='visible')updateLocalLighting(true);};document.addEventListener('visibilitychange',onVisibility);
   const loadAbort=new AbortController();const timeout=setTimeout(()=>loadAbort.abort(),12000);
   async function prepare(){
@@ -204,6 +275,13 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       if(entrySeconds>=ENTRY_DURATION&&previewFrame===null&&!retarget)finishEntry();
     }else{
       if(fly){const a=ease((clock-fly.at)/fly.duration);camera.position.lerpVectors(moveFrom,fly.to,a);target.lerpVectors(targetFrom,fly.target,a);if(a>=1)fly=null;}
+      // Drag-inertia glide: a short damped coast, stopping dead at a yaw limit.
+      if(yawVelocity&&phase==='world'&&!selected&&!fly){
+        yaw=clamp(yaw+yawVelocity*dt,-YAW_LIMIT,YAW_LIMIT);
+        yawVelocity*=Math.exp(-dt*GLIDE_DECAY);
+        if(yaw===-YAW_LIMIT||yaw===YAW_LIMIT||Math.abs(yawVelocity)<GLIDE_STOP)yawVelocity=0;
+        moveTo(null,true);
+      }
       camera.lookAt(target);
       entryWorld?.setWorld();
       visuals=progress(ENTRY_DURATION);
@@ -250,13 +328,13 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(stats.seconds>2){onStats({fps:Math.round(stats.frames/stats.seconds),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,readyMs});stats.frames=0;stats.seconds=0;}
   }
   if(initialRoute.home){moveTo(selected,true);phase=selected?'focused':'world';progress(ENTRY_DURATION);}else idlePose();raf=requestAnimationFrame(tick);prepare();
-  return {enter,navigate,rotate,reset(){yaw=0;zoom=1;moveTo(null);},setTimeOverride(minutes){
+  return {enter,navigate,rotate,reset(){yaw=0;zoom=1;yawVelocity=0;moveTo(null);},setTimeOverride(minutes){
     if(!import.meta.env.DEV)return;
     timeOverrideMinutes=Number.isInteger(minutes)&&minutes>=0&&minutes<1440?minutes:null;
     updateLocalLighting(true);
-  },setReducedMotion(value){reducedMotion=value;if(value&&phase==='entering')finishEntry();},dispose(){
+  },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();},dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
-    canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
+    canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',captureLost);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
     town?.dispose();entryWorld?.dispose();sun.shadow.map?.dispose();renderer.dispose();
   }};
 }

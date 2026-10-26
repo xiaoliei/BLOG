@@ -74,6 +74,7 @@ export default function WorldApp(){
   const [phase,setPhase]=useState(initialRoute.current.home?'world':'loading');
   const [ready,setReady]=useState(false),[error,setError]=useState(null),[fallback,setFallback]=useState(false),[skipEarth,setSkipEarth]=useState(false);
   const [labels,setLabels]=useState([]),[stats,setStats]=useState(null);
+  const [rotateBounds,setRotateBounds]=useState('lr');
   const canvas=useRef(null),engine=useRef(null),nav=useRef(null),root=useRef(null),keyboardEntry=useRef(false);
   const lastEntryVisuals=useRef({}),directEntry=useRef(false);
   const placeScroll=useRef(new Map()),returnPostSlug=useRef(null),routeRef=useRef(initialRoute.current),articlePlaceRef=useRef(null);
@@ -140,6 +141,7 @@ export default function WorldApp(){
         islandNameRef,
         onReady:()=>{if(active)setReady(true);},
         onEntryProgress:visuals=>{if(active)updateEntryVisuals(visuals);},
+        onRotateBounds:({canRotateLeft,canRotateRight})=>{if(active)setRotateBounds(`${canRotateLeft?'l':''}${canRotateRight?'r':''}`);},
         onPhase:next=>{
           if(!active)return;setPhase(next);
           if(next==='world'&&!readWorldRoute(location.hash).home){
@@ -181,7 +183,7 @@ export default function WorldApp(){
       {timeDebugEnabled&&!inspection&&!fallback&&<section className="world-time-debug" aria-label="时间调试面板"><div className="world-time-debug-head"><strong>时间预览</strong><output>{shownTime}</output></div><label htmlFor="world-time-slider">拖动查看天空与光照</label><input id="world-time-slider" type="range" min="0" max="1439" step="1" value={shownMinutes} onChange={event=>setDebugMinutes(Number(event.target.value))}/><div className="world-time-presets">{[[360,'清晨'],[720,'正午'],[1080,'傍晚'],[1380,'夜晚']].map(([minutes,label])=><button key={minutes} type="button" onClick={()=>setDebugMinutes(minutes)}>{label}</button>)}</div><button className="world-time-reset" type="button" disabled={debugMinutes===null} onClick={()=>setDebugMinutes(null)}>恢复设备时间</button></section>}
       {!selected&&<div className="world-intro"><h1>欢迎来到{settings.islandName}</h1><p>今天，去哪里逛逛？点击一栋建筑，发现里面的故事。</p></div>}
       {!fallback&&!selected&&<div className="world-labels">{labels.map(label=><button key={label.id} className="world-label" style={{left:label.x,top:label.y,display:label.visible?'':'none'}} onClick={()=>visit(label.id)} tabIndex={-1} aria-hidden="true">{PLACE_MAP[label.id].short}<span/></button>)}</div>}
-      {!fallback&&<div className="world-camera" aria-label="镜头控制"><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(-.25)} aria-label="向左环视"><Icon name="left"/></button><button className="world-icon-button" onClick={()=>{if(selected)close();else engine.current?.reset();}} aria-label="回到全景"><Icon name="home"/></button><button className="world-icon-button" disabled={!!selected} onClick={()=>engine.current?.rotate(.25)} aria-label="向右环视"><Icon name="right"/></button></div>}
+      {!fallback&&<div className="world-camera" aria-label="镜头控制"><button className="world-icon-button" disabled={!rotateBounds.includes('l')||!!selected} onClick={()=>engine.current?.rotate(-.25)} aria-label="向左环视"><Icon name="left"/></button><button className="world-icon-button" onClick={()=>{if(selected)close();else engine.current?.reset();}} aria-label="回到全景"><Icon name="home"/></button><button className="world-icon-button" disabled={!rotateBounds.includes('r')||!!selected} onClick={()=>engine.current?.rotate(.25)} aria-label="向右环视"><Icon name="right"/></button></div>}
       <nav className="world-nav" ref={nav} aria-label={`${settings.islandName}地点目录`}>{PLACES.map(p=><button key={p.id} data-place={p.id} aria-current={route.place===p.id?'location':undefined} onClick={()=>visit(p.id)} style={{'--place-color':p.color}}><Icon name={p.id}/><span>{p.short}</span><span className="nav-dot"/></button>)}</nav>
       {!selected&&<p className="world-help">{fallback?'静态预览 · 使用目录探索':'拖动环视 · 滚轮缩放'}<span>慢慢逛，不着急。</span></p>}
       {selected&&<PlacePanel key={selected.id} place={selected} islandName={settings.islandName} onClose={close} onOpenPost={openPost} onScroll={top=>placeScroll.current.set(selected.id,top)} restoreScroll={placeScroll.current.get(selected.id)} returnPostSlug={focusPostSlug} onFocusRestored={focusRestored}/>}
