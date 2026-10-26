@@ -5,6 +5,7 @@ import { db } from "../lib/db";
 import { comments, modules, posts } from "../db/schema";
 import { siteSettings } from "../db/schema";
 import { settingsFromRow } from "../lib/settings";
+import { CACHE_GET, NO_STORE } from "../lib/http";
 import type { Env } from "../env";
 
 /* ============================================================
@@ -14,9 +15,6 @@ import type { Env } from "../env";
    - 浏览量计数：D1 原子 +1（客户端 60s sessionStorage 去重，设计 D5）
    - 评论：蜜罐 + IP 限频（30s/条）+ 默认 pending（设计 D6）
    ============================================================ */
-
-const CACHE_GET = "public, max-age=0, s-maxage=60";
-const NO_STORE = "no-store";
 
 /** 文章列表选择列（不含正文 bodyMd） */
 const listColumns = {
