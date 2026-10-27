@@ -165,7 +165,9 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   }
   const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();
   function intersect(e){if(!town)return null;const rect=canvas.getBoundingClientRect();ndc.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(ndc,camera);return town.pick(ray.intersectObjects(town.pickables,false)[0])?.place;}
-  function pinchSpan(){const [a,b]=[...pointers.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+  // 指针记录存的是 x/y；两指间距必须读同一组字段，
+  // 读 clientX 会得到 NaN，NaN 让 move 里的 span>0 守卫恒假，捏合就静默失效。
+  function pinchSpan(){const [a,b]=[...pointers.values()];return Math.hypot(a.x-b.x,a.y-b.y);}
   function down(e){
     if(e.pointerType==='mouse'&&e.button!==0)return;
     pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
