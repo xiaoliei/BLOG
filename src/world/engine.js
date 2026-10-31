@@ -10,6 +10,8 @@ import { createLightingRig } from './engine-lighting.js';
 
 const YAW_LIMIT=1.1,ZOOM_MIN=.75,ZOOM_MAX=1.3,ROTATE_MARGIN=.12;
 const GLIDE_STALE_MS=120,GLIDE_CLAMP=.8,GLIDE_NUDGE=.45,GLIDE_DECAY=9,GLIDE_STOP=.05;
+// 返回星球后，启动页文字从透明淡入的时长（秒）。
+const UI_REVEAL_DURATION=.9;
 // 太空中的太阳方位：入场飞行（atmosphere≈0）时的光照起点，随大气混合过渡到地表位置。
 const SPACE_SUN_POSITION=new THREE.Vector3(-40,70,90);
 
@@ -37,6 +39,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   let aspect=1, width=1,height=1, raf, start=0, clock=0, timeBase=null, fly=null, yaw=0, zoom=1, orbitDistance=8640;
   let visibility=document.visibilityState, entryFlight=null, entrySeconds=0, retarget=null, entryRotation=null;
   let stats={frames:0,seconds:0,last:0}, labelsAt=0, yawVelocity=0, rotateBounds='';
+  let revealAt=null;
   const pointers=new Map();let pointer=null,pinch=null;
   const debugParams=diagnostics;
   const requestedFrame=Number(debugParams.get('entryFrame'));
@@ -103,7 +106,21 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   }
   function finishLeave(){
     entryFlight=null;retarget=null;fly=null;selected=null;yaw=0;zoom=1;yawVelocity=0;
-    idlePose();emitPhase('idle');
+    idlePose();
+    // The entry curve drops the landing UI within its last 0.45 s, while the
+    // landing layer is still unmounted during "leaving". Replaying the flight
+    // backwards therefore hands over a full-opacity variable and the text pops
+    // in. Start the reveal from zero so it fades in as the layer mounts.
+    revealAt=clock;
+    onEntryProgress({...entryVisuals(0), ui:0});
+    emitPhase(UI_REVEAL_DURATION>0?'revealing':'idle');
+  }
+  // Landing UI after the return flight: 0 when the layer appears, rising to
+  // its resting value over UI_REVEAL_DURATION.
+  function restVisuals(){
+    const resting=entryVisuals(0), ui=smootherstep((clock-revealAt)/UI_REVEAL_DURATION);
+    onEntryProgress({...resting, ui:resting.ui*ui});
+    return {...resting, ui:resting.ui*ui};
   }
   function resize() {
     width=canvas.clientWidth||1;height=canvas.clientHeight||1;aspect=width/height;
@@ -123,10 +140,11 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
   function emitPhase(next){phase=next;onPhase(next);}
   function enter(){
-    if(!ready||!['idle','loading','leaving'].includes(phase))return;
+    if(!ready||!['idle','loading','leaving','revealing'].includes(phase))return;
     if(reducedMotion){finishEntry();return;}
     // Cutting a leave short starts from wherever the unwind has reached, so
     // the planet simply turns back around instead of snapping to its rest.
+    revealAt=null;
     entryRotation=entryWorld?.captureRotation();
     homePose();entryDestination.copy(desired);entryTarget.copy(desiredTarget);
     entryFlight=createEntryFlight(camera.position,target,desired,desiredTarget);
@@ -137,14 +155,14 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
       // The hash written by entry completion echoes back here. Do not launch
       // another 1.15-second flight at the already settled overview.
       if((phase==='world'||phase==='focused')&&selected===route.place)return;
-      const instant=['loading','idle','entering','leaving'].includes(phase);
+      const instant=['loading','idle','revealing','entering','leaving'].includes(phase);
       entryWorld?.setWorld();
-      entryFlight=null;retarget=null;progress(ENTRY_DURATION);moveTo(route.place,instant);emitPhase(route.place?'focused':'world');
+      entryFlight=null;retarget=null;revealAt=null;progress(ENTRY_DURATION);moveTo(route.place,instant);emitPhase(route.place?'focused':'world');
     }else if(leave()){
       // The world camera is unwinding back to the planet; only the hash echo
       // is left to settle, and re-entering must be able to cut it short.
     }else {
-      selected=null;entryFlight=null;retarget=null;fly=null;yaw=0;zoom=1;yawVelocity=0;pointers.clear();pinch=null;entrySeconds=0;progress(0);
+      selected=null;entryFlight=null;retarget=null;fly=null;yaw=0;zoom=1;yawVelocity=0;pointers.clear();pinch=null;entrySeconds=0;revealAt=null;progress(0);
       idlePose();
       emitRotateBounds();
       emitPhase(ready?'idle':'loading');
@@ -221,7 +239,7 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     }
     pointer=null;
     if(moved)return;
-    if(phase==='leaving')enter();
+    if(phase==='leaving'||phase==='revealing')enter();
     else if(phase==='idle')enter();else if(phase==='world'||phase==='focused'){const id=intersect(e);if(id)onSelect(id);}
   }
   const cancel=e=>{pointers.delete(e.pointerId);pinch=null;pointer=null;yawVelocity=0;};
@@ -271,6 +289,10 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     let visuals;
     if(phase==='loading'||phase==='idle'){
       idlePose();visuals=progress(0);
+    }else if(phase==='revealing'){
+      // 返回星球后：三维场景已经在静止姿态，只等启动页文字淡入。
+      idlePose();visuals=restVisuals();
+      if(clock-revealAt>=UI_REVEAL_DURATION){revealAt=null;emitPhase('idle');}
     }else if(phase==='entering'){
       entrySeconds=previewFrame!==null?previewFrame*ENTRY_DURATION:Math.min(ENTRY_DURATION,clock-start);
       flightDestination();
