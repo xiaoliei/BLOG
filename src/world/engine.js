@@ -330,7 +330,11 @@ export function createWorldEngine(canvas, { onReady, onPhase, onSelect, onError,
     if(camera.far!==far||camera.near!==near){camera.far=far;camera.near=near;camera.updateProjectionMatrix();}
     const animationTime=reducedMotion?0:previewFrame!==null?entrySeconds:clock;
     town?.update(animationTime,diagnostics.has('trainTime')?Number(diagnostics.get('trainTime')):undefined);
-    renderer.setClearColor(lighting.sky,atmosphere);renderer.render(scene,camera);
+    // 岛屿先于地球模型进场景。启动页的轨道相机会把它缩成一条横线，
+    // 这一帧不能画到画布上，否则星空中间会闪出缩放版岛屿。
+    const revealScene=!!entryWorld||(phase!=='loading'&&phase!=='idle');
+    if(revealScene){renderer.setClearColor(lighting.sky,atmosphere);renderer.render(scene,camera);}
+    else{renderer.setClearColor(0x000000,0);renderer.clear(true,true,true);}
     if(town&&(phase==='world'||phase==='focused'||(phase==='entering'||phase==='leaving')&&visuals.labels>0)&&clock-labelsAt>.08){labelsAt=clock;onLabels(projectLabels(town,entryWorld,camera,width,height));}
     const cameraState=fly||phase==='entering'||phase==='leaving'?'moving':'settled';
     if(canvas.dataset.cameraState!==cameraState)canvas.dataset.cameraState=cameraState;
