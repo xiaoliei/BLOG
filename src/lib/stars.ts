@@ -3,12 +3,14 @@
 let paused = false;
 
 /* 过渡重叠期暂停星空绘制（避免与 3D 头颅/房间双 WebGL 叠加抢帧） */
-export function setStarsPaused(v) {
+export function setStarsPaused(v: boolean): void {
   paused = v;
 }
 
-export function startStars(canvas, { staticFrame = false } = {}) {
-  const ctx = canvas.getContext('2d');
+export interface StarfieldOptions { staticFrame?: boolean; }
+
+export function startStars(canvas: HTMLCanvasElement, { staticFrame = false }: StarfieldOptions = {}): () => void {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   const reducedMotion = staticFrame || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let seed = 1729;
   const random = staticFrame ? () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; } : Math.random;
@@ -20,7 +22,10 @@ export function startStars(canvas, { staticFrame = false } = {}) {
   // 参考稿风格：白色系为主的呼吸闪烁星点，少量青蓝点缀
   const COLORS = ['#FFFFFF', '#EAF2FB', '#D6E4F5', '#C9DCF2', '#1ABC9C'];
 
-  function makeStar() {
+  interface Star { x: number; y: number; r: number; phase: number; speed: number; color: string; }
+  interface Shooting { x: number; y: number; vx: number; vy: number; life: number; }
+
+  function makeStar(): Star {
     return {
       x: random(),
       y: random(),
@@ -31,10 +36,10 @@ export function startStars(canvas, { staticFrame = false } = {}) {
     };
   }
 
-  const stars = Array.from({ length: 300 }, () => makeStar());
-  let shooting = null;
+  const stars: Star[] = Array.from({ length: 300 }, () => makeStar());
+  let shooting: Shooting | null = null;
 
-  function resize() {
+  function resize(): void {
     w = canvas.clientWidth;
     h = canvas.clientHeight;
     canvas.width = Math.floor(w * dpr);
@@ -43,7 +48,7 @@ export function startStars(canvas, { staticFrame = false } = {}) {
     if (reducedMotion && raf) { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
   }
 
-  function spawnShooting() {
+  function spawnShooting(): void {
     shooting = {
       x: Math.random() * w * 0.8 + w * 0.1,
       y: Math.random() * h * 0.3,
@@ -55,7 +60,7 @@ export function startStars(canvas, { staticFrame = false } = {}) {
 
   let lastShoot = 0;
 
-  function frame(t) {
+  function frame(t: number): void {
     if (paused) {
       raf = requestAnimationFrame(frame);
       return;

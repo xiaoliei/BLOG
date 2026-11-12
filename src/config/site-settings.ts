@@ -2,9 +2,9 @@
    站点设置默认值（单一来源）
    ------------------------------------------------------------
    消费方：
-   1. 前台静态回退（src/lib/api.js getStaticSettings）
+   1. 前台静态回退（src/lib/api.ts getStaticSettings）
    2. Worker `site_settings` 表为空时的内置回退（worker/lib/settings.ts）
-   3. seed 脚本首次灌库的初始数据（scripts/seed.mjs）
+   3. seed 脚本首次灌库的初始数据（scripts/seed.ts）
    ⚠ 保持纯数据：不 import 任何模块、不触碰浏览器/Node API，
    以便 Vite 与 Worker esbuild 都能直接打包。
    运行期以 D1 `site_settings` 表为准，后台「站点设置」页可编辑。

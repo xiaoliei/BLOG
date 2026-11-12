@@ -2,10 +2,10 @@
    小礼工坊 站点信息配置
    ------------------------------------------------------------
    内容数据（栏目/文章）已迁移至 D1 数据库，由 /admin 后台管理，
-   前台经 /api/public/* 拉取（见 src/lib/api.js）。
+   前台经 /api/public/* 拉取（见 src/lib/api.ts）。
    本文件保留两处职责：
    1. SITE 站点元信息快照（已退役：运行期站点设置来自 D1 site_settings，
-      后台「站点设置」页编辑；静态回退默认值见 src/config/site-settings.js）
+      后台「站点设置」页编辑；静态回退默认值见 src/config/site-settings.ts）
    2. MODULES/ALL_POSTS 静态数据快照 —— 仅作 API 故障时的
       feature flag 回退数据源（localStorage 'blog:data-source'
       设为 'static' 即时切回），不再是日常内容维护入口
@@ -23,7 +23,26 @@ export const SITE = {
 };
 
 /* 栏目：title / 简介 / 主题色 / 图标 / 文章 */
-export const MODULES = [
+
+export interface StaticPostDef {
+	title: string;
+	date: string;
+	tags: string[];
+	readTime: number;
+	excerpt: string;
+}
+
+export interface StaticModuleDef {
+	id: string;
+	title: string;
+	accent: string;
+	accentDark: string;
+	icon: string;
+	blurb: string;
+	posts: StaticPostDef[];
+}
+
+export const MODULES: StaticModuleDef[] = [
 	{
 		id: "life",
 		title: "生活杂记",
@@ -301,10 +320,17 @@ export const MODULES = [
 	},
 ];
 
-export const MODULE_MAP = Object.fromEntries(MODULES.map((m) => [m.id, m]));
+export const MODULE_MAP: Record<string, StaticModuleDef> = Object.fromEntries(MODULES.map((m) => [m.id, m]));
 
 /* 全部文章（带所属栏目），按日期倒序 */
-export const ALL_POSTS = MODULES.flatMap((module) =>
+export interface StaticPost extends StaticPostDef {
+	moduleId: string;
+	moduleTitle: string;
+	moduleAccent: string;
+	moduleAccentDark: string;
+}
+
+export const ALL_POSTS: StaticPost[] = MODULES.flatMap((module) =>
 	module.posts.map((post) => ({
 		...post,
 		moduleId: module.id,

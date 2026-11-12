@@ -1,19 +1,22 @@
 import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 
 /* 顶层错误边界：捕获子树渲染/生命周期错误，
    避免整个 React 树卸载后只剩 body 的羊毛背景。 */
-export default class ErrorBoundary extends Component {
-  constructor(props) {
+interface ErrorBoundaryProps { children?: ReactNode; }
+interface ErrorBoundaryState { error: Error | null; }
+
+export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
   }
 
-  componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
+  componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('[ErrorBoundary]', error, info);
   }
 

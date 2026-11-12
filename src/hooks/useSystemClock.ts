@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
-import { SYS_INIT } from '../config/site';
-import { localDate } from '../lib/local-time.js';
+import { SYS_INIT } from '../config/site.ts';
+import { localDate } from '../lib/local-time.ts';
 
 const BOOT_AT = Date.now();
 const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-function pad2(n) {
+interface SysState {
+  coords: { x: number; y: number; z: number };
+  net: { state: string; up: number };
+}
+
+function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function fmtUptime(ms) {
+function fmtUptime(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${pad2(Math.floor(s / 3600))}:${pad2(Math.floor((s % 3600) / 60))}:${pad2(s % 60)}`;
 }
 
 /* 缓慢漂移的伪坐标 + 网络速率抖动，营造"系统在运行"的感觉（与 demo 一致） */
-function drift(sys) {
+function drift(sys: SysState): SysState {
   return {
     coords: {
       x: sys.coords.x + (Math.random() - 0.5) * 0.06,
@@ -29,11 +34,19 @@ function drift(sys) {
   };
 }
 
+export interface SystemClock {
+  time: string;
+  date: string;
+  coords: SysState['coords'];
+  uptime: string;
+  upSpeed: string;
+}
+
 /* 每秒刷新一次系统时间与状态栏数据 */
-export function useSystemClock() {
+export function useSystemClock(): SystemClock {
   const [state, setState] = useState(() => ({
     now: new Date(),
-    sys: SYS_INIT,
+    sys: SYS_INIT as SysState,
   }));
 
   useEffect(() => {

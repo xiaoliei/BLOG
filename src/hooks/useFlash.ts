@@ -8,11 +8,14 @@ import { useCallback, useRef, useState } from "react";
 
 const FLASH_MS = 2600;
 
-export function useFlash() {
-	const [toast, setToast] = useState(null); // null | { kind, text }
-	const timerRef = useRef(null);
+export type FlashKind = "ok" | "err";
+export interface Toast { kind: FlashKind; text: string; }
 
-	const flash = useCallback((kind, text) => {
+export function useFlash(): { toast: Toast | null; flash: (kind: FlashKind, text: string) => void } {
+	const [toast, setToast] = useState<Toast | null>(null);
+	const timerRef = useRef<number | null>(null);
+
+	const flash = useCallback((kind: FlashKind, text: string) => {
 		setToast({ kind, text });
 		/* 重置倒计时：连发时以最后一次为准，且不会被上一次的计时器提前清掉 */
 		if (timerRef.current != null) window.clearTimeout(timerRef.current);

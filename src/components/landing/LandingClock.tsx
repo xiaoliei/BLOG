@@ -1,4 +1,4 @@
-export default function LandingClock({ time, date, className = '' }) {
+export default function LandingClock({ time, date, className = '' }: { time: string; date: string; className?: string }) {
   const [hh, mm] = time.split(':');
   return (
     <div className={`landing-clock${className ? ` ${className}` : ''}`}>

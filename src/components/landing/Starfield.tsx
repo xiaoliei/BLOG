@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { startStars } from '../../lib/stars';
+import { startStars } from '../../lib/stars.ts';
 
-export default function Starfield({ staticFrame = false }) {
-  const canvasRef = useRef(null);
+export default function Starfield({ staticFrame = false }: { staticFrame?: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;

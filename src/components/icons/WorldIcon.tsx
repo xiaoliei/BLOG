@@ -1,4 +1,4 @@
-// 世界侧通用线性图标表：从 WorldApp.jsx 抽出，供世界视图各处复用。
+// 世界侧通用线性图标表：从 WorldApp.tsx 抽出，供世界视图各处复用。
 // 未知名称回退到 home 图形，保持与拆分前完全一致的渲染兜底。
 const ICON_PATHS = {
   bookshop: <><path d="M3 5h7l2 2 2-2h7v14h-7l-2 2-2-2H3zM12 7v14"/><path d="M6 9h3M15 9h3M6 12h3M15 12h3"/></>,
@@ -13,6 +13,10 @@ const ICON_PATHS = {
   reset: <><path d="M4 9a8 8 0 1 1 0 6M4 3v6h6"/></>,
 };
 
-export default function WorldIcon({ name, ...props }) {
-  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{ICON_PATHS[name] || ICON_PATHS.home}</svg>;
+import type { SVGProps } from 'react';
+
+export type WorldIconName = keyof typeof ICON_PATHS;
+
+export default function WorldIcon({ name, ...props }: { name: string } & SVGProps<SVGSVGElement>) {
+  return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{ICON_PATHS[name as WorldIconName] || ICON_PATHS.home}</svg>;
 }
