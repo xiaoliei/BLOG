@@ -1,6 +1,12 @@
 // Authoring coordinates retained from the original 3D town, in renderer units.
 // Runtime cameras and labels read the generated save, never this authoring file.
-export const HARBOR_PLACES = [
+export interface HarborPlace {
+  id: string;
+  position: [number, number, number];
+  size: [number, number, number];
+}
+
+export const HARBOR_PLACES: HarborPlace[] = [
  {id:'bookshop',position:[-17,5,13],size:[8.5,11,8]},
  {id:'workshop',position:[20,6,5],size:[9,9,8]},
  {id:'cottage',position:[1,5,3.5],size:[6.5,7,5.5]},

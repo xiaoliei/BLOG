@@ -1,22 +1,24 @@
-import { validateWorld } from './data.js';
+import { validateWorld } from './data.ts';
+import type { World, ValidationReport } from './data.ts';
 
-export function hasClearance(world,x,z,h,height=3){
+export function hasClearance(world: World,x: number,z: number,h: number,height=3): boolean{
  for(let y=Math.floor(h);y<h+height;y++)for(const b of world.boxesAt([x,y,z]))
   if(b.max[1]>h+1e-6&&b.min[1]<h+height&&b.min[0]<x+.6&&b.max[0]>x+.4&&b.min[2]<z+.6&&b.max[2]>z+.4)return false;
  return true;
 }
-export function validateHarbor(world){
+export interface HarborValidationReport extends ValidationReport { walkableCells: number; }
+export function validateHarbor(world: World): HarborValidationReport{
  const report=validateWorld(world),errors=[...report.errors],walkways=world.environment.walkways;
- if(!Array.isArray(walkways)||!walkways.length)return {...report,valid:false,errors:[...errors,'Missing walkways']};
- const map=new Map(walkways.map(([x,z,h])=>[`${x},${z}`,h]));
+ if(!Array.isArray(walkways)||!walkways.length)return {...report,valid:false,errors:[...errors,'Missing walkways'],walkableCells:0};
+ const map=new Map(walkways.map(([x,z,h])=>[`${x},${z}`,h] as [string, number]));
  for(const [x,z,h] of walkways){
   const support=world.querySupport({x:x+.5,z:z+.5,below:h+1e-6});
   if(!support||Math.abs(support.height-h)>1e-6)errors.push(`Road lacks support: ${x},${z}`);
   if(!hasClearance(world,x,z,h))errors.push(`Blocked road: ${x},${z}`);
   for(const [dx,dz] of [[1,0],[0,1]]){const other=map.get(`${x+dx},${z+dz}`);if(other!==undefined&&Math.abs(h-other)>.5)errors.push(`Road riser exceeds half cell: ${x},${z}`);}
  }
- const seen=new Set(),queue=[walkways[0].slice(0,2)];
- while(queue.length){const [x,z]=queue.pop(),key=`${x},${z}`;if(seen.has(key))continue;seen.add(key);
+ const seen=new Set<string>(),queue: number[][]=[walkways[0].slice(0,2)];
+ while(queue.length){const [x,z]=queue.pop() as [number, number],key=`${x},${z}`;if(seen.has(key))continue;seen.add(key);
   for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const k=`${x+dx},${z+dz}`;if(map.has(k)&&!seen.has(k))queue.push([x+dx,z+dz]);}
  }
  if(seen.size!==map.size)errors.push(`Disconnected walkways: ${map.size-seen.size} (${[...map.keys()].filter(k=>!seen.has(k)).slice(0,8).join('; ')})`);

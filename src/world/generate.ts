@@ -1,35 +1,37 @@
-import { World } from './data.js';
-import { createLayout, RAIL, DOCK, buildingAt } from './layout.js';
-import { HARBOR_PLACES } from './harbor-layout.js';
-import { C } from './palette.js';
-import { hasClearance, validateHarbor } from './harbor-validation.js';
+import { World } from './data.ts';
+import type { InstanceSpec, PlaceSpec, Props, StateInput, Vec3 } from './data.ts';
+import { createLayout, RAIL, DOCK, buildingAt } from './layout.ts';
+import type { LayoutCell } from './layout.ts';
+import { HARBOR_PLACES } from './harbor-layout.ts';
+import { C } from './palette.ts';
+import { hasClearance, validateHarbor } from './harbor-validation.ts';
 
 // This is an offline authoring module. The browser loads its output, not this file.
-export function generateHarbor() {
- const places=HARBOR_PLACES.map(p=>({...p,entry:[p.position[0],p.position[1],Math.round((p.position[2]+p.size[2]/2+.5)*2)/2],label:[p.position[0],p.position[1]+p.size[1]+.6,p.position[2]],camera:{desktopOffset:p.id==='workshop'?[6,17,32]:[15,17,29],desktopTarget:[6,4,0],mobileOffset:[17,23,49],mobileTarget:[0,1,0]}}));
+export function generateHarbor(): World {
+ const places: PlaceSpec[] = HARBOR_PLACES.map(p=>({...p,entry:[p.position[0],p.position[1],Math.round((p.position[2]+p.size[2]/2+.5)*2)/2],label:[p.position[0],p.position[1]+p.size[1]+.6,p.position[2]],camera:{desktopOffset:p.id==='workshop'?[6,17,32]:[15,17,29],desktopTarget:[6,4,0],mobileOffset:[17,23,49],mobileTarget:[0,1,0]}}));
  const world=new World({places,environment:{seaLevel:-.18,color:'#25ade1',rail:RAIL,dock:{...DOCK,height:2.5}}});
- const layout=createLayout(),columns=new Map();let randomSeed=1729,serial=0;
- const random=()=>{randomSeed=(randomSeed*1664525+1013904223)>>>0;return randomSeed/4294967296;};
- const state=(model,color,props={},place)=>({model,color,props,...(place?{place}:{})});
- const put=(p,color,model='cube',props={},place)=>world.setBlock(p,state(model,color,props,place),{replace:true,checkSupport:false});
+ const layout=createLayout(),columns=new Map<string, LayoutCell>();let randomSeed=1729,serial=0;
+ const random=(): number=>{randomSeed=(randomSeed*1664525+1013904223)>>>0;return randomSeed/4294967296;};
+ const state=(model: string,color: string,props: Props={},place?: string): StateInput=>({model,color,props,...(place?{place}:{})});
+ const put=(p: Vec3,color: string,model='cube',props: Props={},place?: string)=>world.setBlock(p,state(model,color,props,place),{replace:true,checkSupport:false});
  // Authored volumes are snapped once at their edges, then expanded to real cells.
- function volume(x,y,z,w,h,d,color,{model='cube',props={},place,emptyOnly=false}={}) {
+ function volume(x: number,y: number,z: number,w: number,h: number,d: number,color: string,{model='cube',props={},place,emptyOnly=false}: {model?: string;props?: Props;place?: string;emptyOnly?: boolean}={}) {
   const min=[x-w/2,y,z-d/2].map(v=>Math.round(v*2)),max=[x+w/2,y+h,z+d/2].map(v=>Math.round(v*2));
   for(let iy=min[1];iy<Math.max(min[1]+1,max[1]);iy++)for(let iz=min[2];iz<Math.max(min[2]+1,max[2]);iz++)for(let ix=min[0];ix<Math.max(min[0]+1,max[0]);ix++)if(!emptyOnly||!world.getOccupant([ix,iy,iz]))put([ix,iy,iz],color,model,props,place);
  }
- const clear=(min,max)=>{for(let y=min[1];y<max[1];y++)for(let z=min[2];z<max[2];z++)for(let x=min[0];x<max[0];x++)world.removeAt([x,y,z]);};
- function instance(model,anchor,color,props={},place,required=false){
-  const spec={id:`${model}-${String(serial++).padStart(5,'0')}`,anchor,state:world.intern(state(model,color,props,place))};
+ const clear=(min: number[],max: number[]): void=>{for(let y=min[1];y<max[1];y++)for(let z=min[2];z<max[2];z++)for(let x=min[0];x<max[0];x++)world.removeAt([x,y,z]);};
+ function instance(model: string,anchor: Vec3,color: string,props: Props={},place?: string,required=false): InstanceSpec|null{
+  const spec: InstanceSpec={id:`${model}-${String(serial++).padStart(5,'0')}`,anchor,state:world.intern(state(model,color,props,place))};
   const furniture=!required&&['planter','lamp','crate','bench','chalkboard'].includes(model);
   // Keep optional furniture beside the existing pavement, never across its aisle.
   for(const [dx,dz] of furniture?[[0,0],[1,0],[-1,0],[0,1],[0,-1],[2,0],[-2,0],[0,2],[0,-2]]:[[0,0]]){
-   const candidate={...spec,anchor:[anchor[0]+dx,anchor[1],anchor[2]+dz]};
-   if(furniture&&world.instanceCells(candidate).some(([x,,z])=>['path','paving'].includes(columns.get(`${x},${z}`)?.kind)))continue;
+   const candidate: InstanceSpec={...spec,anchor:[anchor[0]+dx,anchor[1],anchor[2]+dz]};
+   if(furniture&&world.instanceCells(candidate).some(([x,,z])=>{const kind=columns.get(`${x},${z}`)?.kind;return kind==='path'||kind==='paving';}))continue;
    try{return world.placeInstance(candidate);}catch(e){if(required)throw e;}
   }return null;
  }
- const columnAt=(x,z)=>columns.get(`${Math.floor(x*2)},${Math.floor(z*2)}`);
- const ground=(x,z)=>columnAt(x,z)?.height??null;
+ const columnAt=(x: number,z: number): LayoutCell|undefined=>columns.get(`${Math.floor(x*2)},${Math.floor(z*2)}`);
+ const ground=(x: number,z: number): number|null=>columnAt(x,z)?.height??null;
  for(let x=-70;x<=70;x++)for(let z=-70;z<=74;z++){
   const c=layout.at((x+.5)/2,(z+.5)/2);if(!c)continue;
   columns.set(`${x},${z}`,{...c,x,z,height:Math.round(c.height*4)/4});
@@ -57,7 +59,8 @@ export function generateHarbor() {
  for(const p of places){
   const [x,y,z]=p.position,[w,,d]=p.size,id=p.id,wallH=id==='bookshop'?7:id==='workshop'?5.5:4;
   const wall=id==='workshop'?'#bd7552':id==='bookshop'?C.cream:C.white;
-  const roof={bookshop:'#2e914b',workshop:'#ed852e',cottage:'#e45d60',station:'#327bb6',observatory:'#2f84c1'}[id];
+  const roofs: Record<string, string>={bookshop:'#2e914b',workshop:'#ed852e',cottage:'#e45d60',station:'#327bb6',observatory:'#2f84c1'};
+  const roof=roofs[id];
   const x0=Math.round((x-w/2)*2),x1=Math.round((x+w/2)*2),z0=Math.round((z-d/2)*2),z1=Math.round((z+d/2)*2),base=y*2,top=base+wallH*2;
   // Flatten/support the original foundation footprint, including a front doorstep.
   for(let ix=x0-1;ix<=x1;ix++)for(let iz=z0-1;iz<=z1+1;iz++){
@@ -70,7 +73,7 @@ export function generateHarbor() {
    put([ix,iy,iz],timber?C.wood:wall,'cube',{},id);
   }
   // Window blocks replace wall cells, so the openings are not painted over solid walls.
-  const window=(cx,by,iz)=>{clear([cx,base+by,iz],[cx+2,base+by+3,iz+1]);instance('window',[cx,base+by,iz],C.cream,{width:2,height:3},id,true);};
+  const window=(cx: number,by: number,iz: number): void=>{clear([cx,base+by,iz],[cx+2,base+by+3,iz+1]);instance('window',[cx,base+by,iz],C.cream,{width:2,height:3},id,true);};
   window(x0+2,2,z1-1);window(x1-4,2,z1-1);
   clear([Math.round(x*2)-1,base+3,z0],[Math.round(x*2)+1,base+6,z0+1]);
   instance('window',[Math.round(x*2),base+3,z0],C.cream,{width:2,height:3,facing:'north'},id,true);
@@ -126,7 +129,7 @@ export function generateHarbor() {
    world.entities.push({id:'workshop-gear',type:'gear',position:[x,y+7.2,z+d/2+.7],place:id});
   }
   if(id==='cottage'||id==='workshop'){
-   const chimneyAnchor=[Math.round((x+w*.27)*2)-1,top+2,Math.round((z-.8)*2)-1];
+   const chimneyAnchor: Vec3=[Math.round((x+w*.27)*2)-1,top+2,Math.round((z-.8)*2)-1];
    clear(chimneyAnchor,[chimneyAnchor[0]+2,chimneyAnchor[1]+6,chimneyAnchor[2]+2]);
    instance('chimney',chimneyAnchor,C.stone,{},id,true);
   }
@@ -158,11 +161,11 @@ export function generateHarbor() {
    if(t.type==='birch')put([x,base+i,z],'#eee8d4','birch-log',{variant:((i+x-z)%4+4)%4});
    else put([x,base+i,z],C.wood,'pillar',{width:shrub?.5:1});
   }
-  const step=Math.max(1,Math.round((shrub?.65:1)*t.scale*2)),palette=t.type==='cherry'?['#f291c8','#f7acda','#e97eba']:['#5baa36','#74bd40','#499d32'];
+  const step=Math.max(1,Math.round((shrub?.65:1)*t.scale*2)),palette: string[]=t.type==='cherry'?['#f291c8','#f7acda','#e97eba']:['#5baa36','#74bd40','#499d32'];
   for(let ix=-2;ix<=2;ix++)for(let iz=-2;iz<=2;iz++)for(let iy=0;iy<3;iy++){
    if(Math.abs(ix)+Math.abs(iz)>(iy===2?2:3)||iy===0&&Math.abs(ix)+Math.abs(iz)>2)continue;
    for(let dx=0;dx<step;dx++)for(let dz=0;dz<step;dz++)for(let dy=0;dy<step;dy++){
-    const p=[x+ix*step+dx,base+trunk-1+iy*step+dy,z+iz*step+dz];
+    const p: Vec3=[x+ix*step+dx,base+trunk-1+iy*step+dy,z+iz*step+dz];
     // Reserve the observatory's fence and bench sightline, including adjacent
     // cells: occupancy alone cannot prevent foliage from swallowing furniture.
     const px=(p[0]+.5)/2,pz=(p[2]+.5)/2;
@@ -172,18 +175,18 @@ export function generateHarbor() {
   }
  }
  // Connected fence segments retain the old garden boundaries.
- for(const [x,z,len,axis] of [[-25,-14,9,'x'],[-27,1,8,'z'],[-22,23,10,'x'],[23,-16,6,'x'],[7,-13,7,'z'],[24,10,5,'z'],[-22,-16,4,'x'],[12,-18,3,'x'],[19,-18,5,'x']]){
+ for(const [x,z,len,axis] of [[-25,-14,9,'x'],[-27,1,8,'z'],[-22,23,10,'x'],[23,-16,6,'x'],[7,-13,7,'z'],[24,10,5,'z'],[-22,-16,4,'x'],[12,-18,3,'x'],[19,-18,5,'x']] as [number, number, number, 'x'|'z'][]){
   for(let t=0;t<=len;t+=.5){const px=x+(axis==='x'?t:0),pz=z+(axis==='z'?t:0),h=ground(px,pz);if(h===null||h*2%1||layout.nearestPath(px,pz).distance<1.35)continue;
-   for(let dy=0;dy<2;dy++){const p=[Math.floor(px*2),h*2+dy,Math.floor(pz*2)];if(!world.getOccupant(p))try{world.setBlock(p,state('fence',C.wood));}catch{/* Uneven shore segments intentionally stop at a gap. */}}
+   for(let dy=0;dy<2;dy++){const p: Vec3=[Math.floor(px*2),h*2+dy,Math.floor(pz*2)];if(!world.getOccupant(p))try{world.setBlock(p,state('fence',C.wood));}catch{/* Uneven shore segments intentionally stop at a gap. */}}
   }
  }
- function placeLampNear(x,z){
+ function placeLampNear(x: number,z: number): boolean{
   // Re-read the height after every lateral probe. Reusing the requested
   // position's height made most lamps fail support checks on sloped ground.
   const offsets=[[0,0],[.5,0],[-.5,0],[0,.5],[0,-.5],[1,0],[-1,0],[0,1],[0,-1],[1,.5],[-1,.5],[1,-.5],[-1,-.5]];
   for(const [dx,dz] of offsets){
    const px=x+dx,pz=z+dz,c=columnAt(px,pz);if(!c||['path','paving'].includes(c.kind)||c.height*2%1)continue;
-   const anchor=[Math.floor(px*2),c.height*2,Math.floor(pz*2)],spec={id:`lamp-${String(serial++).padStart(5,'0')}`,anchor,state:world.intern(state('lamp',C.trim))};
+   const anchor: Vec3=[Math.floor(px*2),c.height*2,Math.floor(pz*2)],spec: InstanceSpec={id:`lamp-${String(serial++).padStart(5,'0')}`,anchor,state:world.intern(state('lamp',C.trim))};
    try{world.placeInstance(spec);return true;}catch{/* Try the next supported verge cell. */}
   }return false;
  }
@@ -196,11 +199,11 @@ export function generateHarbor() {
  }
  for(const [x,z] of [[-24,-5],[-11,-7],[23,-9],[-16,25]])for(let row=0;row<3;row++)for(let col=0;col<4;col++){
   const px=x+col*.5,pz=z+row*.5,c=columnAt(px,pz);if(!c||c.kind!=='grass'||c.height*2%1||buildingAt(px,pz,1)||layout.nearestPath(px,pz).distance<1.6)continue;
-  const p=[Math.floor(px*2),c.height*2,Math.floor(pz*2)];if(!world.getOccupant(p))world.setBlock(p,state('crop',row%2?'#73b23d':'#549b35'));
+  const p: Vec3=[Math.floor(px*2),c.height*2,Math.floor(pz*2)];if(!world.getOccupant(p))world.setBlock(p,state('crop',row%2?'#73b23d':'#549b35'));
  }
  for(const c of columns.values()){
   const x=(c.x+.5)/2,z=(c.z+.5)/2;if(c.kind!=='grass'||c.height*2%1||buildingAt(x,z,1.3)||layout.nearestPath(x,z).distance<1.25||Math.abs(z-RAIL.z)<2.5&&x<RAIL.right+1)continue;
-  const p=[c.x,c.height*2,c.z];if(world.getOccupant(p))continue;
+  const p: Vec3=[c.x,c.height*2,c.z];if(world.getOccupant(p))continue;
   if(random()<.035)world.setBlock(p,state('flower',['#f4d33b','#faf5d7','#f16861'][Math.floor(random()*3)]));
   else if(random()<.055)world.setBlock(p,state('grass','#58a832'));
  }
@@ -226,10 +229,10 @@ export function generateHarbor() {
  clear([13,12,10],[19,18,11]);
  instance('clothesline',[13,12,10],C.wood,{},undefined,true);
  world.entities.push({id:'harbor-train',type:'train',position:[RAIL.centerMax,8.19,RAIL.z],rail:{...RAIL,top:8.19}},
-  {id:'harbor-boat',type:'boat',position:[...DOCK.boat.slice(0,1),.55,DOCK.boat[1]]},
+  {id:'harbor-boat',type:'boat',position:[DOCK.boat[0],.55,DOCK.boat[1]]},
   {id:'garden-cat',type:'cat',position:[-2,(ground(-2,6.5)??5)+.24,6.5]},
   {id:'workshop-smoke',type:'smoke',position:[22.5,16,4]});
- const walkways=new Map(roads.map(c=>[`${c.x},${c.z}`,[c.x,c.z,c.height*2]]));
+ const walkways=new Map<string, Vec3>(roads.map((c): [string, Vec3]=>[`${c.x},${c.z}`,[c.x,c.z,c.height*2]]));
  for(const p of [DOCK.neck,DOCK.landing])for(let x=Math.round((p.x-p.width/2)*2);x<Math.round((p.x+p.width/2)*2);x++)for(let z=Math.round((p.z-p.depth/2)*2);z<Math.round((p.z+p.depth/2)*2);z++)walkways.set(`${x},${z}`,[x,z,5]);
  world.environment.walkways=[...walkways.values()].filter(([x,z,h])=>hasClearance(world,x,z,h));
  const report=validateHarbor(world);if(!report.valid)throw new Error(report.errors.slice(0,30).join('\n'));

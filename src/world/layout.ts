@@ -1,22 +1,26 @@
-import { clamp, smooth } from './places.js';
-import { HARBOR_PLACES as PLACES } from './harbor-layout.js';
+import { clamp, smooth } from './places.ts';
+import { HARBOR_PLACES as PLACES } from './harbor-layout.ts';
+import type { HarborPlace } from './harbor-layout.ts';
+import type { DockSpec, RailRoute, Vec3 } from './data.ts';
 
 // Measured against harbor-top-layout-v1: north at -Z, harbour mouth at +Z.
 // All renderers, vegetation and clearance tests consume this one terrain model.
 export const GRID = .75;
-export const COAST = [
+export const COAST: [number, number][] = [
   [-25,-29],[-18,-32],[-10,-30],[-6,-26],[-6,-18],[-8,-12],[-5,-7],[-1,-7],
   [2,-12],[3,-21],[6,-28],[14,-32],[23,-29],[28,-23],[29,-12],[27,-4],
   [29,4],[27,14],[23,18],[18,17],[14,15],[10.5,12],[7.5,12],[5,16],[4,17],
   [0,17],[-2,20],[-4,27],[-9,31],[-16,31],[-23,28],[-26,21],[-28,14],
   [-27,7],[-30,-1],[-28,-12],[-29,-21],
 ];
-export const ISLETS = [
+export interface Islet { x: number; z: number; r: number; h: number; tree?: boolean; }
+export const ISLETS: Islet[] = [
   {x:28.5,z:26,r:3.2,h:2.4,tree:true}, {x:-.5,z:31,r:1.55,h:1.65},
   {x:-4,z:34.5,r:1.1,h:1}, {x:-32,z:-29,r:1.8,h:1.5},
   {x:32,z:31,r:.9,h:.8}, {x:-33,z:9,r:1.4,h:1.3},
 ];
-export const PATHS = [
+export interface PathDef { id: string; width: number; points: Vec3[]; }
+export const PATHS: PathDef[] = [
   {id:'bookshop',width:2.1,points:[[-17,5,19],[-12,5,19],[-8,4.25,18],[-4.5,3.5,17]]},
   {id:'station',width:1.95,points:[[0,5,9],[-5,5,4],[-11,5.7,-1.5],[-17.5,6.4,-7.5],[-19,7,-12],[-17,7,-16.5]]},
   {id:'workshop',width:2.1,points:[[0,5,9],[6,5.7,9],[12.5,6,10.5],[20,6,10.5]]},
@@ -24,10 +28,11 @@ export const PATHS = [
   {id:'cottage',width:1.8,points:[[1,5,6.8],[1,5,8],[0,5,9]]},
   {id:'dock',width:1.8,points:[[0,5,9],[-2,4.5,13],[-4.5,3.5,17],[-6,2.4,21],[-3.5,2.4,21]]},
 ];
-export const DOCK = {height:2.4, entrance:[-3.5,21], neck:{x:-1,z:21,width:5.5,depth:2.4}, landing:{x:3,z:24,width:7,depth:6}, boat:[11,26]};
-export const RAIL = { z:-26.5, top:8.12, halfWidth:.86, left:-156, right:6, carLength:3.3, spacing:3.65, cars:3, centerMin:-146, centerMax:.1, dwell:3.5, travel:65 };
+export const DOCK: DockSpec = {height:2.4, entrance:[-3.5,21], neck:{x:-1,z:21,width:5.5,depth:2.4}, landing:{x:3,z:24,width:7,depth:6}, boat:[11,26]};
+export const RAIL: RailRoute = { z:-26.5, top:8.12, halfWidth:.86, left:-156, right:6, carLength:3.3, spacing:3.65, cars:3, centerMin:-146, centerMax:.1, dwell:3.5, travel:65 };
 export const TRAIN_HALF_LENGTH = (RAIL.cars-1)*RAIL.spacing/2+RAIL.carLength/2;
-export function trainAt(time) {
+export interface TrainPose { x: number; direction: -1 | 1; stopped: boolean; }
+export function trainAt(time: number): TrainPose {
   const leg = RAIL.travel + RAIL.dwell;
   const cycle = ((time % (2*leg)) + 2*leg) % (2*leg);
   const westbound=cycle<leg;
@@ -38,7 +43,7 @@ export function trainAt(time) {
   return { x:westbound?RAIL.centerMax+(RAIL.centerMin-RAIL.centerMax)*a:RAIL.centerMin+(RAIL.centerMax-RAIL.centerMin)*a, direction:westbound?-1:1, stopped:u===0||u===1 };
 }
 
-export function insidePolygon(x,z,poly=COAST) {
+export function insidePolygon(x: number,z: number,poly: [number, number][]=COAST): boolean {
   let inside=false;
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){
     const [xi,zi]=poly[i],[xj,zj]=poly[j];
@@ -46,16 +51,18 @@ export function insidePolygon(x,z,poly=COAST) {
   }
   return inside;
 }
-function segmentDistance(x,z,a,b) {
+function segmentDistance(x: number,z: number,a: [number, number],b: [number, number]): number {
   const dx=b[0]-a[0],dz=b[1]-a[1],t=clamp(((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz));
   return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz);
 }
-function coastDistance(x,z){let best=Infinity;for(let i=0;i<COAST.length;i++)best=Math.min(best,segmentDistance(x,z,COAST[i],COAST[(i+1)%COAST.length]));return best;}
-const snap=n=>Math.round(n/GRID)*GRID;
-const key=(x,z)=>`${Math.round(x/GRID)},${Math.round(z/GRID)}`;
-function catmull(a,b,c,d,t){return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t);}
-export function samplePaths(){
-  const samples=[];
+function coastDistance(x: number,z: number): number{let best=Infinity;for(let i=0;i<COAST.length;i++)best=Math.min(best,segmentDistance(x,z,COAST[i],COAST[(i+1)%COAST.length]));return best;}
+const snap=(n: number): number=>Math.round(n/GRID)*GRID;
+const key=(x: number,z: number): string=>`${Math.round(x/GRID)},${Math.round(z/GRID)}`;
+function catmull(a: number,b: number,c: number,d: number,t: number): number{return .5*((2*b)+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t);}
+export interface PathSample { x: number; y: number; z: number; width: number; id: string; }
+export interface PathQuery extends PathSample { distance: number; }
+export function samplePaths(): PathSample[]{
+  const samples: PathSample[]=[];
   for(const path of PATHS){const pts=path.points;for(let i=0;i<pts.length-1;i++){
     const steps=Math.ceil(Math.hypot(pts[i+1][0]-pts[i][0],pts[i+1][2]-pts[i][2])*3);
     for(let j=0;j<=steps;j++){
@@ -64,18 +71,32 @@ export function samplePaths(){
     }
   }}return samples;
 }
-export function buildingAt(x,z,margin=0){return PLACES.find(p=>Math.abs(x-p.position[0])<=p.size[0]/2+margin&&Math.abs(z-p.position[2])<=p.size[2]/2+margin);}
-export function createLayout(){
+export function buildingAt(x: number,z: number,margin=0): HarborPlace|undefined{return PLACES.find(p=>Math.abs(x-p.position[0])<=p.size[0]/2+margin&&Math.abs(z-p.position[2])<=p.size[2]/2+margin);}
+export type CellKind = 'grass' | 'sand' | 'path' | 'paving';
+export interface LayoutCell { x: number; z: number; height: number; kind: CellKind; islet: boolean; }
+export interface TreeSpec { x: number; z: number; y: number; type: 'oak'|'birch'|'cherry'|'shrub'; scale: number; }
+export interface RockCluster extends LayoutCell { dx: number; dz: number; }
+export interface Layout {
+  cells: LayoutCell[];
+  at: (x: number, z: number) => LayoutCell | null;
+  trees: TreeSpec[];
+  nearestPath: (x: number, z: number) => PathQuery;
+  samples: PathSample[];
+  rockClusters: RockCluster[];
+}
+export function createLayout(): Layout{
   const samples=samplePaths();
-  function nearestPath(x,z){let distance=Infinity,result=null;for(const p of samples){const d=Math.hypot(x-p.x,z-p.z);if(d<distance){distance=d;result=p;}}return {...result,distance};}
-  const cells=[]; const lookup=new Map();
-  function naturalHeight(x,z){
+  function nearestPath(x: number,z: number): PathQuery{let distance=Infinity,result: PathSample|null=null;for(const p of samples){const d=Math.hypot(x-p.x,z-p.z);if(d<distance){distance=d;result=p;}}
+    // The path network is always non-empty; fall back to the first sample.
+    return {...(result ?? samples[0]),distance};}
+  const cells: LayoutCell[]=[]; const lookup=new Map<string, LayoutCell>();
+  function naturalHeight(x: number,z: number): number{
     if(x<-4){if(z<-16)return 7; if(z<3)return 5+Math.floor(Math.max(0,-z)/4)*.5; if(z>22)return 4-Math.floor((z-22)/3)*.5;return 5;}
     if(x>6)return 6+Math.min(6,Math.floor(Math.max(0,-z)/3));
     return 5;
   }
   for(let ix=-46;ix<=46;ix++)for(let iz=-46;iz<=48;iz++){
-    const x=ix*GRID,z=iz*GRID;const main=insidePolygon(x,z);let kind='grass',height=0,islet=false;
+    const x=ix*GRID,z=iz*GRID;const main=insidePolygon(x,z);let kind: CellKind='grass',height=0,islet=false;
     if(main){
       height=naturalHeight(x,z);
       // Receding grass shelves over exposed rock, especially around the rail inlet.
@@ -99,9 +120,9 @@ export function createLayout(){
     else if(path&&path.distance<path.width/2&&!buildingAt(x,z,.3)){kind='path';}
     // The timber neck meets a level stone quay; inland columns cannot bury it.
     if(main&&x>=-4.5&&x<=1&&Math.abs(z-DOCK.neck.z)<=DOCK.neck.depth/2+.4){height=2.5;kind='path';}
-    const cell={x,z,height,kind,islet};cells.push(cell);lookup.set(key(x,z),cell);
+    const cell: LayoutCell={x,z,height,kind,islet};cells.push(cell);lookup.set(key(x,z),cell);
   }
-  const at=(x,z)=>lookup.get(key(x,z))??null;
+  const at=(x: number,z: number): LayoutCell|null=>lookup.get(key(x,z))??null;
   // Junctions are one paved surface, not independent overlapping spline heights.
   // Propagate a maximum half-unit riser through adjacent road cells, keeping patios fixed.
   const roadCells=cells.filter(c=>c.kind==='path');
@@ -113,8 +134,8 @@ export function createLayout(){
     }
     if(!changed)break;
   }
-  const rockClusters=[];
-  const shoreFaces=[];
+  const rockClusters: RockCluster[]=[];
+  const shoreFaces: RockCluster[]=[];
   for(const c of cells)if(c.kind==='grass'&&c.height>2.5&&nearestPath(c.x,c.z).distance>2.4){
     for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const n=at(c.x+dx*GRID,c.z+dz*GRID);
@@ -124,12 +145,12 @@ export function createLayout(){
   // A few deliberately large rock groups interrupt the small voxel shoreline.
   for(const [hx,hz] of [[-6,-22],[-7,-15],[-3,-7],[3,-18],[28,-20],[28,-10],[28,2],[25,14],[15,14],[-17,30],[-25,20],[-28,2]]){
     const faces=shoreFaces.filter(c=>!(c.x<RAIL.right+3&&Math.abs(c.z-RAIL.z)<3));
-    const face=faces.reduce((best,c)=>!best||Math.hypot(c.x-hx,c.z-hz)<Math.hypot(best.x-hx,best.z-hz)?c:best,null);
+    const face=faces.reduce<RockCluster|null>((best,c)=>!best||Math.hypot(c.x-hx,c.z-hz)<Math.hypot(best.x-hx,best.z-hz)?c:best,null);
     if(!face||rockClusters.some(c=>Math.hypot(c.x-face.x,c.z-face.z)<4))continue;
     rockClusters.push(face);
   }
-  const trees=[];
-  function plant(x,z,type='oak',scale=1){
+  const trees: TreeSpec[]=[];
+  function plant(x: number,z: number,type: TreeSpec['type']='oak',scale=1): boolean{
     x=snap(x);z=snap(z);const cell=at(x,z);if(!cell||cell.kind!=='grass')return false;
     if(buildingAt(x,z,2*scale)||nearestPath(x,z).distance<1.5+scale||Math.abs(z-RAIL.z)<2.5+scale&&x<RAIL.right+2)return false;
     if(trees.some(t=>Math.hypot(t.x-x,t.z-z)<2.5*scale))return false;
@@ -139,7 +160,7 @@ export function createLayout(){
   plant(-25,13,'cherry',1.45);
   // Keep the east-slope tree on the upper terrace. At x=6 it sat on the
   // lower cliff shelf, where the upper ledge hid its trunk from the town view.
-  const authored=[[-23,-23],[-23,-15],[-24,-8],[-25,-1],[-22,3],[-15,-9],[-11,-13],[-9,-3],[-11,3],[-24,24],[-18,26],[-9,25],[-11,21],[-23,20],[9,-17],[8,-9],[7,-3],[17,-12],[22,-9],[24,-2],[24,13],[25,-22],[11,-30],[21,-30],[-24,-29],[-10,-30]];
+  const authored: [number, number][]=[[-23,-23],[-23,-15],[-24,-8],[-25,-1],[-22,3],[-15,-9],[-11,-13],[-9,-3],[-11,3],[-24,24],[-18,26],[-9,25],[-11,21],[-23,20],[9,-17],[8,-9],[7,-3],[17,-12],[22,-9],[24,-2],[24,13],[25,-22],[11,-30],[21,-30],[-24,-29],[-10,-30]];
   authored.forEach(([x,z],i)=>plant(x,z,i%6===2?'birch':'oak',.85+(i%3)*.12));
   // Small shrubs fill the gardens without hiding building silhouettes or paths.
   for(let i=0;i<105;i++){

@@ -1,45 +1,79 @@
 // Pure model definitions. Coordinates are in cells; no renderer dependencies.
+export type Vec3 = [number, number, number];
+export type Direction = 'south' | 'west' | 'north' | 'east';
+export type Support = 'none' | 'bottom' | 'back';
+export type PropValue = string | number | boolean;
+export type Props = Record<string, PropValue>;
+
+export interface Box { min: Vec3; max: Vec3; color?: string; }
+
+export interface BlockState { model: string; color: string; props: Props; place?: string; }
+/** Loose state shape accepted by `normalizeState` before validation. */
+export interface StateInput { model: string; color: string; props?: Props; place?: string; }
+
+export type PropValidator = (value: unknown) => boolean;
+
+export interface ModelDefinition {
+  defaults: Props;
+  properties: Record<string, PropValidator>;
+  support: Support;
+  occludes: boolean;
+  connects: boolean;
+  boxes: (props: Props, connections: Direction[]) => Box[];
+  /** Wall-mounted models: local mount point for support probes. */
+  mount?: Vec3;
+  /** Mesh models: flat triangle vertex list (x,y,z per vertex). */
+  positions?: readonly number[];
+  colors?: readonly string[];
+  /** Mesh models: occupancy includes visual bounds plus explicit collision proxies. */
+  occupancyBoxes?: Box[];
+}
+
 export const REGISTRY_VERSION = 1;
-export const DIRECTIONS = ['south', 'west', 'north', 'east'];
-const registry = new Map();
-const box = (x,y,z,w,h,d,color) => ({min:[x,y,z],max:[x+w,y+h,z+d],...(color?{color}:{})});
-const enumOf = (...values) => value => values.includes(value);
-const integer = (a,b) => value => Number.isInteger(value)&&value>=a&&value<=b;
-export function registerModel(id, definition) {
+export const DIRECTIONS: Direction[] = ['south', 'west', 'north', 'east'];
+const registry = new Map<string, ModelDefinition>();
+const box = (x: number, y: number, z: number, w: number, h: number, d: number, color?: string): Box =>
+  ({min:[x,y,z],max:[x+w,y+h,z+d],...(color?{color}:{})});
+const enumOf = (...values: PropValue[]): PropValidator => value => (values as unknown[]).includes(value);
+const integer = (a: number, b: number): PropValidator => value => typeof value === 'number' && Number.isInteger(value) && value >= a && value <= b;
+
+export function registerModel(id: string, definition: Partial<ModelDefinition> & Pick<ModelDefinition, 'boxes'>): void {
   if(registry.has(id))throw new Error(`Duplicate model: ${id}`);
   registry.set(id,{defaults:{},properties:{},support:'none',occludes:true,connects:false,...definition});
 }
-export function modelDefinition(id) {
+export function modelDefinition(id: string): ModelDefinition {
   const def=registry.get(id);if(!def)throw new Error(`Unknown model: ${id}`);return def;
 }
-export function normalizeState(input) {
+export function normalizeState(input: unknown): BlockState {
   if(!input||typeof input!=='object')throw new Error('Invalid block state');
-  for(const key of Object.keys(input))if(!['model','color','props','place'].includes(key))throw new Error(`Unknown state field: ${key}`);
-  const def=modelDefinition(input.model),props={...def.defaults,...input.props};
-  if(input.props!==undefined&&(!input.props||typeof input.props!=='object'||Array.isArray(input.props)))throw new Error('Invalid properties');
-  for(const [key,value] of Object.entries(props))if(!def.properties[key]?.(value))throw new Error(`Invalid ${input.model}.${key}: ${value}`);
-  if(!/^#[\da-f]{6}$/i.test(input.color))throw new Error('Invalid material color');
-  if(input.place!==undefined&&(typeof input.place!=='string'||!input.place))throw new Error('Invalid place');
-  return {model:input.model,color:input.color.toLowerCase(),props,...(input.place?{place:input.place}:{})};
+  const raw=input as Record<string,unknown>;
+  for(const key of Object.keys(raw))if(!['model','color','props','place'].includes(key))throw new Error(`Unknown state field: ${key}`);
+  const model=raw.model as string;
+  const def=modelDefinition(model),props: Props={...def.defaults,...(raw.props as Props|undefined)};
+  if(raw.props!==undefined&&(!raw.props||typeof raw.props!=='object'||Array.isArray(raw.props)))throw new Error('Invalid properties');
+  for(const [key,value] of Object.entries(props))if(!def.properties[key]?.(value))throw new Error(`Invalid ${model}.${key}: ${value}`);
+  if(!/^#[\da-f]{6}$/i.test(raw.color as string))throw new Error('Invalid material color');
+  if(raw.place!==undefined&&(typeof raw.place!=='string'||!raw.place))throw new Error('Invalid place');
+  return {model,color:(raw.color as string).toLowerCase(),props,...(raw.place?{place:raw.place as string}:{})};
 }
-export function rotatePoint([x,y,z],turns) {
+export function rotatePoint([x,y,z]: Vec3,turns: number): Vec3 {
   for(let i=0;i<turns;i++)[x,z]=[1-z,x];return [x,y,z];
 }
-export function rotateBox(b,turns) {
-  const corners=[];for(const x of [b.min[0],b.max[0]])for(const z of [b.min[2],b.max[2]])corners.push(rotatePoint([x,0,z],turns));
+export function rotateBox(b: Box,turns: number): Box {
+  const corners: Vec3[]=[];for(const x of [b.min[0],b.max[0]])for(const z of [b.min[2],b.max[2]])corners.push(rotatePoint([x,0,z],turns));
   return {...b,min:[Math.min(...corners.map(p=>p[0])),b.min[1],Math.min(...corners.map(p=>p[2]))],max:[Math.max(...corners.map(p=>p[0])),b.max[1],Math.max(...corners.map(p=>p[2]))]};
 }
-export function modelBoxes(state, connections=[]) {
+export function modelBoxes(state: BlockState, connections: Direction[]=[]): Box[] {
   const def=modelDefinition(state.model),p=state.props;
-  return def.boxes(p,connections).map(b=>rotateBox(b,DIRECTIONS.indexOf(p.facing??'south')));
+  return def.boxes(p,connections).map(b=>rotateBox(b,DIRECTIONS.indexOf((p.facing ?? 'south') as Direction)));
 }
-export function occupiedCells(state) {
-  const cells=new Map();
-  const def=modelDefinition(state.model),boxes=def.occupancyBoxes?def.occupancyBoxes.map(b=>rotateBox(b,DIRECTIONS.indexOf(state.props.facing??'south'))):modelBoxes(state);
+export function occupiedCells(state: BlockState): Vec3[] {
+  const cells=new Map<string, Vec3>();
+  const def=modelDefinition(state.model),boxes=def.occupancyBoxes?def.occupancyBoxes.map(b=>rotateBox(b,DIRECTIONS.indexOf((state.props.facing ?? 'south') as Direction))):modelBoxes(state);
   for(const b of boxes)for(let y=Math.floor(b.min[1]+1e-8);y<Math.ceil(b.max[1]-1e-8);y++)for(let z=Math.floor(b.min[2]+1e-8);z<Math.ceil(b.max[2]-1e-8);z++)for(let x=Math.floor(b.min[0]+1e-8);x<Math.ceil(b.max[0]-1e-8);x++)cells.set(`${x},${y},${z}`,[x,y,z]);
   return [...cells.values()];
 }
-const facing={facing:enumOf(...DIRECTIONS)};
+const facing: Record<string, PropValidator>={facing:enumOf(...DIRECTIONS)};
 registerModel('cube',{connects:true,boxes:()=>[box(0,0,0,1,1,1)]});
 registerModel('roof-tile',{boxes:()=>[box(0,0,.025,1,1,.95)]});
 registerModel('workshop-bay',{support:'bottom',boxes:()=>{
@@ -70,18 +104,19 @@ registerModel('slab',{defaults:{half:'bottom'},properties:{half:enumOf('bottom',
 registerModel('brick-accent',{boxes:()=>[box(0,.4,0,1,.22,.12,'#d39063')]});
 registerModel('vertical-slab',{defaults:{facing:'south'},properties:facing,boxes:()=>[box(0,0,.5,1,1,.5)]});
 registerModel('stairs',{defaults:{facing:'south',half:'bottom',shape:'straight'},properties:{...facing,half:enumOf('bottom','top'),shape:enumOf('straight','inner-left','inner-right','outer-left','outer-right')},boxes:p=>{
+  const shape=p.shape as string;
   const upper=p.half==='top'?0:.5,lower=p.half==='top'?.5:0;
   const out=[box(0,lower,0,1,.5,1)];
-  if(p.shape==='straight')out.push(box(0,upper,.5,1,.5,.5));
-  else if(p.shape.startsWith('outer'))out.push(box(p.shape.endsWith('left')?0:.5,upper,.5,.5,.5,.5));
-  else{out.push(box(0,upper,.5,1,.5,.5));out.push(box(p.shape.endsWith('left')?0:.5,upper,0,.5,.5,.5));}
+  if(shape==='straight')out.push(box(0,upper,.5,1,.5,.5));
+  else if(shape.startsWith('outer'))out.push(box(shape.endsWith('left')?0:.5,upper,.5,.5,.5,.5));
+  else{out.push(box(0,upper,.5,1,.5,.5));out.push(box(shape.endsWith('left')?0:.5,upper,0,.5,.5,.5));}
   return out;
 }});
 registerModel('pillar',{defaults:{axis:'y',width:.375},properties:{axis:enumOf('x','y','z'),width:enumOf(.25,.375,.5,.75,1)},boxes:p=>{
-  const a=(1-p.width)/2;return [p.axis==='y'?box(a,0,a,p.width,1,p.width):p.axis==='x'?box(0,a,a,1,p.width,p.width):box(a,a,0,p.width,p.width,1)];
+  const w=p.width as number,a=(1-w)/2;return [p.axis==='y'?box(a,0,a,w,1,w):p.axis==='x'?box(0,a,a,1,w,w):box(a,a,0,w,w,1)];
 }});
 registerModel('birch-log',{defaults:{variant:0},properties:{variant:integer(0,3)},boxes:p=>{
- const shift=[0,.18,.36,.09][p.variant],out=[box(0,0,0,1,1,1,'#eee8d4')];
+ const shift=[0,.18,.36,.09][p.variant as number],out=[box(0,0,0,1,1,1,'#eee8d4')];
  // Small bark marks sit on all four faces. Their stagger changes per segment,
  // while the pale trunk remains continuous from one cell to the next.
  const y0=.18+shift%0.42,y1=.68-(shift*.45)%0.28;
@@ -97,17 +132,18 @@ registerModel('fence',{support:'bottom',connects:true,defaults:{},boxes:(_,conne
  return out;
 }});
 registerModel('door',{support:'bottom',defaults:{facing:'south',width:2,height:5,hinge:'left',open:false},properties:{...facing,width:integer(1,8),height:integer(2,12),hinge:enumOf('left','right'),open:v=>typeof v==='boolean'},boxes:p=>{
- const x=p.hinge==='left'?0:p.width-.2;
- if(p.open)return [box(x,0,.8,.2,p.height,p.width)];
- const out=[box(0,0,.72,p.width,p.height,.26,'#8b562f')];
+ const w=p.width as number,height=p.height as number;
+ const x=p.hinge==='left'?0:w-.2;
+ if(p.open)return [box(x,0,.8,.2,height,w)];
+ const out=[box(0,0,.72,w,height,.26,'#8b562f')];
  // Raised rails, two recessed panels and a visible brass handle keep the door
  // readable from the overview camera without turning it into a flat brown slab.
  for(const y of [.25,2.55]){
-  out.push(box(.2,y,.99,p.width-.4,1.75,.08,'#663d25'));
-  out.push(box(.35,y+.15,1.08,p.width-.7,1.45,.06,'#a96b39'));
+  out.push(box(.2,y,.99,w-.4,1.75,.08,'#663d25'));
+  out.push(box(.35,y+.15,1.08,w-.7,1.45,.06,'#a96b39'));
  }
- out.push(box(.1,0,1.04,.16,p.height,.12,'#74401f'),box(p.width-.26,0,1.04,.16,p.height,.12,'#74401f'));
- out.push(box(p.hinge==='left'?p.width-.38:.22,2.35,1.16,.18,.18,.16,'#f0c45c'));
+ out.push(box(.1,0,1.04,.16,height,.12,'#74401f'),box(w-.26,0,1.04,.16,height,.12,'#74401f'));
+ out.push(box(p.hinge==='left'?w-.38:.22,2.35,1.16,.18,.18,.16,'#f0c45c'));
  return out;
 }});
 registerModel('flower',{support:'bottom',occludes:false,boxes:()=>[box(.44,0,.44,.12,.7,.12,'#3c9c36'),box(.22,.64,.22,.56,.22,.56),box(.2,.25,.42,.4,.1,.2,'#519c37')]});
@@ -121,10 +157,12 @@ registerModel('planter',{support:'bottom',boxes:()=>{
  for(let i=0;i<3;i++){out.push(box(.25+i*.6,.9,.45,.1,.7,.1,'#3c9c36'));out.push(box(.1+i*.6,1.5,.3,.4,.2,.4));}return out;
 }});
 registerModel('crop',{support:'bottom',boxes:()=>[box(0,0,0,1,.12,1,'#816237'),box(.2,.12,.2,.6,.55,.6),box(.4,.67,.3,.2,.2,.4)]});
-registerModel('window',{defaults:{facing:'south',width:1,height:1},properties:{...facing,width:integer(1,8),height:integer(1,8)},occludes:false,boxes:p=>[
- box(0,0,.55,.15,p.height,.35,'#744c2c'),box(p.width-.15,0,.55,.15,p.height,.35,'#744c2c'),
- box(0,0,.55,p.width,.15,.35,'#744c2c'),box(0,p.height-.15,.55,p.width,.15,.35,'#744c2c'),
- box(.15,.15,.7,p.width-.3,p.height-.3,.08,'#7cbfd1'),box(p.width/2-.07,.1,.8,.14,p.height-.2,.12),box(.1,p.height/2-.07,.8,p.width-.2,.14,.12)]});
+registerModel('window',{defaults:{facing:'south',width:1,height:1},properties:{...facing,width:integer(1,8),height:integer(1,8)},occludes:false,boxes:p=>{
+ const w=p.width as number,height=p.height as number;
+ return [
+ box(0,0,.55,.15,height,.35,'#744c2c'),box(w-.15,0,.55,.15,height,.35,'#744c2c'),
+ box(0,0,.55,w,.15,.35,'#744c2c'),box(0,height-.15,.55,w,.15,.35,'#744c2c'),
+ box(.15,.15,.7,w-.3,height-.3,.08,'#7cbfd1'),box(w/2-.07,.1,.8,.14,height-.2,.12),box(.1,height/2-.07,.8,w-.2,.14,.12)];}});
 registerModel('bookshelf',{defaults:{facing:'south'},properties:facing,boxes:()=>{
  const out=[box(0,0,0,1,1,.25,'#744c2c'),box(0,0,.25,1,.12,.75)];
  for(let i=0;i<4;i++)out.push(box(.08+i*.23,.12,.35,.18,.7,.5,['#df6650','#ebc85a','#5186b6','#68a577'][i]));return out;
@@ -160,18 +198,18 @@ registerModel('plaque',{support:'back',mount:[1,.5,0],defaults:{facing:'south'},
  box(0,0,0,2,1,.15),box(.2,.15,.16,1.6,.7,.1,'#f1dbaa'),box(.94,.25,.27,.12,.5,.05,'#327bb6'),box(.75,.44,.27,.5,.12,.05,'#327bb6'),
 ]});
 // Additional reusable shapes use bounded boxes, never executable save-file code.
-export function registerBoxModel(id,boxes,{support='none',occludes=false}={}) {
+export function registerBoxModel(id: string,boxes: Box[],{support='none',occludes=false}:{support?: Support;occludes?: boolean}={}): void {
  if(!Array.isArray(boxes)||!boxes.length)throw new Error('Empty model');
  for(const b of boxes)for(let a=0;a<3;a++)if(!Number.isFinite(b.min[a])||!Number.isFinite(b.max[a])||b.max[a]<=b.min[a]||Math.abs(b.min[a])>64||Math.abs(b.max[a])>64)throw new Error('Invalid model geometry');
  registerModel(id,{support,occludes,defaults:{facing:'south'},properties:facing,boxes:()=>boxes});
 }
 // Arbitrary triangle geometry is allowed. Collision/support are explicit proxies;
 // occupancy conservatively includes the visual bounds as well as collision boxes.
-export function registerMeshModel(id,{positions,colors,collisionBoxes,support='none'}) {
+export function registerMeshModel(id: string,{positions,colors,collisionBoxes,support='none'}:{positions: number[];colors?: string[];collisionBoxes: Box[];support?: Support}): void {
  if(!Array.isArray(positions)||!positions.length||positions.length%9||positions.length>900000||!positions.every(v=>Number.isFinite(v)&&Math.abs(v)<=64))throw new Error('Invalid triangle model');
  if(!Array.isArray(collisionBoxes)||!collisionBoxes.length)throw new Error('Missing collision proxies');
  for(const b of collisionBoxes)for(let a=0;a<3;a++)if(!Number.isFinite(b.min[a])||!Number.isFinite(b.max[a])||b.max[a]<=b.min[a]||Math.abs(b.min[a])>64||Math.abs(b.max[a])>64)throw new Error('Invalid collision proxy');
- const min=[Infinity,Infinity,Infinity],max=[-Infinity,-Infinity,-Infinity];positions.forEach((v,i)=>{min[i%3]=Math.min(min[i%3],v);max[i%3]=Math.max(max[i%3],v);});
+ const min: Vec3=[Infinity,Infinity,Infinity],max: Vec3=[-Infinity,-Infinity,-Infinity];positions.forEach((v,i)=>{min[i%3]=Math.min(min[i%3],v);max[i%3]=Math.max(max[i%3],v);});
  for(let a=0;a<3;a++)if(max[a]===min[a])max[a]+=.00001;
  if(colors&&(!Array.isArray(colors)||colors.length!==positions.length/3||!colors.every(c=>/^#[\da-f]{6}$/i.test(c))))throw new Error('Invalid vertex colors');
  registerModel(id,{support,occludes:false,defaults:{facing:'south'},properties:facing,positions:Object.freeze([...positions]),colors:colors&&Object.freeze([...colors]),occupancyBoxes:[{min,max},...collisionBoxes],boxes:()=>collisionBoxes});
@@ -180,15 +218,15 @@ export function registerMeshModel(id,{positions,colors,collisionBoxes,support='n
 // One multi-cell instrument, with a tilted square barrel and an open lens hood.
 // Geometry is exact; individual component bounds are conservative collision proxies.
 {
- const positions=[],colors=[],collisionBoxes=[];
- const add=(min,size,color,tilted=false)=>{
-  const vertices=[];
+ const positions: number[]=[],colors: string[]=[],collisionBoxes: Box[]=[];
+ const add=(min: Vec3,size: Vec3,color: string,tilted=false)=>{
+  const vertices: Vec3[]=[];
   for(let i=0;i<8;i++){
    let [x,y,z]=min.map((v,a)=>v+((i>>a)&1)*size[a]);
    if(tilted){const yy=y*Math.cos(.38)+z*Math.sin(.38),zz=-y*Math.sin(.38)+z*Math.cos(.38);y=yy+2;x=x*Math.cos(1.25)+zz*Math.sin(1.25)+1;z=-(min[0]+(i&1)*size[0])*Math.sin(1.25)+zz*Math.cos(1.25)+1;}
    vertices.push([x,y,z]);
   }
-  collisionBoxes.push({min:[0,1,2].map(a=>Math.min(...vertices.map(v=>v[a]))),max:[0,1,2].map(a=>Math.max(...vertices.map(v=>v[a])))});
+  collisionBoxes.push({min:[0,1,2].map(a=>Math.min(...vertices.map(v=>v[a]))) as Vec3,max:[0,1,2].map(a=>Math.max(...vertices.map(v=>v[a]))) as Vec3});
   for(const face of [[0,4,6,2],[1,3,7,5],[0,1,5,4],[2,6,7,3],[0,2,3,1],[4,5,7,6]])for(const i of [0,1,2,0,2,3]){positions.push(...vertices[face[i]]);colors.push(color);}
  };
  add([0,0,0],[2,.35,2],'#abb9bf');add([.65,.35,.65],[.7,1.65,.7],'#687b89');
@@ -196,7 +234,7 @@ export function registerMeshModel(id,{positions,colors,collisionBoxes,support='n
  add([-.65,-.65,.15],[1.3,1.3,4.8],'#e2eceb',true);
  add([-.76,-.76,2],[1.52,1.52,.38],'#8799a3',true);
  // Four rim walls leave a recessed dark glass opening instead of a solid black cap.
- for(const [min,size] of [[[-1,-1,4.75],[.3,2,1]],[[.7,-1,4.75],[.3,2,1]],[[-.7,-1,4.75],[1.4,.3,1]],[[-.7,.7,4.75],[1.4,.3,1]]])add(min,size,'#e2eceb',true);
+ for(const [min,size] of [[[-1,-1,4.75],[.3,2,1]],[[.7,-1,4.75],[.3,2,1]],[[-.7,-1,4.75],[1.4,.3,1]],[[-.7,.7,4.75],[1.4,.3,1]]])add(min as Vec3,size as Vec3,'#e2eceb',true);
  add([-.7,-.7,4.96],[1.4,1.4,.08],'#263e4e',true);
  registerMeshModel('telescope',{positions,colors,collisionBoxes,support:'bottom'});
 }
