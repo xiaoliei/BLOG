@@ -1,12 +1,18 @@
 import * as THREE from 'three';
+import type { EntryWorldHandle } from './entry-world.ts';
+import type { TownHandle } from './town.ts';
+import type { PlaceSpec, Vec3 } from './data.ts';
 
 // 相机相关纯函数：全景/地点取景、入场飞行的移动目标跟踪、地点标签投影。
 // 只读入参、返回纯数据，不持有任何引擎状态，便于独立理解与复测。
 
+export type InspectionView = 'top' | 'front' | 'east' | 'back' | 'west' | null;
+export interface Pose { position: Vec3; target: Vec3; }
+
 // 全景（home）取景：inspection 调试视图为固定机位，否则按纵横比与缩放推算轨道机位。
-export function computeHomePose({ inspectionView, aspect, zoom, yaw }) {
+export function computeHomePose({ inspectionView, aspect, zoom, yaw }: { inspectionView: InspectionView; aspect: number; zoom: number; yaw: number }): Pose {
   if (inspectionView) {
-    const poses = { top: [0, 130, .001], front: [0, 55, 100], east: [100, 55, 0], back: [0, 55, -100], west: [-100, 55, 0] };
+    const poses: Record<Exclude<InspectionView, null>, Vec3> = { top: [0, 130, .001], front: [0, 55, 100], east: [100, 55, 0], back: [0, 55, -100], west: [-100, 55, 0] };
     return { position: poses[inspectionView] || poses.front, target: [0, 5, 0] };
   }
   const mobile = aspect < .85;
@@ -17,7 +23,7 @@ export function computeHomePose({ inspectionView, aspect, zoom, yaw }) {
 
 // 地点取景：优先使用存档里为该地点配置的机位偏移与焦点。
 // Leave the right third (desktop) or bottom third (phone) for real DOM content.
-export function computePlacePose(place, aspect) {
+export function computePlacePose(place: PlaceSpec, aspect: number): Pose {
   const [x, y, z] = place.position;
   const mobile = aspect < .85;
   const offset = mobile ? place.camera?.mobileOffset : place.camera?.desktopOffset;
@@ -30,14 +36,21 @@ export function computePlacePose(place, aspect) {
 
 // 入场/离场飞行中，目标点随星球自转移动：保持同一球面视角方向与距离追踪真实岛屿，
 // 而不是把镜头对准空气中的一点。
-export function trackedFlightTargets(entryWorld, entryDestination, entryTarget) {
+export function trackedFlightTargets(entryWorld: EntryWorldHandle | null, entryDestination: THREE.Vector3, entryTarget: THREE.Vector3): { movingTarget: THREE.Vector3; movingDestination: THREE.Vector3 } {
   const movingTarget = entryWorld ? entryWorld.worldPoint(entryTarget) : entryTarget;
   const movingDestination = entryDestination.clone().sub(entryTarget).add(movingTarget);
   return { movingTarget, movingDestination };
 }
 
+export interface ScreenLabel {
+  id: string;
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
 // 地点标签投影到屏幕坐标，并给出视锥内可见性判定。
-export function projectLabels(town, entryWorld, camera, width, height) {
+export function projectLabels(town: TownHandle, entryWorld: EntryWorldHandle | null, camera: THREE.Camera, width: number, height: number): ScreenLabel[] {
   return Object.values(town.placeMap).map(p => {
     const point = new THREE.Vector3(...p.label);
     const v = (entryWorld ? entryWorld.worldPoint(point) : point).project(camera);

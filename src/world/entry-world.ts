@@ -1,38 +1,39 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { smootherstep } from './entry-flight.js';
+import { smootherstep } from './entry-flight.ts';
+import type { TownHandle } from './town.ts';
 
 export const PLANET_SIZE = 360;
 export const PLANET_TURN_DURATION = 2.65;
 const BACK_TO_UP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2);
 const IDENTITY = new THREE.Quaternion();
 
-export function planetCenter(seaLevel) {
+export function planetCenter(seaLevel: number): THREE.Vector3 {
   return new THREE.Vector3(0, seaLevel - .4 - PLANET_SIZE / 2, 0);
 }
 
-export function idlePlanetRotation(time = 0) {
+export function idlePlanetRotation(time = 0): THREE.Quaternion {
   // Reproduce the old GLB's opening orientation, including its slight sway.
   const original = new THREE.Quaternion().setFromEuler(new THREE.Euler(.44 + Math.sin(time * .5) * .025, -.6, -.205));
   return original.multiply(BACK_TO_UP.clone().invert());
 }
 
-export function samplePlanetRotation(start, seconds) {
+export function samplePlanetRotation(start: THREE.Quaternion, seconds: number): THREE.Quaternion {
   return start.clone().slerp(IDENTITY, smootherstep(seconds / PLANET_TURN_DURATION));
 }
 
 // The cloud shell belongs to the landing globe. It fades out from 0.6 s to
 // 1.6 s: the globe has turned by about a third and the camera is still far, so
 // the blocks leave before the island becomes the close subject.
-export const CLOUD_FADE = Object.freeze({ start: .6, end: 1.6 });
+export const CLOUD_FADE: Readonly<{ start: number; end: number }> = Object.freeze({ start: .6, end: 1.6 });
 
-export function cloudOpacity(seconds) {
+export function cloudOpacity(seconds: number): number {
   return 1 - smootherstep((seconds - CLOUD_FADE.start) / (CLOUD_FADE.end - CLOUD_FADE.start));
 }
 
 // Indexed vertices only: both shells share one position buffer, so a bounding
 // box reports the inflated cloud shell even for the opaque ground mesh.
-export function indexedExtent(positions, indices) {
+export function indexedExtent(positions: Float32Array, indices: number[]): number {
   let extent = 0;
   for(const index of indices){
     const offset = index * 3;
@@ -41,31 +42,35 @@ export function indexedExtent(positions, indices) {
   return extent;
 }
 
-function componentArray(attribute, width) {
+function componentArray(attribute: THREE.BufferAttribute, width: number): Float32Array {
   const values = new Float32Array(attribute.count * width);
   for(let i = 0; i < attribute.count; i++)for(let c = 0; c < width; c++)values[i * width + c] = attribute.getComponent(i, c);
   return values;
 }
 
-function indexArray(index) {
-  const values = [];
+function indexArray(index: THREE.BufferAttribute): number[] {
+  const values: number[] = [];
   for(let i = 0; i < index.count; i++)values.push(index.getX(i));
   return values;
 }
 
-export function orbitalPose(aspect, seaLevel) {
+export interface OrbitalPose { position: THREE.Vector3; target: THREE.Vector3; }
+
+export function orbitalPose(aspect: number, seaLevel: number): OrbitalPose {
   const distance = PLANET_SIZE / 2.5 * 18 / Math.min(1, aspect * 1.25);
   const target = planetCenter(seaLevel).add(new THREE.Vector3(0, -distance / 12, 0));
   return { position: target.clone().add(new THREE.Vector3(0, 0, distance)), target };
 }
 
-function disposeModel(model) {
-  const geometries = new Set(), materials = new Set(), textures = new Set();
+function disposeModel(model: THREE.Object3D): void {
+  const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>(), textures = new Set<THREE.Texture>();
   model.traverse(object => {
-    if(object.geometry)geometries.add(object.geometry);
-    for(const material of Array.isArray(object.material) ? object.material : [object.material])if(material){
+    const mesh = object as THREE.Mesh;
+    if(mesh.geometry)geometries.add(mesh.geometry);
+    const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    for(const material of mats)if(material){
       materials.add(material);
-      for(const value of Object.values(material))if(value?.isTexture)textures.add(value);
+      for(const value of Object.values(material))if(value && (value as THREE.Texture).isTexture)textures.add(value as THREE.Texture);
     }
   });
   geometries.forEach(value => value.dispose());
@@ -73,7 +78,18 @@ function disposeModel(model) {
   materials.forEach(value => value.dispose());
 }
 
-export async function buildEntryWorld(scene, town, { modelUrl, signal }) {
+export interface EntryWorldHandle {
+  root: THREE.Group;
+  seaLevel: number;
+  setIdle: (time: number) => void;
+  captureRotation: () => THREE.Quaternion;
+  setEntry: (seconds: number, start: THREE.Quaternion) => void;
+  setWorld: () => void;
+  worldPoint: (point: THREE.Vector3) => THREE.Vector3;
+  dispose: () => void;
+}
+
+export async function buildEntryWorld(scene: THREE.Scene, town: TownHandle, { modelUrl, signal }: { modelUrl: string; signal: AbortSignal }): Promise<EntryWorldHandle> {
   const response = await fetch(modelUrl, { signal });
   if(!response.ok)throw new Error(`Earth HTTP ${response.status}`);
   const gltf = await new GLTFLoader().parseAsync(await response.arrayBuffer(), '');
@@ -84,17 +100,48 @@ export async function buildEntryWorld(scene, town, { modelUrl, signal }) {
   // into the cloud layer and shares its vertex buffer, so a bounding box
   // reports the cloud shell even for the ground mesh. Only the ground shell
   // sizes the model, which puts the island on the sea instead of on clouds.
-  let groundRadius = 0, clouds = null;
+  let groundRadius = 0, clouds: THREE.Mesh | null = null;
   gltf.scene.traverse(object => {
-    if(!object.isMesh)return;
-    object.castShadow = object.receiveShadow = false;
-    for(const material of Array.isArray(object.material) ? object.material : [object.material])if(material){
-      material.metalness = 0; material.roughness = 1;
+    const mesh = object as THREE.Mesh;
+    if(!mesh.isMesh)return;
+    mesh.castShadow = mesh.receiveShadow = false;
+    const mats = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    for(const material of mats)if(material){
+      const standard = material as THREE.MeshStandardMaterial;
+      standard.metalness = 0; standard.roughness = 1;
     }
-    if(object.name === 'mc_head_hat'){clouds = object;return;}
-    groundRadius = Math.max(groundRadius, indexedExtent(componentArray(object.geometry.getAttribute('position'), 3), indexArray(object.geometry.getIndex())));
+    if(mesh.name === 'mc_head_hat'){clouds = mesh;return;}
+    const positionAttribute = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+    const indexAttribute = mesh.geometry.getIndex();
+    groundRadius = Math.max(groundRadius, indexedExtent(componentArray(positionAttribute, 3), indexAttribute ? indexArray(indexAttribute) : []));
   });
   if(!(groundRadius > 0))groundRadius = Math.max(bounds.getSize(new THREE.Vector3()).x, bounds.getSize(new THREE.Vector3()).y, bounds.getSize(new THREE.Vector3()).z) / 2;
+  // The cloud shell floats 0.25 units above the ground shell, and that rim
+  // hangs past the globe's silhouette: its skin texels draw as intermittent
+  // dashed fringes along the landing page edges. Keep the floating height and
+  // clip only what projects outside the ground cube — each cloud fragment
+  // casts the camera ray at the ground box and discards itself on a miss.
+  const cloudMesh = clouds as THREE.Mesh | null;
+  const cloudMaterial = cloudMesh ? (Array.isArray(cloudMesh.material) ? cloudMesh.material[0] : cloudMesh.material) as THREE.MeshStandardMaterial : null;
+  if(cloudMesh && cloudMaterial){
+    const groundHalf = (groundRadius - .01).toFixed(4);
+    const groundBoxInverse: { value: THREE.Matrix4 } = { value: new THREE.Matrix4() };
+    cloudMesh.onBeforeRender = () => { groundBoxInverse.value.copy(cloudMesh.matrixWorld).invert(); };
+    cloudMaterial.onBeforeCompile = shader => {
+      shader.uniforms.groundBoxInverse = groundBoxInverse;
+      shader.vertexShader = 'varying vec3 vHeadLocal;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n\tvHeadLocal = position;');
+      shader.fragmentShader = 'uniform mat4 groundBoxInverse;\nvarying vec3 vHeadLocal;\n' + shader.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+	{
+		vec3 headOrigin = (groundBoxInverse * vec4(cameraPosition, 1.0)).xyz;
+		vec3 headSlope = 1.0 / (vHeadLocal - headOrigin);
+		vec3 headA = (vec3(${groundHalf}) - headOrigin) * headSlope;
+		vec3 headB = (-vec3(${groundHalf}) - headOrigin) * headSlope;
+		float headEnter = max(max(min(headA.x, headB.x), min(headA.y, headB.y)), min(headA.z, headB.z));
+		float headLeave = min(min(max(headA.x, headB.x), max(headA.y, headB.y)), max(headA.z, headB.z));
+		if(max(headEnter, 0.0) > headLeave) discard;
+	}`);
+    };
+  }
   const scale = PLANET_SIZE / (groundRadius * 2);
   const center = planetCenter(town.world.environment.seaLevel);
   const root = new THREE.Group(), model = new THREE.Group();
@@ -107,16 +154,15 @@ export async function buildEntryWorld(scene, town, { modelUrl, signal }) {
   // part of the landing globe: it fades out early in the flight and the whole
   // globe is gone once the sea takes over.
   model.quaternion.copy(BACK_TO_UP);root.add(model);
-  const cloudMaterial = clouds?.material ?? null;
   let cloudAlpha = 1;
-  function setCloudOpacity(value){
-    if(!clouds || !cloudMaterial || value === cloudAlpha)return;
-    cloudAlpha = value;clouds.visible = value > .001;
+  function setCloudOpacity(value: number): void{
+    if(!cloudMesh || !cloudMaterial || value === cloudAlpha)return;
+    cloudAlpha = value;cloudMesh.visible = value > .001;
     cloudMaterial.transparent = value < 1;cloudMaterial.opacity = value;
     cloudMaterial.depthWrite = value >= 1;cloudMaterial.needsUpdate = true;
   }
   town.root.position.sub(center);root.add(town.root);scene.add(root);
-  function updateMatrix(){root.updateWorldMatrix(true,true);}
+  function updateMatrix(): void{root.updateWorldMatrix(true,true);}
   return {
     root, seaLevel:town.world.environment.seaLevel,
     setIdle(time){
@@ -138,4 +184,3 @@ export async function buildEntryWorld(scene, town, { modelUrl, signal }) {
     dispose(){scene.remove(root);disposeModel(gltf.scene);root.clear();},
   };
 }
-

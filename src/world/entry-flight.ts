@@ -2,13 +2,18 @@ import { Vector3 } from 'three';
 
 export const ENTRY_DURATION = 4.6;
 export const ENTRY_ORIENTATION_DURATION = 3.2;
-export const smootherstep = value => {
+export interface EntryFlight { position: Vector3; target: Vector3; direction: Vector3; distance: number; destination: Vector3; destinationTarget: Vector3; }
+export interface EntrySample { position: Vector3; target: Vector3; direction: Vector3; distance: number; }
+/** 0..1 fade amounts for the landing chrome while the camera flies in. */
+export interface EntryVisuals { seconds: number; ui: number; atmosphere: number; header: number; labels: number; navigation: number; }
+
+export const smootherstep = (value: number): number => {
   const t = Math.max(0, Math.min(1, value));
   if(t===0||t===1)return t;
   return Math.max(0,Math.min(1,t * t * t * (t * (t * 6 - 15) + 10)));
 };
 
-export function createEntryFlight(position, target, destination, destinationTarget) {
+export function createEntryFlight(position: Vector3, target: Vector3, destination: Vector3, destinationTarget: Vector3): EntryFlight {
   const offset = position.clone().sub(target);
   return {
     position: position.clone(), target: target.clone(),
@@ -19,7 +24,7 @@ export function createEntryFlight(position, target, destination, destinationTarg
 
 // Moving the focus never independently turns the camera: its position follows
 // the same world-space focus, spherical direction and logarithmic distance.
-export function sampleEntryFlight(flight, seconds, destination = flight.destination, destinationTarget = flight.destinationTarget) {
+export function sampleEntryFlight(flight: EntryFlight, seconds: number, destination: Vector3 = flight.destination, destinationTarget: Vector3 = flight.destinationTarget): EntrySample {
   const travel = smootherstep(seconds / ENTRY_DURATION);
   // Establish the overview angle before the final approach, so the island
   // becomes readable while the globe is still turning instead of edge-on.
@@ -44,7 +49,7 @@ export function sampleEntryFlight(flight, seconds, destination = flight.destinat
   return { position: target.clone().addScaledVector(direction, distance), target, direction, distance };
 }
 
-export function entryVisuals(seconds) {
+export function entryVisuals(seconds: number): EntryVisuals {
   return {
     seconds,
     ui: 1 - smootherstep(seconds / .45),
@@ -54,5 +59,3 @@ export function entryVisuals(seconds) {
     navigation: smootherstep((seconds - 4.3) / .3),
   };
 }
-
-

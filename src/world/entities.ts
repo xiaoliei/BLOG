@@ -1,15 +1,27 @@
 import * as THREE from 'three';
-import { createKit } from './voxel.js';
-import { C } from './palette.js';
+import { createKit } from './voxel.ts';
+import { C } from './palette.ts';
+import type { World, EntitySpec, RailRoute } from './data.ts';
 
-export function trainPose(time,rail){
+export interface TrainPose { x: number; direction: -1 | 1; stopped: boolean; }
+
+export function trainPose(time: number,rail: RailRoute): TrainPose{
  const leg=rail.travel+rail.dwell,cycle=((time%(leg*2))+leg*2)%(leg*2),west=cycle<leg;
  const u=Math.max(0,Math.min(1,((west?cycle:cycle-leg)-rail.dwell)/rail.travel)),s=u*u*(3-2*u);
  return {x:west?rail.centerMax+(rail.centerMin-rail.centerMax)*s:rail.centerMin+(rail.centerMax-rail.centerMin)*s,direction:west?-1:1,stopped:u===0||u===1};
 }
+type EntityUpdate = (t: number, trainTime: number) => void;
+
+export interface EntitiesRenderer {
+  root: THREE.Group;
+  pickables: THREE.Object3D[];
+  update: (t: number, trainTime?: number) => void;
+  dispose: () => void;
+}
+
 // Dynamic geometry uses entity-local coordinates, not the static cell index.
-export function renderEntities(world){
- const root=new THREE.Group(),kit=createKit(),updates=[],pickables=[];
+export function renderEntities(world: World): EntitiesRenderer{
+ const root=new THREE.Group(),kit=createKit(),updates: EntityUpdate[]=[],pickables: THREE.Object3D[]=[];
  for(const e of world.entities){
   const g=new THREE.Group();g.position.set(...e.position);root.add(g);const b=kit.batch(g,e.place),box=b.box;
   if(e.type==='train'){
@@ -40,7 +52,7 @@ export function renderEntities(world){
    for(let i=0;i<3;i++)box(i*.2,i*.9,0,.45+i*.18,.45+i*.15,.45+i*.18,'#e5f0ec',false);
    updates.push(t=>{g.position.y=e.position[1]+(t*.25)%1;g.position.x=e.position[0]+Math.sin(t*.5)*.2;});
   }
-  b.flush();g.traverse(o=>{if(o.isMesh){o.userData.entity=e.id;pickables.push(o);}});
+  b.flush();g.traverse(o=>{if((o as THREE.Mesh).isMesh){o.userData.entity=e.id;pickables.push(o);}});
  }
- return {root,pickables,update(t,trainTime=t){for(const fn of updates)fn(t,trainTime);},dispose(){root.traverse(o=>{if(o.isInstancedMesh)o.dispose();});kit.dispose();root.clear();}};
+ return {root,pickables,update(t,trainTime=t){for(const fn of updates)fn(t,trainTime);},dispose(){root.traverse(o=>{if((o as THREE.InstancedMesh).isInstancedMesh)o.dispose();});kit.dispose();root.clear();}};
 }
