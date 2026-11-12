@@ -125,7 +125,7 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 - `src/lib/api.ts`：公开内容 API 与静态示例回退
 - `src/admin/`、`worker/`、`drizzle/`：保留的后台和数据服务
 - `public/models/mc_head.glb`：启动页与进入过场共用的原版地球资源
-- `public/world/harbor-preview.webp`：WebGL 降级预览
+- `public/world/harbor-preview.png`：WebGL 降级预览
 
 ## 验证
 

@@ -1,11 +1,11 @@
 /* ============================================================
    前台 API 层：public-content-api 客户端 + SWR 缓存
    ------------------------------------------------------------
-   - getModules / getPosts / getPost：唯一数据入口
+   - getPosts / getPost：前台唯一数据入口
    - SWR：内存 + localStorage 双层缓存，TTL 5 分钟
      （命中新鲜缓存直接返回；过期则先返回旧值并后台刷新）
    - fetch 失败自动重试（最多 2 次，递增退避）
-   - resolveDataSource：blog.js 静态数据的 feature flag 回退开关
+   - resolveDataSource：blog.ts 静态数据的 feature flag 回退开关
      localStorage.setItem("blog:data-source", "static") 可即时切回
    ============================================================ */
 
@@ -14,7 +14,7 @@ import type { StaticPost } from "../config/blog.ts";
 import { DEFAULT_SETTINGS } from "../config/site-settings.ts";
 import { buildQuery, firstPayloadMessage } from "./http.ts";
 import type { ErrorPayload, QueryParams } from "./http.ts";
-import type { ModuleSummary, PostListItem as ApiPostListItem, PostDetail, PublicComment, SiteSettingsWithMeta } from "../types/api.ts";
+import type { PostListItem as ApiPostListItem, PostDetail, PublicComment, SiteSettingsWithMeta } from "../types/api.ts";
 
 const API_BASE = "/api/public";
 const TTL_MS = 5 * 60 * 1000;
@@ -156,18 +156,10 @@ export function getSettings(): Promise<SiteSettingsWithMeta> {
 
 /* ---------- 公开 API 封装 ---------- */
 
-/** 栏目列表。内置快照里的栏目 id 是字符串 slug，与线上自增整数不同型，
- *  所以静态数据源下不提供该能力：调用方在静态模式下拿不到可信的栏目行，
- *  与其返回一份 id 语义完全不同的数据，不如让「谁该调用它」显式失败。
- *  后台栏目管理走 adminFetch，不经过这里。 */
-export function getModules(): Promise<ModuleSummary[]> {
-	if (resolveDataSource() === "static") {
-		throw new Error("getModules 在静态数据源下不可用：内置快照没有栏目行 id");
-	}
-	return swr("modules", () => fetchJSON<ModuleSummary[]>("/modules"));
-}
-
-/** 地点面板消费的列表行：API 行带正文入口，静态行只有摘要。 */
+/** 地点面板消费的列表行：API 行带正文入口，静态行只有摘要。
+ *  两种来源的判别契约是「静态行没有 slug 键」，见 scripts/api.test.ts。
+ *  后台栏目管理走 adminFetch，不经过这里（内置快照的栏目 id 是字符串 slug，
+ *  与线上自增整数不同型，因此这里不提供 getModules）。 */
 export type PostListItem = ApiPostListItem | StaticPostItem;
 
 export function getPosts({ moduleId, limit }: { moduleId?: string; limit?: number } = {}): Promise<PostListItem[]> {

@@ -117,7 +117,7 @@ export default function WorldApp(){
     }catch{setFallback(true);setReady(true);setError('当前设备无法显示三维画面，已切换为静态预览。地点目录仍可使用。');setPhase(initialRoute.current.home?'world':'idle');}
     const hash=()=>{const next=readWorldRoute(location.hash);routeRef.current=next;if(next.post)articlePlaceRef.current=(history.state as ArticleHistoryState|null)?.articlePlace||(history.state as ArticleHistoryState|null)?.articleOrigin||null;setRoute(next);engine.current?.navigate(next);if(!engine.current)setPhase(next.home?'world':'idle');};
     const key=(e: KeyboardEvent)=>{
-      if(e.key==='Escape'&&routeRef.current.post){e.preventDefault();returnFromPost(routeRef.current.post?((history.state as ArticleHistoryState|null)?.articlePlace??null):null);return;}
+      if(e.key==='Escape'&&routeRef.current.post){e.preventDefault();returnFromPost(articlePlaceRef.current);return;}
       if(e.key==='Escape'&&readWorldRoute(location.hash).place){visit(null);nav.current?.querySelector<HTMLElement>('button')?.focus();}
       if((e.key==='Enter'||e.key===' ')&&!readWorldRoute(location.hash).home&&e.target===document.body){e.preventDefault();keyboardEntry.current=true;if(engine.current&&!directEntry.current)engine.current.enter();else visit(null);}
     };

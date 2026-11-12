@@ -6,7 +6,7 @@
   "scripts": {
     "world:generate": "tsx scripts/world-generate.ts",
     "world:validate": "tsx scripts/world-validate.ts",
-    "test:world": "node --import tsx --test scripts/world.test.ts scripts/grid-world.test.ts scripts/entry-flight.test.ts scripts/local-time.test.ts",
+    "test:world": "node --import tsx --test scripts/world.test.ts scripts/grid-world.test.ts scripts/entry-flight.test.ts scripts/local-time.test.ts scripts/api.test.ts",
     "dev": "vite",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json --noEmit && tsc -p worker --noEmit",
     "build": "npm run typecheck && tsx scripts/copy-vditor.ts && vite build",
