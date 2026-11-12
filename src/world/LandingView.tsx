@@ -1,12 +1,26 @@
-import LandingClock from '../components/landing/LandingClock.jsx';
-import Starfield from '../components/landing/Starfield.jsx';
-import ScreenOverlays from '../components/landing/ScreenOverlays.jsx';
-import Moon from '../components/landing/Moon.jsx';
+import LandingClock from '../components/landing/LandingClock.tsx';
+import Starfield from '../components/landing/Starfield.tsx';
+import ScreenOverlays from '../components/landing/ScreenOverlays.tsx';
+import Moon from '../components/landing/Moon.tsx';
+import type { SystemClock } from '../hooks/useSystemClock.ts';
+
+interface LandingViewProps {
+  active: boolean;
+  leaving: boolean;
+  entering: boolean;
+  entryPreview: boolean;
+  clock: SystemClock;
+  ready: boolean;
+  skipEarth: boolean;
+  fallback: boolean;
+  islandName: string;
+  onEnter: (event?: { detail?: number } | MouseEvent) => void;
+}
 
 // 着陆页组合区：星空背景与「时钟 + 入场按钮」浮层。
 // active 为真时渲染完整着陆页；离场（leaving）时仅保留星空背景，
 // 与拆分前 WorldApp 中的两处条件渲染一一对应。
-export default function LandingView({ active, leaving, entering, entryPreview, clock, ready, skipEarth, fallback, islandName, onEnter }) {
+export default function LandingView({ active, leaving, entering, entryPreview, clock, ready, skipEarth, fallback, islandName, onEnter }: LandingViewProps) {
   if (!active && !leaving) return null;
   return <>
     <div className="landing-root world-landing-background" aria-hidden="true"><Starfield staticFrame={entryPreview} /><ScreenOverlays /></div>

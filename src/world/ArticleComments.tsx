@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
-import { getComments, submitComment } from '../lib/api.js';
-import { localDateTime } from '../lib/local-time.js';
+import { getComments, submitComment } from '../lib/api.ts';
+import { localDateTime } from '../lib/local-time.ts';
+import type { PublicComment } from '../types/api.ts';
+
+type CommentsStatus = 'loading' | 'ready' | 'error';
+interface CommentsState { status: CommentsStatus; rows: PublicComment[]; }
+interface Feedback { type: 'success' | 'error'; text: string; }
 
 // 文章留言区：留言列表加载/重试与留言表单（含蜜糖字段）。
-// 从 ArticleReader.jsx 抽出，按 slug 重新挂载时状态随 key 一起重置。
-export default function ArticleComments({ slug }) {
-  const [items, setItems] = useState({ status: 'loading', rows: [] });
+// 从 ArticleReader.tsx 抽出，按 slug 重新挂载时状态随 key 一起重置。
+export default function ArticleComments({ slug }: { slug: string }) {
+  const [items, setItems] = useState<CommentsState>({ status: 'loading', rows: [] });
   const [retry, setRetry] = useState(0);
   const [author, setAuthor] = useState('');
   const [body, setBody] = useState('');
   const [website, setWebsite] = useState('');
   const [sending, setSending] = useState(false);
-  const [feedback, setFeedback] = useState(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -24,7 +29,7 @@ export default function ArticleComments({ slug }) {
     return () => { alive = false; };
   }, [slug, retry]);
 
-  async function send(event) {
+  async function send(event: React.FormEvent) {
     event.preventDefault();
     if (sending) return;
     setSending(true);
@@ -35,7 +40,7 @@ export default function ArticleComments({ slug }) {
       setWebsite('');
       setFeedback({ type: 'success', text: '已提交，审核通过后会展示。' });
     } catch (error) {
-      setFeedback({ type: 'error', text: error?.message || '提交失败，请稍后再试。' });
+      setFeedback({ type: 'error', text: (error as Error)?.message || '提交失败，请稍后再试。' });
     } finally {
       setSending(false);
     }
