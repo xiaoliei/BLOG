@@ -1,12 +1,27 @@
-import { FormRow, SelectField, TextField, TextareaField } from "./Fields.jsx";
+import { FormRow, SelectField, TextField, TextareaField } from "./Fields.tsx";
 
 /* ============================================================
    文章表单字段区：PostEdit 顶部字段（标题/Slug/栏目/日期/标签/时长/摘要）
    - props 与页面状态一一对应，页面仍持有 form 状态
    - moduleId 以字符串存取（与 <select> 原生行为一致）
    ============================================================ */
+import type { ModuleSummary } from "../../types/api.ts";
 
-export default function PostFormFields({ form, setField, modules }) {
+export interface PostFormState {
+	title: string;
+	slug: string;
+	moduleId: string;
+	date: string;
+	tags: string;
+	readTime: string;
+	excerpt: string;
+}
+
+export default function PostFormFields({ form, setField, modules }: {
+	form: PostFormState;
+	setField: (key: keyof PostFormState, value: string) => void;
+	modules: ModuleSummary[];
+}) {
 	return (
 		<>
 			<FormRow cols={2}>
@@ -30,7 +45,7 @@ export default function PostFormFields({ form, setField, modules }) {
 					onChange={(v) => setField("moduleId", v)}
 					options={[
 						{ value: "", label: "选择栏目…" },
-						...modules.map((m) => ({ value: m.id, label: m.title })),
+						...modules.map((m) => ({ value: String(m.id), label: m.title })),
 					]}
 				/>
 				<TextField label="日期" type="date" value={form.date} onChange={(v) => setField("date", v)} />

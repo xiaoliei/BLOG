@@ -1,32 +1,62 @@
 import { useState } from "react";
-import { adminFetch } from "./api.js";
-import { useAsyncResource } from "../hooks/useAsyncResource.js";
-import { useFlash } from "../hooks/useFlash.js";
-import { Button } from "./components/Button.jsx";
-import { ErrorText, HintText, Toasts } from "./components/Feedback.jsx";
-import { FormRow, TextField } from "./components/Fields.jsx";
+import { adminFetch } from "./api.ts";
+import { useAsyncResource } from "../hooks/useAsyncResource.ts";
+import { useFlash } from "../hooks/useFlash.ts";
+import { Button } from "./components/Button.tsx";
+import { ErrorText, HintText, Toasts } from "./components/Feedback.tsx";
+import { FormRow, TextField } from "./components/Fields.tsx";
+import type { Guard } from "./AdminApp.tsx";
+import type { ModuleRow, ModuleSummary } from "../types/api.ts";
 
 /* 栏目管理页：列表 + 文章数 + 新增/编辑/删除（非空 409 迁移提示） */
 
-const EMPTY = { slug: "", title: "", accent: "#3F9D4B", accentDark: "#2E7D32", icon: "feather", blurb: "", sort: 0 };
+/** 表单态：sort 以字符串存取（<input type=number> 原生行为），保存时转数值 */
+interface ModuleForm {
+	id?: number;
+	slug: string;
+	title: string;
+	accent: string;
+	accentDark: string;
+	icon: string;
+	blurb: string;
+	sort: string;
+}
 
-export default function ModuleManage({ guard }) {
-	const [editing, setEditing] = useState(null); // null | { ...EMPTY } | { id, ... }
+const EMPTY: ModuleForm = { slug: "", title: "", accent: "#3F9D4B", accentDark: "#2E7D32", icon: "feather", blurb: "", sort: "0" };
+
+/** 数据行 → 表单态 */
+function toForm(row: ModuleSummary): ModuleForm {
+	return { ...row, sort: String(row.sort) };
+}
+
+interface ModulePayload {
+	slug: string;
+	title: string;
+	accent: string;
+	accentDark: string;
+	icon: string;
+	blurb: string;
+	sort: number;
+}
+
+export default function ModuleManage({ guard }: { guard: Guard }) {
+	const [editing, setEditing] = useState<ModuleForm | null>(null); // null | 表单态
 	const { toast, flash } = useFlash();
 
 	/* 列表加载/刷新统一走 useAsyncResource */
 	const { data: rows, error, setError, refetch: load } = useAsyncResource({
-		fetcher: () => guard(() => adminFetch("/modules")),
+		fetcher: () => guard(() => adminFetch<ModuleSummary[]>("/modules")),
 		deps: [guard],
 	});
 
 	const save = async () => {
+		if (!editing) return;
 		setError(null);
 		if (!editing.slug.trim() || !editing.title.trim()) {
 			setError("slug 与标题必填");
 			return;
 		}
-		const body = {
+		const body: ModulePayload = {
 			slug: editing.slug.trim(),
 			title: editing.title.trim(),
 			accent: editing.accent,
@@ -37,19 +67,19 @@ export default function ModuleManage({ guard }) {
 		};
 		try {
 			if (editing.id == null) {
-				await guard(() => adminFetch("/modules", { method: "POST", body }));
+				await guard(() => adminFetch<ModuleRow>("/modules", { method: "POST", body }));
 			} else {
-				await guard(() => adminFetch(`/modules/${editing.id}`, { method: "PATCH", body }));
+				await guard(() => adminFetch<ModuleRow>(`/modules/${editing.id}`, { method: "PATCH", body }));
 			}
 			setEditing(null);
 			flash("ok", "栏目已保存");
 			load();
 		} catch (e) {
-			setError(e.message);
+			setError((e as Error).message);
 		}
 	};
 
-	const remove = async (row) => {
+	const remove = async (row: ModuleSummary) => {
 		if (!window.confirm(`删除栏目「${row.title}」？`)) return;
 		setError(null);
 		try {
@@ -57,7 +87,7 @@ export default function ModuleManage({ guard }) {
 			flash("ok", "栏目已删除");
 			load();
 		} catch (e) {
-			setError(e.message);
+			setError((e as Error).message);
 		}
 	};
 
@@ -137,7 +167,7 @@ export default function ModuleManage({ guard }) {
 								<td className="admin-table__mono">{row.accent}</td>
 								<td className="admin-table__mono">{row.postCount}</td>
 								<td className="admin-table__ops">
-									<Button small onClick={() => setEditing({ ...row })}>
+									<Button small onClick={() => setEditing(toForm(row))}>
 										编辑
 									</Button>
 									<Button small variant="danger" onClick={() => remove(row)}>

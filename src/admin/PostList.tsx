@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
-import { adminFetch, adminQuery } from "./api.js";
-import { useAsyncResource } from "../hooks/useAsyncResource.js";
-import { Button } from "./components/Button.jsx";
-import { ErrorText, HintText } from "./components/Feedback.jsx";
-import { TabBar } from "./components/TabBar.jsx";
+import { adminFetch, adminQuery } from "./api.ts";
+import { useAsyncResource } from "../hooks/useAsyncResource.ts";
+import { Button } from "./components/Button.tsx";
+import { ErrorText, HintText } from "./components/Feedback.tsx";
+import { TabBar } from "./components/TabBar.tsx";
+import type { Guard } from "./AdminApp.tsx";
+import type { AdminPostRow } from "../types/api.ts";
 
 /* 文章列表页：标题/栏目/状态/日期/浏览量列 + 状态筛选 + 新建 */
 const STATUS_TABS = [
@@ -12,26 +14,32 @@ const STATUS_TABS = [
 	{ id: "draft", label: "草稿" },
 ];
 
-export default function PostList({ guard, onEdit, onNew }) {
+interface PostListProps {
+	guard: Guard;
+	onEdit: (id: number) => void;
+	onNew: () => void;
+}
+
+export default function PostList({ guard, onEdit, onNew }: PostListProps) {
 	const [status, setStatus] = useState("");
-	const [busyId, setBusyId] = useState(null);
+	const [busyId, setBusyId] = useState<number | null>(null);
 
 	/* 列表加载：status 变化自动重查（等价原 useCallback(load, [guard, status])） */
 	const { data: rows, error, setError, refetch: load } = useAsyncResource({
-		fetcher: () => guard(() => adminFetch(`/posts${adminQuery({ status })}`)),
+		fetcher: () => guard(() => adminFetch<AdminPostRow[]>(`/posts${adminQuery({ status })}`)),
 		deps: [guard, status],
 	});
 
 	/* 通用行操作：执行后刷新列表，busyId 标记操作中的行 */
 	const runOp = useCallback(
-		async (row, makeOp) => {
+		async (row: AdminPostRow, makeOp: () => Promise<unknown>) => {
 			setBusyId(row.id);
 			setError(null);
 			try {
-				await guard(makeOp());
+				await guard(() => makeOp());
 				load();
 			} catch (e) {
-				setError(e.message);
+				setError((e as Error).message);
 			} finally {
 				setBusyId(null);
 			}
@@ -39,14 +47,14 @@ export default function PostList({ guard, onEdit, onNew }) {
 		[guard, load, setError],
 	);
 
-	const togglePublish = (row) =>
+	const togglePublish = (row: AdminPostRow) =>
 		runOp(row, () =>
 			adminFetch(`/posts/${row.id}/${row.status === "published" ? "unpublish" : "publish"}`, {
 				method: "POST",
 			}),
 		);
 
-	const remove = (row) => {
+	const remove = (row: AdminPostRow) => {
 		if (!window.confirm(`删除「${row.title}」？关联评论将一并删除。`)) return;
 		runOp(row, () => adminFetch(`/posts/${row.id}`, { method: "DELETE" }));
 	};

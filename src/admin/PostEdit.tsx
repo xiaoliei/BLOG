@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "vditor/dist/index.css";
-import { adminFetch } from "./api.js";
-import { localDate } from "../lib/local-time.js";
-import { useFlash } from "../hooks/useFlash.js";
-import { Button } from "./components/Button.jsx";
-import { HintText, StatusTag, Toasts } from "./components/Feedback.jsx";
-import PostFormFields from "./components/PostFormFields.jsx";
-import VditorEditor from "./components/VditorEditor.jsx";
+import { adminFetch } from "./api.ts";
+import { localDate } from "../lib/local-time.ts";
+import { useFlash } from "../hooks/useFlash.ts";
+import { Button } from "./components/Button.tsx";
+import { HintText, StatusTag, Toasts } from "./components/Feedback.tsx";
+import PostFormFields from "./components/PostFormFields.tsx";
+import type { PostFormState } from "./components/PostFormFields.tsx";
+import VditorEditor from "./components/VditorEditor.tsx";
+import type { VditorApi } from "./components/VditorEditor.tsx";
+import type { Guard, EditingPost } from "./AdminApp.tsx";
+import type { AdminPostDetail, AdminPostRecord, ModuleSummary, PostStatus } from "../types/api.ts";
 
 /* ============================================================
    文章编辑页：表单 + Vditor（动态 import，仅 admin chunk）
@@ -14,37 +18,55 @@ import VditorEditor from "./components/VditorEditor.jsx";
    - 保存草稿 / 发布 / 下架；失败时表单与编辑器内容保持不丢
    ============================================================ */
 
-const EMPTY_FORM = {
+const EMPTY_FORM: PostFormState & { bodyMd: string } = {
 	title: "",
 	slug: "",
 	moduleId: "",
 	date: "",
 	tags: "",
-	readTime: 3,
+	readTime: "3",
 	excerpt: "",
 	bodyMd: "",
 };
 
-export default function PostEdit({ initial, onBack, guard }) {
+/** POST/PATCH /posts 的请求体（moduleId/readTime 在此处转数值） */
+interface PostPayload {
+	title: string;
+	slug: string;
+	moduleId: number;
+	date: string;
+	tags: string[];
+	readTime: number;
+	excerpt: string;
+	bodyMd: string;
+}
+
+interface PostEditProps {
+	initial: EditingPost;
+	onBack: () => void;
+	guard: Guard;
+}
+
+export default function PostEdit({ initial, onBack, guard }: PostEditProps) {
 	const isNew = initial.id == null;
-	const [form, setForm] = useState(() => ({ ...EMPTY_FORM, date: localDate() }));
-	const [status, setStatus] = useState("draft"); // 当前文章状态（编辑已有文章时加载）
-	const [modules, setModules] = useState([]);
+	const [form, setForm] = useState<PostFormState & { bodyMd: string }>(() => ({ ...EMPTY_FORM, date: localDate() }));
+	const [status, setStatus] = useState<PostStatus>("draft"); // 当前文章状态（编辑已有文章时加载）
+	const [modules, setModules] = useState<ModuleSummary[]>([]);
 	const [saving, setSaving] = useState(false);
 	const [notFound, setNotFound] = useState(false);
 	const { toast, flash } = useFlash();
 
-	const editorApi = useRef(null); // VditorEditor 暴露的 getValue/insertValue
-	const savedIdRef = useRef(initial.id ?? null);
+	const editorApi = useRef<VditorApi | null>(null); // VditorEditor 暴露的 getValue/insertValue
+	const savedIdRef = useRef<number | null>(initial.id ?? null);
 
 	/* 加载栏目 + 已有文章 */
 	useEffect(() => {
-		guard(() => adminFetch("/modules"))
+		guard(() => adminFetch<ModuleSummary[]>("/modules"))
 			.then(setModules)
-			.catch((e) => flash("err", e.message));
+			.catch((e: Error) => flash("err", e.message));
 		if (isNew) return;
 
-		guard(() => adminFetch(`/posts/${initial.id}`))
+		guard(() => adminFetch<AdminPostDetail>(`/posts/${initial.id}`))
 			.then((post) => {
 				savedIdRef.current = post.id;
 				setStatus(post.status);
@@ -54,23 +76,31 @@ export default function PostEdit({ initial, onBack, guard }) {
 					moduleId: String(post.moduleId),
 					date: post.date,
 					tags: (post.tags ?? []).join(", "),
-					readTime: post.readTime,
+					readTime: String(post.readTime),
 					excerpt: post.excerpt ?? "",
 					bodyMd: post.bodyMd ?? "",
 				});
 				editorApi.current?.onReady?.((vd) => vd.setValue(post.bodyMd ?? ""));
 			})
-			.catch((e) => {
+			.catch((e: Error) => {
 				setNotFound(true);
 				flash("err", e.message);
 			});
 	}, [isNew, initial.id, guard, flash]);
 
-	const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+	const setField = (k: keyof PostFormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
 	/** 读取当前表单（编辑器内容实时取自 Vditor 实例） */
-	const collect = useCallback(() => {
+	/** 读取当前表单并校验（编辑器内容实时取自 Vditor 实例）。
+	 *  校验失败直接 throw，由 save() 的 catch 转成 flash 提示。 */
+	const collect = useCallback((): PostPayload => {
 		const bodyMd = editorApi.current ? (editorApi.current.getValue() ?? form.bodyMd) : form.bodyMd;
+		/* 后端 readTime 要求 1..600 的整数。空串或非数字不能静默回落成 1，
+		   否则用户清空输入框后会被悄悄存成 1 分钟阅读时长。 */
+		const readTime = Number(form.readTime);
+		if (form.readTime.trim() === "" || !Number.isInteger(readTime) || readTime < 1 || readTime > 600) {
+			throw new Error("阅读时长需为 1–600 的整数分钟");
+		}
 		return {
 			title: form.title.trim(),
 			slug: form.slug.trim(),
@@ -80,27 +110,27 @@ export default function PostEdit({ initial, onBack, guard }) {
 				.split(/[,，]/)
 				.map((t) => t.trim())
 				.filter(Boolean),
-			readTime: Number(form.readTime) || 1,
+			readTime,
 			excerpt: form.excerpt.trim(),
 			bodyMd,
 		};
 	}, [form]);
 
 	/** 保存（新建→draft；已有→更新字段）。返回文章 id */
-	const save = useCallback(async () => {
+	const save = useCallback(async (): Promise<number> => {
 		const payload = collect();
 		if (!payload.title) throw new Error("标题不能为空");
 		if (!payload.slug) throw new Error("slug 不能为空");
 		if (!payload.moduleId) throw new Error("请选择栏目");
 
 		if (savedIdRef.current == null) {
-			const created = await guard(() => adminFetch("/posts", { method: "POST", body: payload }));
+			const created = await guard(() => adminFetch<AdminPostDetail>("/posts", { method: "POST", body: payload }));
 			savedIdRef.current = created.id;
 			setStatus(created.status);
 			return created.id;
 		}
 		const updated = await guard(() =>
-			adminFetch(`/posts/${savedIdRef.current}`, { method: "PATCH", body: payload }),
+			adminFetch<AdminPostDetail>(`/posts/${savedIdRef.current}`, { method: "PATCH", body: payload }),
 		);
 		setStatus(updated.status);
 		return updated.id;
@@ -112,7 +142,7 @@ export default function PostEdit({ initial, onBack, guard }) {
 			await save();
 			flash("ok", "已保存");
 		} catch (e) {
-			flash("err", `保存失败：${e.message}（内容未丢失，可重试）`);
+			flash("err", `保存失败：${(e as Error).message}（内容未丢失，可重试）`);
 		} finally {
 			setSaving(false);
 		}
@@ -122,11 +152,11 @@ export default function PostEdit({ initial, onBack, guard }) {
 		setSaving(true);
 		try {
 			const id = await save();
-			await guard(() => adminFetch(`/posts/${id}/publish`, { method: "POST" }));
+			await guard(() => adminFetch<AdminPostRecord>(`/posts/${id}/publish`, { method: "POST" }));
 			setStatus("published");
 			flash("ok", "已发布，前台可见");
 		} catch (e) {
-			flash("err", `发布失败：${e.message}（内容未丢失，可重试）`);
+			flash("err", `发布失败：${(e as Error).message}（内容未丢失，可重试）`);
 		} finally {
 			setSaving(false);
 		}
@@ -136,11 +166,11 @@ export default function PostEdit({ initial, onBack, guard }) {
 		setSaving(true);
 		try {
 			const id = await save();
-			await guard(() => adminFetch(`/posts/${id}/unpublish`, { method: "POST" }));
+			await guard(() => adminFetch<AdminPostRecord>(`/posts/${id}/unpublish`, { method: "POST" }));
 			setStatus("draft");
 			flash("ok", "已下架");
 		} catch (e) {
-			flash("err", `下架失败：${e.message}`);
+			flash("err", `下架失败：${(e as Error).message}`);
 		} finally {
 			setSaving(false);
 		}

@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDevToken, setDevToken } from "./api.js";
-import { Button } from "./components/Button.jsx";
-import PostList from "./PostList.jsx";
-import PostEdit from "./PostEdit.jsx";
-import ModuleManage from "./ModuleManage.jsx";
-import CommentReview from "./CommentReview.jsx";
-import SiteSettings from "./SiteSettings.jsx";
+import { getDevToken, setDevToken } from "./api.ts";
+import { Button } from "./components/Button.tsx";
+import PostList from "./PostList.tsx";
+import PostEdit from "./PostEdit.tsx";
+import ModuleManage from "./ModuleManage.tsx";
+import CommentReview from "./CommentReview.tsx";
+import SiteSettings from "./SiteSettings.tsx";
+import { ApiError } from "../lib/http.ts";
 
 /* ============================================================
    /admin 后台壳：内部视图切换（posts / modules / comments）
    Vditor 只会在 PostEdit（admin chunk 内）动态引入
    ============================================================ */
 
-const NAV = [
+export type AdminView = "posts" | "modules" | "comments" | "settings";
+/** 后台页面统一的错误护栏：拦截 401 显示开发令牌表单 */
+export type Guard = <T>(fn: () => Promise<T>) => Promise<T>;
+export interface EditingPost { id?: number; }
+
+const NAV: { id: AdminView; label: string }[] = [
 	{ id: "posts", label: "文章" },
 	{ id: "modules", label: "栏目" },
 	{ id: "comments", label: "评论" },
@@ -20,18 +26,18 @@ const NAV = [
 ];
 
 export default function AdminApp() {
-	const [view, setView] = useState("posts"); // posts | modules | comments
-	const [editing, setEditing] = useState(null); // null | { id? } 新建无 id
-	const [authError, setAuthError] = useState(null);
+	const [view, setView] = useState<AdminView>("posts"); // posts | modules | comments
+	const [editing, setEditing] = useState<EditingPost | null>(null); // null | { id? } 新建无 id
+	const [authError, setAuthError] = useState<string | null>(null);
 	const [tokenInput, setTokenInput] = useState("");
 	const hasToken = Boolean(getDevToken());
 
-	const guard = useCallback(async (fn) => {
+	const guard = useCallback<Guard>(async (fn) => {
 		try {
 			setAuthError(null);
 			return await fn();
 		} catch (err) {
-			if (err.status === 401) setAuthError(err.message);
+			if (err instanceof ApiError && err.status === 401) setAuthError(err.message);
 			throw err;
 		}
 	}, []);
@@ -112,7 +118,7 @@ export default function AdminApp() {
 					(editing ? (
 						<PostEdit key={editing.id ?? "new"} initial={editing} onBack={openList} guard={guard} />
 					) : (
-						<PostList guard={guard} onEdit={(id) => setEditing({ id })} onNew={() => setEditing({})} />
+						<PostList guard={guard} onEdit={(id: number) => setEditing({ id })} onNew={() => setEditing({})} />
 					))}
 				{view === "modules" && <ModuleManage guard={guard} />}
 				{view === "comments" && <CommentReview guard={guard} />}

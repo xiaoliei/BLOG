@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { adminFetch } from "./api.js";
-import { useAsyncResource } from "../hooks/useAsyncResource.js";
-import { useFlash } from "../hooks/useFlash.js";
-import { Button } from "./components/Button.jsx";
-import { ErrorText, HintText, Toasts } from "./components/Feedback.jsx";
-import { TextField, TextareaField } from "./components/Fields.jsx";
+import { adminFetch } from "./api.ts";
+import { useAsyncResource } from "../hooks/useAsyncResource.ts";
+import { useFlash } from "../hooks/useFlash.ts";
+import { Button } from "./components/Button.tsx";
+import { ErrorText, HintText, Toasts } from "./components/Feedback.tsx";
+import { TextField, TextareaField } from "./components/Fields.tsx";
+import type { Guard } from "./AdminApp.tsx";
+import type { SiteSettingsWithMeta } from "../types/api.ts";
 
 /* ============================================================
    站点设置页：站点信息 / 区块文案 / 关于我 / 页脚 分组表单
@@ -13,7 +15,22 @@ import { TextField, TextareaField } from "./components/Fields.jsx";
    - 失败时保留已填内容并展示错误
    ============================================================ */
 
-const GROUPS = [
+type SettingsFieldKey = keyof Omit<SiteSettingsWithMeta, 'updatedAt'>;
+type FieldKind = 'input' | 'textarea' | 'number';
+
+/* 受控输入框的值：布尔字段渲染成空串而不是 "false"，
+   这样以后加开关类字段时不会把 false 当成字面文本显示。 */
+function toFieldValue(value: unknown): string {
+	if (value === null || value === undefined || typeof value === 'boolean') return '';
+	return String(value);
+}
+
+interface SettingsGroup {
+	title: string;
+	fields: [SettingsFieldKey, string, FieldKind][];
+}
+
+const GROUPS: SettingsGroup[] = [
 	{
 		title: "站点信息",
 		fields: [
@@ -59,15 +76,15 @@ const GROUPS = [
 	},
 ];
 
-export default function SiteSettings({ guard }) {
-	const [form, setForm] = useState(null);
-	const [dirty, setDirty] = useState({});
+export default function SiteSettings({ guard }: { guard: Guard }) {
+	const [form, setForm] = useState<SiteSettingsWithMeta | null>(null);
+	const [dirty, setDirty] = useState<Partial<Record<SettingsFieldKey, boolean>>>({});
 	const { toast, flash } = useFlash();
 
 	/* 设置加载：成功后重置脏标记（等价原 useCallback(load, [guard])） */
 	const { error, setError } = useAsyncResource({
 		fetcher: () =>
-			guard(() => adminFetch("/settings")).then((data) => {
+			guard(() => adminFetch<SiteSettingsWithMeta>("/settings")).then((data) => {
 				setForm(data);
 				setDirty({});
 			}),
@@ -75,30 +92,31 @@ export default function SiteSettings({ guard }) {
 	});
 
 	/* 写字段并标记脏（number 输入保留原 Number 转换） */
-	const setFieldValue = (key, value) => {
-		setForm((f) => ({ ...f, [key]: value }));
+	const setFieldValue = (key: SettingsFieldKey, value: string | number) => {
+		setForm((f) => (f ? { ...f, [key]: value } : f));
 		setDirty((d) => ({ ...d, [key]: true }));
 	};
 
 	const dirtyCount = Object.keys(dirty).length;
 
 	const save = async () => {
+		if (!form) return;
 		setError(null);
 		if (!dirtyCount) {
 			flash("ok", "没有需要保存的修改");
 			return;
 		}
-		const body = {};
-		for (const k of Object.keys(dirty)) body[k] = form[k];
+		const body: Record<string, string | number> = {};
+		for (const k of Object.keys(dirty) as SettingsFieldKey[]) body[k] = form[k] as string | number;
 		try {
 			const updated = await guard(() =>
-				adminFetch("/settings", { method: "PATCH", body }),
+				adminFetch<SiteSettingsWithMeta>("/settings", { method: "PATCH", body }),
 			);
 			setForm(updated);
 			setDirty({});
 			flash("ok", "站点设置已保存");
 		} catch (e) {
-			setError(e.message);
+			setError((e as Error).message);
 		}
 	};
 
@@ -129,7 +147,7 @@ export default function SiteSettings({ guard }) {
 										key={key}
 										label={label}
 										rows={3}
-										value={form[key] ?? ""}
+										value={toFieldValue(form[key])}
 										onChange={(v) => setFieldValue(key, v)}
 									/>
 								) : (
@@ -137,10 +155,10 @@ export default function SiteSettings({ guard }) {
 									<TextField
 										key={key}
 										label={label}
-										type={kind}
+										type={kind === 'number' ? 'number' : 'text'}
 										min={kind === "number" ? 1900 : undefined}
 										max={kind === "number" ? 2100 : undefined}
-										value={form[key] ?? ""}
+										value={toFieldValue(form[key])}
 										onChange={(v) => setFieldValue(key, kind === "number" ? Number(v) : v)}
 									/>
 								),

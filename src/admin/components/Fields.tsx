@@ -4,9 +4,21 @@
    - onChange 一律回调「值」而不是事件对象，简化页面侧写入
    - DOM 结构与重构前手写的字段完全一致（样式类不变）
    ============================================================ */
+import type { ReactNode } from 'react';
+
+export interface SelectOption { value: string; label: string; }
 
 /** 单行输入（type 可传 text/date/number/color 等）；min/max 透传给 number 场景 */
-export function TextField({ label, value, onChange, type = "text", placeholder, disabled, min, max }) {
+export function TextField({ label, value, onChange, type = "text", placeholder, disabled, min, max }: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	type?: string;
+	placeholder?: string;
+	disabled?: boolean;
+	min?: number | string;
+	max?: number | string;
+}) {
 	return (
 		<label className="admin-field">
 			<span>{label}</span>
@@ -24,7 +36,14 @@ export function TextField({ label, value, onChange, type = "text", placeholder, 
 }
 
 /** 多行文本 */
-export function TextareaField({ label, value, onChange, rows = 3, placeholder, disabled }) {
+export function TextareaField({ label, value, onChange, rows = 3, placeholder, disabled }: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	rows?: number;
+	placeholder?: string;
+	disabled?: boolean;
+}) {
 	return (
 		<label className="admin-field">
 			<span>{label}</span>
@@ -34,7 +53,12 @@ export function TextareaField({ label, value, onChange, rows = 3, placeholder, d
 }
 
 /** 下拉选择：options 为 [{ value, label }] */
-export function SelectField({ label, value, onChange, options }) {
+export function SelectField({ label, value, onChange, options }: {
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	options: SelectOption[];
+}) {
 	return (
 		<label className="admin-field">
 			<span>{label}</span>
@@ -50,6 +74,6 @@ export function SelectField({ label, value, onChange, options }) {
 }
 
 /** 表单横排字段容器：cols 对应 --2 / --4 两种列数 */
-export function FormRow({ cols = 2, children }) {
+export function FormRow({ cols = 2, children }: { cols?: 2 | 4; children: ReactNode }) {
 	return <div className={`admin-form__row admin-form__row--${cols}`}>{children}</div>;
 }

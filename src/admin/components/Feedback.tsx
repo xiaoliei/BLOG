@@ -2,26 +2,28 @@
    状态/提示条：错误、加载、空态、toast、标签的统一渲染
    - 类名与重构前各页面手写节点完全一致（.admin-error 等）
    ============================================================ */
+import type { ReactNode } from 'react';
+import type { Toast } from '../../hooks/useFlash.ts';
 
 /** 错误提示条（.admin-error） */
-export function ErrorText({ children }) {
+export function ErrorText({ children }: { children?: ReactNode }) {
 	if (!children) return null;
 	return <p className="admin-error">{children}</p>;
 }
 
 /** 加载/空态提示（.admin-hint） */
-export function HintText({ children }) {
+export function HintText({ children }: { children?: ReactNode }) {
 	return <p className="admin-hint">{children}</p>;
 }
 
 /** toast 提示条：渲染 useFlash 返回的单条 toast，元素/标签可指定 */
-export function Toasts({ toast, as = "span" }) {
+export function Toasts({ toast, as = "span" }: { toast: Toast | null; as?: 'span' | 'div' | 'p' }) {
 	if (!toast) return null;
 	const Tag = as;
 	return <Tag className={`admin-toast admin-toast--${toast.kind}`}>{toast.text}</Tag>;
 }
 
 /** 状态标签（.admin-tag，ok 变体为绿） */
-export function StatusTag({ ok, children }) {
+export function StatusTag({ ok, children }: { ok?: boolean; children?: ReactNode }) {
 	return <span className={`admin-tag${ok ? " admin-tag--ok" : ""}`}>{children}</span>;
 }

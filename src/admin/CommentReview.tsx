@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { adminFetch, adminQuery } from "./api.js";
-import { useAsyncResource } from "../hooks/useAsyncResource.js";
-import { useFlash } from "../hooks/useFlash.js";
-import { localDateTime } from "../lib/local-time.js";
-import { Button } from "./components/Button.jsx";
-import { ErrorText, HintText, Toasts } from "./components/Feedback.jsx";
-import { TabBar } from "./components/TabBar.jsx";
+import { adminFetch, adminQuery } from "./api.ts";
+import { useAsyncResource } from "../hooks/useAsyncResource.ts";
+import { useFlash } from "../hooks/useFlash.ts";
+import { localDateTime } from "../lib/local-time.ts";
+import { Button } from "./components/Button.tsx";
+import { ErrorText, HintText, Toasts } from "./components/Feedback.tsx";
+import { TabBar } from "./components/TabBar.tsx";
+import type { Guard } from "./AdminApp.tsx";
+import type { AdminCommentRow } from "../types/api.ts";
 
 /* 评论审核队列：pending / approved / rejected 筛选，放行 / 拒绝 / 删除 */
 
@@ -16,18 +18,20 @@ const STATUS_TABS = [
 	{ id: "", label: "全部" },
 ];
 
-export default function CommentReview({ guard }) {
+type ReviewAction = "approve" | "reject" | "delete";
+
+export default function CommentReview({ guard }: { guard: Guard }) {
 	const [status, setStatus] = useState("pending");
-	const [busyId, setBusyId] = useState(null);
+	const [busyId, setBusyId] = useState<number | null>(null);
 	const { toast, flash } = useFlash();
 
 	/* 列表加载：status 变化自动重查（等价原 useCallback(load, [guard, status])） */
 	const { data: rows, error, setError, refetch: load } = useAsyncResource({
-		fetcher: () => guard(() => adminFetch(`/comments${adminQuery({ status })}`)),
+		fetcher: () => guard(() => adminFetch<AdminCommentRow[]>(`/comments${adminQuery({ status })}`)),
 		deps: [guard, status],
 	});
 
-	const act = async (row, action) => {
+	const act = async (row: AdminCommentRow, action: ReviewAction) => {
 		setBusyId(row.id);
 		setError(null);
 		try {
@@ -41,7 +45,7 @@ export default function CommentReview({ guard }) {
 			}
 			load();
 		} catch (e) {
-			setError(e.message);
+			setError((e as Error).message);
 		} finally {
 			setBusyId(null);
 		}
