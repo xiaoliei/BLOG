@@ -10,7 +10,7 @@
 ```bash
 npm install
 npm run db:migrate    # 本地 D1 建表（迁移在 drizzle/）
-npm run seed          # 首次：把 src/config/blog.js 快照灌入本地 D1
+npm run seed          # 首次：把 src/config/blog.ts 快照灌入本地 D1
 npm run dev           # 前端开发（Vite，默认 5173，纯静态无 API）
 npm run dev:worker    # 全栈本地开发（wrangler dev，API + dist 资产）
 npm run build         # 生产构建到 dist/
@@ -90,15 +90,15 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 - `bash scripts/backup.sh`：`wrangler d1 export` 远程库到 `backups/`
   （gzip，保留 30 份；建议 crontab 每日执行）
 - D1 自带 Time Travel 30 天点恢复
-- `src/config/blog.js` 存有初始内容快照（seed 源），Git 内可恢复
+- `src/config/blog.ts` 存有初始内容快照（seed 源），Git 内可恢复
 
 ## 内容维护
 
 - 日常发文/栏目/评论审核：访问 `域名/admin`（Access 验证后进入）
 - 站点名/标语/开始时间/描述/邮箱/GitHub/首页区块文案/关于我/页脚：
   后台「站点设置」页（D1 `site_settings` 表）；前台显示站名与关于作者内容，本期不展示旧首页区块
-- 静态回退默认值：`src/config/site-settings.js` 的 `DEFAULT_SETTINGS`（与 seed 一致）
-- 启动页文案：`src/config/site.js`
+- 静态回退默认值：`src/config/site-settings.ts` 的 `DEFAULT_SETTINGS`（与 seed 一致）
+- 启动页文案：`src/config/site.ts`
 - API 故障应急：浏览器控制台执行
   `localStorage.setItem('blog:data-source','static')` 切回静态数据源，
   删除该键恢复 API 模式
@@ -113,16 +113,16 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 
 ## 主要文件
 
-- `src/world/WorldApp.jsx`：前台界面、地点内容与路由
-- `src/world/ArticleReader.jsx`：正文、相邻文章与留言
-- `src/world/engine.js`：单渲染器、相机、转场与点击
-- `src/world/entry-flight.js`：可独立测试的连续镜头与界面进度采样
-- `src/world/entry-world.js`：原版地球加载、背侧小岛共用旋转组与轨道姿态
-- `src/world/town.js`：体素港镇与动态道具
-- `src/world/rail-horizon.js`：复用原桥段与材质的铁路延伸、跟随星球旋转的距离淡出
-- `src/world/places.js`：地点、栏目和聚焦镜头配置
+- `src/world/WorldApp.tsx`：前台界面、地点内容与路由
+- `src/world/ArticleReader.tsx`：正文、相邻文章与留言
+- `src/world/engine.ts`：单渲染器、相机、转场与点击
+- `src/world/entry-flight.ts`：可独立测试的连续镜头与界面进度采样
+- `src/world/entry-world.ts`：原版地球加载、背侧小岛共用旋转组与轨道姿态
+- `src/world/town.ts`：体素港镇与动态道具
+- `src/world/rail-horizon.ts`：复用原桥段与材质的铁路延伸、跟随星球旋转的距离淡出
+- `src/world/places.ts`：地点、栏目和聚焦镜头配置
 - `src/components/landing/`：星空、时钟及启动页装饰组件
-- `src/lib/api.js`：公开内容 API 与静态示例回退
+- `src/lib/api.ts`：公开内容 API 与静态示例回退
 - `src/admin/`、`worker/`、`drizzle/`：保留的后台和数据服务
 - `public/models/mc_head.glb`：启动页与进入过场共用的原版地球资源
 - `public/world/harbor-preview.webp`：WebGL 降级预览

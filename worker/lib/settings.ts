@@ -1,5 +1,5 @@
 import type { SiteSettingsRow } from "../db/schema";
-import { DEFAULT_SETTINGS } from "../../src/config/site-settings.js";
+import { DEFAULT_SETTINGS } from "../../src/config/site-settings.ts";
 
 /* ============================================================
    站点设置：行 <-> 公开 JSON 映射 + 默认值兜底
