@@ -1,24 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Vector3, PerspectiveCamera, Quaternion, Euler } from 'three';
-import { ENTRY_DURATION, ENTRY_ORIENTATION_DURATION, smootherstep, createEntryFlight, sampleEntryFlight, entryVisuals } from '../src/world/entry-flight.js';
-import { orbitalPose, planetCenter, idlePlanetRotation, samplePlanetRotation, PLANET_TURN_DURATION } from '../src/world/entry-world.js';
-import { railHorizonRange, railHorizonTile, RAIL_REPEAT_LENGTH, RAIL_HORIZON_LEFT, OCEAN_SIZE } from '../src/world/rail-horizon.js';
+import { ENTRY_DURATION, ENTRY_ORIENTATION_DURATION, smootherstep, createEntryFlight, sampleEntryFlight, entryVisuals } from '../src/world/entry-flight.ts';
+import { orbitalPose, planetCenter, idlePlanetRotation, samplePlanetRotation, PLANET_TURN_DURATION } from '../src/world/entry-world.ts';
+import { railHorizonRange, railHorizonTile, RAIL_REPEAT_LENGTH, RAIL_HORIZON_LEFT, OCEAN_SIZE } from '../src/world/rail-horizon.ts';
 import { readFile } from 'node:fs/promises';
-import { parseWorld } from '../src/world/data.js';
+import { parseWorld } from '../src/world/data.ts';
 
-function flightFor(aspect) {
+function flightFor(aspect: number) {
   const start = orbitalPose(aspect, -.18);
   const distance = aspect < .85 ? 85 / aspect : 82;
   const end = new Vector3(Math.sin(.28) * distance, aspect < .85 ? distance * .63 : 51, Math.cos(.28) * distance);
   return createEntryFlight(start.position, start.target, end, new Vector3(0, 6, 0));
 }
-const near = (a,b,tolerance=1e-8) => assert.ok(a.distanceTo(b)<tolerance, `${a.toArray()} != ${b.toArray()}`);
+const near = (a: Vector3,b: Vector3,tolerance=1e-8) => assert.ok(a.distanceTo(b)<tolerance, `${a.toArray()} != ${b.toArray()}`);
 
 test('rail horizon copies the authored bridge cells and preserves texture, sleeper and pier repetition', async () => {
   const world=parseWorld(await readFile(new URL('../public/world/harbor.world.json',import.meta.url),'utf8'));
   const sourceCount=world.blocks.size,tile=railHorizonTile(world);
-  const left=world.environment.rail.left/world.cellSize,right=left+RAIL_REPEAT_LENGTH/world.cellSize;
+  const rail=world.environment.rail;assert.ok(rail,'save must define a rail route');
+  const left=(rail as NonNullable<typeof rail>).left/world.cellSize,right=left+RAIL_REPEAT_LENGTH/world.cellSize;
   const source=[...world.blocks.values()].filter(({cell})=>cell[0]>=left&&cell[0]<right);
   assert.equal(tile.blocks.size,source.length);
   assert.ok(source.some(({state})=>state.model==='rail'));
@@ -63,7 +64,7 @@ test('capture preserves the real start pose and lands exactly at the responsive 
 test('focus moves once to the town, while distance decreases and the lens stays below 25 degrees/second', () => {
   for(const aspect of [1440/900,390/844,844/390])for(const frameRate of [30,60,144]) {
     const flight=flightFor(aspect),camera=new PerspectiveCamera(40,aspect,.08,30000);
-    let previousDistance=Infinity,previousRotation=null;
+    let previousDistance=Infinity,previousRotation: Quaternion|null=null;
     for(let time=0;time<=ENTRY_DURATION;time+=1/frameRate) {
       const pose=sampleEntryFlight(flight,time);
       assert.ok(pose.position.toArray().every(Number.isFinite));
@@ -82,7 +83,7 @@ test('position, velocity and acceleration are continuous at every storyboard bou
   const flight=flightFor(1440/900),h=1e-4;
   for(const time of [.35,.45,1.9,2.45,PLANET_TURN_DURATION,3.15,ENTRY_ORIENTATION_DURATION,4.15]) {
     for(const key of ['position','target']) {
-      const f=t=>sampleEntryFlight(flight,t)[key];
+      const f=(t: number)=>sampleEntryFlight(flight,t)[key as 'position'|'target'];
       const middle=f(time),left=f(time-h),right=f(time+h);
       const leftVelocity=middle.clone().sub(left).divideScalar(h);
       const rightVelocity=right.clone().sub(middle).divideScalar(h);
@@ -120,8 +121,8 @@ test('original GLB starts at its old rotation and the island back face turns int
 
 test('rotating island focus is continuous and finishes at the existing world coordinates', () => {
   const flight=flightFor(1440/900),center=planetCenter(-.18),rotation=idlePlanetRotation(0);
-  const destination=t=>flight.destinationTarget.clone().sub(center).applyQuaternion(samplePlanetRotation(rotation,t)).add(center);
-  let previous=null;
+  const destination=(t: number)=>flight.destinationTarget.clone().sub(center).applyQuaternion(samplePlanetRotation(rotation,t)).add(center);
+  let previous: Vector3|null=null;
   for(let t=0;t<=ENTRY_DURATION+.001;t+=1/120) {
     const movingTarget=destination(t),movingCamera=flight.destination.clone().sub(flight.destinationTarget).add(movingTarget);
     const pose=sampleEntryFlight(flight,t,movingCamera,movingTarget);

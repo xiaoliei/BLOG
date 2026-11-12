@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { localDate, localDateAtMinutes, localDateTime, localWorldTime } from '../src/lib/local-time.js';
+import { localDate, localDateAtMinutes, localDateTime, localWorldTime } from '../src/lib/local-time.ts';
 
 test('world lighting follows local wall time at day boundaries', () => {
-  for (const [hour, phase] of [[0, 'night'], [6, 'morning'], [12, 'day'], [18, 'evening'], [23, 'night']]) {
+  for (const [hour, phase] of [[0, 'night'], [6, 'morning'], [12, 'day'], [18, 'evening'], [23, 'night']] as [number, string][]) {
     assert.equal(localWorldTime(new Date(2026, 8, 29, hour)).phase, phase);
   }
   assert.ok(localWorldTime(new Date(2026, 8, 29, 12)).sun > localWorldTime(new Date(2026, 8, 29, 0)).sun);
@@ -21,9 +21,9 @@ test('world lighting follows local wall time at day boundaries', () => {
 });
 
 test('the same instant displays as each visitor’s local calendar day', () => {
-  const moduleUrl = new URL('../src/lib/local-time.js', import.meta.url).href;
+  const moduleUrl = new URL('../src/lib/local-time.ts', import.meta.url).href;
   const script = `import { localDate, localDateTime, localWorldTime } from ${JSON.stringify(moduleUrl)}; const value = '2026-09-29T00:30:00.000Z'; console.log(JSON.stringify([localDate(new Date(value)), localDateTime(value), localWorldTime(new Date(value)).phase]));`;
-  const inZone = zone => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', script], { env: { ...process.env, TZ: zone }, encoding: 'utf8' }));
+  const inZone = (zone: string) => JSON.parse(execFileSync(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', script], { env: { ...process.env, TZ: zone }, encoding: 'utf8' }));
   assert.deepEqual(inZone('Asia/Shanghai'), ['2026-09-29', '2026-09-29 08:30', 'morning']);
   assert.deepEqual(inZone('America/Los_Angeles'), ['2026-09-28', '2026-09-28 17:30', 'evening']);
   assert.equal(localDateTime('invalid'), '');
@@ -36,4 +36,20 @@ test('preview minutes use the device’s local calendar date', () => {
   assert.equal(localDate(preview), localDate(reference));
   assert.equal(localDateTime(preview), '2026-09-29 23:15');
   assert.equal(localWorldTime(preview).phase, 'night');
+});
+
+test('blended colours stay valid six-digit hex at non-keyframe hours', () => {
+  /* 关键帧整点（hour 0/5/7/9/16/18/20/24）不参与混合，旧断言覆盖不到。
+     混合时通道值必须经过十六进制转换；漏掉 .toString(16) 会产出
+     #130218250 这类非法颜色，three.js 会拒绝并沿用上一次的颜色。 */
+  const hex = /^#[0-9a-f]{6}$/i;
+  for (let hour = 0; hour < 24; hour++) {
+    const time = localWorldTime(new Date(2026, 8, 29, hour, 30));
+    for (const field of ['sky', 'ink', 'light'] as const) {
+      assert.match(time[field], hex, `${field} at ${hour}:30 must be six-digit hex, got ${time[field]}`);
+    }
+  }
+  /* 固定值：19:30 落在 18:00→20:00 之间（t=0.75），ink 从 #173d3e 混到 #f3f8ff，
+     可手算复核为 #bcc9cf。这正是旧断言漏掉的场景。 */
+  assert.equal(localWorldTime(new Date(2026, 8, 29, 19, 30)).ink, '#bcc9cf');
 });

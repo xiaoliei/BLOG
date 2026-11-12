@@ -1,13 +1,14 @@
 import { mkdir, writeFile, rename, copyFile, unlink } from 'node:fs/promises';
-import { generateHarbor } from '../src/world/generate.js';
-import { serializeWorld, parseWorld } from '../src/world/data.js';
-import { meshWorld } from '../src/world/mesher.js';
-import { encodeMesh, sourceDigest } from '../src/world/mesh-cache.js';
+
+import { generateHarbor } from '../src/world/generate.ts';
+import { serializeWorld, parseWorld } from '../src/world/data.ts';
+import { meshWorld } from '../src/world/mesher.ts';
+import { encodeMesh, sourceDigest } from '../src/world/mesh-cache.ts';
 // Windows asset watchers may briefly hold the destination open. Retry the atomic
 // rename rather than deleting a known-good save or writing into it in place.
-async function replaceFile(temp,target){
+async function replaceFile(temp: URL, target: URL): Promise<void> {
  for(let attempt=0;;attempt++)try{await rename(temp,target);return;}catch(error){
-  if(!['EPERM','EBUSY','EACCES'].includes(error.code))throw error;
+  if(!['EPERM','EBUSY','EACCES'].includes((error as NodeJS.ErrnoException).code ?? ''))throw error;
   // Some Windows preview/watch processes retain a destination handle for the
   // whole session. The temp file is already fully written and validated, so a
   // final in-place copy is safer than leaving world and derived mesh mismatched.

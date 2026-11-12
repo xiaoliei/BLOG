@@ -2,28 +2,31 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { World, worldToCell, cellToWorld, chunkOf, parseWorld, serializeWorld, validateWorld } from '../src/world/data.js';
-import { modelBoxes, normalizeState, registerBoxModel, registerMeshModel, occupiedCells, DIRECTIONS } from '../src/world/models.js';
-import { meshWorld } from '../src/world/mesher.js';
-import { generateHarbor } from '../src/world/generate.js';
-import { trainPose } from '../src/world/entities.js';
-import { validateHarbor } from '../src/world/harbor-validation.js';
-import { encodeMesh,decodeMesh,sourceDigest } from '../src/world/mesh-cache.js';
-const s=(model='cube',props={})=>({model,color:'#abcdef',props});
+import { World, worldToCell, cellToWorld, chunkOf, parseWorld, serializeWorld, validateWorld } from '../src/world/data.ts';
+import { modelBoxes, normalizeState, registerBoxModel, registerMeshModel, occupiedCells, DIRECTIONS } from '../src/world/models.ts';
+import { meshWorld } from '../src/world/mesher.ts';
+import { generateHarbor } from '../src/world/generate.ts';
+import { trainPose } from '../src/world/entities.ts';
+import { validateHarbor } from '../src/world/harbor-validation.ts';
+import { encodeMesh,decodeMesh,sourceDigest } from '../src/world/mesh-cache.ts';
+
+import type { Box, Props, StateInput } from '../src/world/models.ts';
+import type { LayoutCell } from '../src/world/layout.ts';
+const s=(model='cube',props: Props={}): StateInput=>({model,color:'#abcdef',props});
 const w=()=>new World({bounds:{min:[-32,-8,-32],max:[32,32,32]}});
-const floor=(world,x0=-5,x1=20,z0=-5,z1=20)=>{for(let x=x0;x<x1;x++)for(let z=z0;z<z1;z++)world.setBlock([x,-1,z],s());};
+const floor=(world: World,x0=-5,x1=20,z0=-5,z1=20): void=>{for(let x=x0;x<x1;x++)for(let z=z0;z<z1;z++)world.setBlock([x,-1,z],s());};
 test('negative coordinates and chunk boundaries use floor, not truncation',()=>{
  assert.deepEqual(worldToCell([-.01,-.5,.5]),[-1,-1,1]);assert.deepEqual(chunkOf([-1,-16,-17]),[-1,-1,-2]);assert.deepEqual(cellToWorld([-1,0,1]),[-.5,0,.5]);
  const world=w();world.setBlock([-17,0,15],s());assert.deepEqual(parseWorld(serializeWorld(world)).getBlock([-17,0,15]),normalizeState(s()));
 });
 test('slabs merge, collisions reject, and only one occupant owns a cell',()=>{
  const world=w();world.setBlock([0,0,0],s('slab'));assert.throws(()=>world.setBlock([0,0,0],s()),/Occupied/);
- world.setBlock([0,0,0],s('slab',{half:'top'}));assert.equal(world.getBlock([0,0,0]).model,'cube');
+ world.setBlock([0,0,0],s('slab',{half:'top'}));assert.equal(world.getBlock([0,0,0])!.model,'cube');
  assert.throws(()=>world.setBlock([1,0,0],s('stairs',{facing:'up'})),/Invalid/);
  assert.throws(()=>world.setBlock([1,0,0],s('door')),/placeInstance/);
 });
 test('all stair shapes/rotations have bounded geometry and correct volume',()=>{
- const volume=boxes=>boxes.reduce((n,b)=>n+b.max.reduce((v,end,i)=>v*(end-b.min[i]),1),0);
+ const volume=(boxes: Box[]): number=>boxes.reduce((n,b)=>n+b.max.reduce((v,end,i)=>v*(end-b.min[i]),1),0);
  for(const facing of DIRECTIONS)for(const half of ['top','bottom'])for(const shape of ['straight','inner-left','inner-right','outer-left','outer-right']){
   const boxes=modelBoxes(normalizeState(s('stairs',{facing,half,shape})));
   assert.equal(volume(boxes),shape.startsWith('inner')?.875:shape.startsWith('outer')?.625:.75);
@@ -39,10 +42,10 @@ test('clothesline posts share one baseline and remain exactly parallel',()=>{
  assert.equal(posts[0].min[2],posts[1].min[2]);
 });
 test('support uses real slab and stair surfaces, not the full cell',()=>{
- const world=w();world.setBlock([0,0,0],s('slab'));assert.equal(world.querySupport({x:.3,z:.3}).height,.5);
+ const world=w();world.setBlock([0,0,0],s('slab'));assert.equal(world.querySupport({x:.3,z:.3})!.height,.5);
  assert.throws(()=>world.setBlock([0,1,0],s('flower')),/Unsupported/);
  world.setBlock([1,0,0],s('stairs'));
- assert.equal(world.querySupport({x:1.5,z:.25}).height,.5);assert.equal(world.querySupport({x:1.5,z:.75}).height,1);
+ assert.equal(world.querySupport({x:1.5,z:.25})!.height,.5);assert.equal(world.querySupport({x:1.5,z:.75})!.height,1);
 });
 test('wall attachments require backing, and crate stacks rest on actual top surfaces',()=>{
  const world=w();floor(world);
@@ -53,9 +56,9 @@ test('wall attachments require backing, and crate stacks rest on actual top surf
 });
 test('multi-cell placement, rotation, state and deletion are atomic across chunks',()=>{
  const world=w();floor(world);world.placeInstance({id:'door',anchor:[15,0,0],state:s('door')});
- assert.equal(world.getOccupant([16,4,0]).instance.id,'door');
+ assert.equal((world.getOccupant([16,4,0]!) as {kind:'instance',instance:{id:string}}).instance.id,'door');
  const before=serializeWorld(world);assert.throws(()=>world.updateInstance('door',{anchor:[31,0,0]}),/outside/);assert.equal(serializeWorld(world),before);
- world.setBlock([15,0,2],s());assert.throws(()=>world.updateInstance('door',{state:s('door',{open:true})}),/collision|blocked/);assert.equal(world.instances.get('door').state.props.open,false);
+ world.setBlock([15,0,2],s());assert.throws(()=>world.updateInstance('door',{state:s('door',{open:true})}),/collision|blocked/);assert.equal(world.instances.get('door')!.state.props.open,false);
  world.removeAt([15,0,2]);world.updateInstance('door',{state:s('door',{open:true})});assert.equal(world.getOccupant([16,4,0]),null);
  world.updateInstance('door',{state:s('door',{facing:'north'})});assert.ok(world.dirtyChunks.has('0,0,-1'));
  world.removeAt([14,4,0]);assert.equal(world.instances.size,0);assert.equal(world.occupancy.size,0);
@@ -64,7 +67,7 @@ test('fence connections derive from neighbours and custom models reserve every t
  const world=w();floor(world);world.setBlock([0,0,0],s('fence'));world.setBlock([1,0,0],s());assert.deepEqual(world.connections([0,0,0]),['east']);
  world.removeAt([1,0,0]);assert.deepEqual(world.connections([0,0,0]),[]);
  registerBoxModel('test-custom',[{min:[0,0,0],max:[2.25,1,.3]}]);
- world.placeInstance({id:'custom',anchor:[15,1,0],state:s('test-custom')});assert.equal(world.getOccupant([17,1,0]).instance.id,'custom');
+ world.placeInstance({id:'custom',anchor:[15,1,0],state:s('test-custom')});assert.equal((world.getOccupant([17,1,0]) as {kind:'instance',instance:{id:string}}).instance.id,'custom');
  assert.throws(()=>world.setBlock([17,1,0],s()),/collision/);
 });
 test('partial neighbour coverage removes only the covered part of a face',()=>{
@@ -84,14 +87,22 @@ test('mesh cache binds to the exact source file and rejects malformed faces',asy
  const malformed=JSON.parse(encoded);malformed.chunks[0].faces[0][0]=7;assert.throws(()=>decodeMesh(JSON.stringify(malformed),hash),/Invalid/);
 });
 test('unknown versions, states, invalid RLE and duplicate chunks are rejected',()=>{
- const world=w();world.setBlock([0,0,0],s());const data=JSON.parse(serializeWorld(world));
- for(const edit of [d=>{d.formatVersion=99;},d=>{d.palette[1].model='unknown';},d=>{d.chunks[0].runs=[4097,1];},d=>{d.chunks.push(d.chunks[0]);},d=>{d.palette[1].props={bad:true};}]){
+ const world=w();world.setBlock([0,0,0],s());const data=JSON.parse(serializeWorld(world)) as Record<string, unknown>;
+ type Edit=(d: Record<string, unknown>)=>void;
+ const edits: Edit[]=[
+  d=>{d.formatVersion=99;},
+  d=>{(d.palette as Record<string, unknown>[])[1].model='unknown';},
+  d=>{(d.chunks as Record<string, unknown>[])[0].runs=[4097,1];},
+  d=>{(d.chunks as Record<string, unknown>[]).push((d.chunks as Record<string, unknown>[])[0]);},
+  d=>{(d.palette as Record<string, unknown>[])[1].props={bad:true};},
+ ];
+ for(const edit of edits){
   const copy=structuredClone(data);edit(copy);assert.throws(()=>parseWorld(JSON.stringify(copy)));
  }
 });
 const saved=readFileSync(new URL('../public/world/harbor.world.json',import.meta.url),'utf8'),harbor=parseWorld(saved);
 test('checked-in harbor is deterministic and round-trips without losing instances',()=>{
- const digest=text=>createHash('sha256').update(text).digest('hex');
+ const digest=(text: string)=>createHash('sha256').update(text).digest('hex');
  assert.equal(digest(serializeWorld(harbor)),digest(saved));assert.equal(digest(serializeWorld(generateHarbor())),digest(saved));assert.equal(validateWorld(harbor).valid,true);
 });
 test('saved road surfaces form a supported, clear network to five entrances and the dock',()=>{
@@ -107,7 +118,7 @@ test('all five blog locations retain original anchors and have supported entranc
  for(const p of harbor.places){const [x,y,z]=p.entry.map(v=>v/harbor.cellSize);const ground=harbor.querySupport({x:x+.01,z:z+.01,below:y+.5});assert.ok(ground,`${p.id} unsupported entrance`);assert.ok(Math.abs(ground.height-y)<=.5,`${p.id} entrance height`);}
 });
 test('saved train stays inside its track and clears the saved terrain',()=>{
- const train=harbor.entities.find(e=>e.type==='train'),r=train.rail,half=(r.cars-1)*r.spacing/2+r.carLength/2;
+ const train=harbor.entities.find(e=>e.type==='train');assert.ok(train,'missing train');const r=train.rail,half=(r.cars-1)*r.spacing/2+r.carLength/2;
  for(let t=0;t<2*(r.travel+r.dwell);t+=1){const pose=trainPose(t,r);assert.ok(pose.x-half>=r.left&&pose.x+half<=r.right);}
  for(let x=Math.ceil(r.left*2);x<r.right*2-2;x++)for(let z=-54;z<=-53;z++)for(let y=17;y<22;y++)assert.equal(harbor.getOccupant([x,y,z]),null,`train collision ${x},${y},${z}`);
 });

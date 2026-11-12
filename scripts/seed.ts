@@ -1,5 +1,5 @@
 /* ============================================================
-   一次性 seed 脚本：读 src/config/blog.js 导出数据灌入 D1
+   一次性 seed 脚本：读 src/config/blog.ts 导出数据灌入 D1
    ------------------------------------------------------------
    用法：
      npm run seed          # 本地 D1（wrangler dev 用的 .wrangler/state）
@@ -18,12 +18,12 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { MODULES, SITE } from "../src/config/blog.js";
-import { DEFAULT_SETTINGS } from "../src/config/site-settings.js";
+import { MODULES, SITE } from "../src/config/blog.ts";
+import { DEFAULT_SETTINGS } from "../src/config/site-settings.ts";
 
 const REMOTE = process.argv.includes("--remote");
 const DB = "blog-db";
-const wrangler = (args, parseJson = false) => {
+const wrangler = (args: string[], parseJson = false): string => {
   const r = spawnSync(
     process.execPath,
     [join("node_modules", "wrangler", "bin", "wrangler.js"), ...args, ...(parseJson ? ["--json"] : [])],
@@ -36,13 +36,15 @@ const wrangler = (args, parseJson = false) => {
   return r.stdout;
 };
 
-const q = (s) => `'${String(s).replaceAll("'", "''")}'`;
-const shortHash = (s) =>
+/* SQL 字面量：null/undefined 必须写成裸 NULL，否则 String(null) 会把
+ * 四个字符 "null" 写进正文列，前台会显示出字面的 null。 */
+const q = (s: unknown) => (s === null || s === undefined ? "NULL" : `'${String(s).replaceAll("'", "''")}'`);
+const shortHash = (s: string) =>
   createHash("sha256").update(s).digest("hex").slice(0, 6);
 const now = new Date().toISOString();
 
 /* ---------- 1. 幂等检查 ---------- */
-const countOf = (table) => {
+const countOf = (table: string): number => {
   const out = wrangler(
     ["d1", "execute", DB, REMOTE ? "--remote" : "--local", "--command", `SELECT COUNT(*) AS n FROM ${table}`],
     true,
@@ -79,7 +81,7 @@ try {
   const expectedModules = MODULES.length;
   const expectedPosts = MODULES.reduce((n, m) => n + m.posts.length, 0);
 
-  const stmts = [];
+  const stmts: string[] = [];
   MODULES.forEach((m, i) => {
     stmts.push(
       `INSERT INTO modules (slug, title, accent, accent_dark, icon, blurb, sort) VALUES (${q(m.id)}, ${q(m.title)}, ${q(m.accent)}, ${q(m.accentDark)}, ${q(m.icon)}, ${q(m.blurb)}, ${i});`,
@@ -97,7 +99,7 @@ try {
   writeFileSync(sqlFile, stmts.join("\n"), "utf8");
 
   /* ---------- 5. 前置校验：slug 唯一性 ---------- */
-  const postSlugs = [];
+  const postSlugs: string[] = [];
   MODULES.forEach((m) => m.posts.forEach((p) => postSlugs.push(`${p.date}-${shortHash(p.title)}`)));
   const dup = postSlugs.filter((s, i) => postSlugs.indexOf(s) !== i);
   const dupModules = MODULES.map((m) => m.id).filter((s, i, a) => a.indexOf(s) !== i);

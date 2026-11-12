@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLACES, placeForModule, readWorldRoute, smooth, ease } from '../src/world/places.js';
-import { HARBOR_PLACES } from '../src/world/harbor-layout.js';
-import { MODULES } from '../src/config/blog.js';
-import { createLayout, GRID, RAIL, DOCK, TRAIN_HALF_LENGTH, trainAt } from '../src/world/layout.js';
+import { PLACES, placeForModule, readWorldRoute, smooth, ease } from '../src/world/places.ts';
+import { HARBOR_PLACES } from '../src/world/harbor-layout.ts';
+import { MODULES } from '../src/config/blog.ts';
+import { createLayout, GRID, RAIL, DOCK, TRAIN_HALF_LENGTH, trainAt } from '../src/world/layout.ts';
 
 const layout=createLayout();
 
@@ -12,7 +12,7 @@ test('all five places have distinct routes, stable spatial positions and existin
   assert.equal(new Set(PLACES.map(p=>p.id)).size,5);
   for(const p of PLACES){
     assert.deepEqual(readWorldRoute(`#home/${p.id}`),{home:true,place:p.id});
-    const spatial=HARBOR_PLACES.find(s=>s.id===p.id);assert.equal(spatial.position.length,3);assert.ok(spatial.position.every(Number.isFinite));
+    const spatial=HARBOR_PLACES.find(s=>s.id===p.id);assert.ok(spatial,'place missing spatial data');assert.equal(spatial.position.length,3);assert.ok(spatial.position.every(Number.isFinite));
     for(const module of p.modules)assert.ok(MODULES.some(m=>m.id===module),`missing category: ${module}`);
   }
 });
@@ -79,12 +79,13 @@ test('reference has two northern banks, an inlet, a southern harbour and satelli
 
 test('every road sample has land and all paved neighbours meet in walkable steps',()=>{
   for(const sample of layout.samples)assert.ok(layout.at(sample.x,sample.z),`${sample.id} crosses open water`);
-  const paved=c=>c&&['path','paving'].includes(c.kind);
-  const roads=layout.cells.filter(paved),seen=new Set(),queue=[roads[0]],key=c=>`${c.x},${c.z}`;
-  while(queue.length){const c=queue.pop();if(seen.has(key(c)))continue;seen.add(key(c));
+  const paved=(c: ReturnType<typeof layout.at>): c is NonNullable<ReturnType<typeof layout.at>>=>!!c&&['path','paving'].includes(c.kind);
+  const roads=layout.cells.filter(paved),seen=new Set<string>(),queue=[roads[0]],key=(c: NonNullable<ReturnType<typeof layout.at>>)=>`${c.x},${c.z}`;
+  assert.ok(roads[0],'at least one paved road cell exists');
+  while(queue.length){const c=queue.pop()!;if(seen.has(key(c)))continue;seen.add(key(c));
     for(const [dx,dz] of [[GRID,0],[-GRID,0],[0,GRID],[0,-GRID]]){
       const n=layout.at(c.x+dx,c.z+dz);if(!paved(n))continue;
-      assert.ok(Math.abs(c.height-n.height)<=.5,`cliff in road at ${key(c)} (${c.height} -> ${n.height})`);
+      assert.ok(Math.abs(c.height-(n as {height:number}).height)<=.5,`cliff in road at ${key(c)} (${c.height} -> ${n.height})`);
       if(!seen.has(key(n)))queue.push(n);
     }
   }
