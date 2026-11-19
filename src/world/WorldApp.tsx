@@ -56,6 +56,7 @@ export default function WorldApp(){
   const inspection=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('view');
   function visit(id: string|null): void{location.hash=id?`home/${id}`:'home';}
   function close(): void{visit(null);requestAnimationFrame(()=>nav.current?.querySelector<HTMLElement>(`[data-place="${route.place}"]`)?.focus());}
+  function goHome(): void{location.hash='home';requestAnimationFrame(()=>nav.current?.querySelector<HTMLElement>('button')?.focus({preventScroll:true}));}
   function openPost(slug: string,placeId: string): void{
     returnPostSlug.current=slug;
     setFocusPostSlug(null);
@@ -126,12 +127,15 @@ export default function WorldApp(){
     return()=>{active=false;engine.current?.dispose();engine.current=null;window.removeEventListener('hashchange',hash);window.removeEventListener('keydown',key);motion.removeEventListener('change',reduce);};
   },[]);
   useEffect(()=>{if(timeDebugEnabled)engine.current?.setTimeOverride(debugMinutes);},[timeDebugEnabled,debugMinutes]);
+  /* 阅读页覆盖整个世界：暂停 3D 渲染，关闭后再恢复。ready 依赖保证
+     直接打开 #post/… 时，引擎创建完成后也会落到暂停态。 */
+  useEffect(()=>{engine.current?.setPaused(!!route.post);},[route.post,ready]);
   function enter(event?: { detail?: number } | MouseEvent){keyboardEntry.current=(event as CustomEvent | undefined)?.detail===0;if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
   const chromeStyle: CustomCSS={'--world-scene-text':shownWorldTime.ink};
   return <main ref={root} className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-entry-preview={entryPreview||undefined} data-time-phase={shownWorldTime.phase} style={chromeStyle}>
     {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
     <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
-    <LandingView active={!sceneVisible} leaving={phase==='leaving'} entering={entering} entryPreview={entryPreview} clock={clock} ready={ready} skipEarth={skipEarth} fallback={fallback} islandName={settings.islandName} onEnter={enter}/>
+    <LandingView active={!sceneVisible} leaving={phase==='leaving'} entering={entering} entryPreview={entryPreview} clock={clock} ready={ready} skipEarth={skipEarth} fallback={fallback} islandName={settings.islandName} covered={!!route.post} onEnter={enter}/>
     {(sceneVisible||entering)&&<div className="world-chrome" inert={!!route.post||entering} aria-hidden={route.post||entering?'true':undefined}>
       <header className="world-header"><a href="#home" onClick={()=>{if(!selected)engine.current?.reset();}} className="world-brand" aria-label={`${settings.name}，回到全景`}><WorldIcon name="home" width="30" height="30"/><span><strong>{settings.name}</strong><small>{settings.islandTagline}</small></span></a><div className="world-local-time" aria-label={`${debugMinutes===null?'设备当地时间':'模拟当地时间'} ${clock.date} ${shownTime}`}><time>{shownTime}</time><span>{debugMinutes===null?'当地时间':'模拟时间'}</span></div><button className="world-return" aria-label="返回星球" onClick={()=>{location.hash='';}}><WorldIcon name="reset" width="16" height="16"/><span>返回星球</span></button></header>
       {timeDebugEnabled&&!inspection&&!fallback&&<section className="world-time-debug" aria-label="时间调试面板"><div className="world-time-debug-head"><strong>时间预览</strong><output>{shownTime}</output></div><label htmlFor="world-time-slider">拖动查看天空与光照</label><input id="world-time-slider" type="range" min="0" max="1439" step="1" value={shownMinutes} onChange={event=>setDebugMinutes(Number(event.target.value))}/><div className="world-time-presets">{([[360,'清晨'],[720,'正午'],[1080,'傍晚'],[1380,'夜晚']] as [number, string][]).map(([minutes,label])=><button key={minutes} type="button" onClick={()=>setDebugMinutes(minutes)}>{label}</button>)}</div><button className="world-time-reset" type="button" disabled={debugMinutes===null} onClick={()=>setDebugMinutes(null)}>恢复设备时间</button></section>}
@@ -142,7 +146,7 @@ export default function WorldApp(){
       {!selected&&<p className="world-help">{fallback?'静态预览 · 使用目录探索':'拖动环视 · 滚轮缩放'}<span>慢慢逛，不着急。</span></p>}
       {selected&&<PlacePanel key={selected.id} place={selected} islandName={settings.islandName} onClose={close} onOpenPost={openPost} onScroll={(top: number)=>placeScroll.current.set(selected.id,top)} restoreScroll={placeScroll.current.get(selected.id)} returnPostSlug={focusPostSlug} onFocusRestored={focusRestored}/>}
     </div>}
-    {route.post&&<Suspense fallback={<div className="reader-boot" role="status">正在展开这篇故事…</div>}><ArticleReader slug={route.post} siteName={settings.name} islandName={settings.islandName} onResolvedPlace={resolvedArticlePlace} onReturn={returnFromPost} onNavigatePost={navigatePost}/></Suspense>}
+    {route.post&&<Suspense fallback={<div className="reader-boot" role="status">正在展开这篇故事…</div>}><ArticleReader slug={route.post} siteName={settings.name} islandName={settings.islandName} onResolvedPlace={resolvedArticlePlace} onReturn={returnFromPost} onNavigatePost={navigatePost} onHome={goHome}/></Suspense>}
     {error&&<div className="world-error" role="status"><span>{error}</span><button onClick={()=>location.reload()}>重新载入</button><button aria-label="关闭提示" onClick={()=>setError(null)}><WorldIcon name="close" width="16" height="16"/></button></div>}
     {debug&&stats&&<output className="world-stats">{stats.fps} FPS · {stats.drawCalls} draws · {stats.triangles.toLocaleString()} triangles · ready {stats.readyMs??'…'} ms · {phase}</output>}
   </main>;

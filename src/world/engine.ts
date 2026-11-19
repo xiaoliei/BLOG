@@ -49,6 +49,7 @@ export interface WorldEngineHandle {
   reset: () => void;
   setTimeOverride: (minutes: number | null) => void;
   setReducedMotion: (value: boolean) => void;
+  setPaused: (value: boolean) => void;
   dispose: () => void;
 }
 
@@ -77,7 +78,7 @@ export function createWorldEngine(canvas: HTMLCanvasElement, { onReady, onPhase,
   const inspectionView: InspectionView=diagnostics.get('view') as InspectionView;
   const camera: THREE.OrthographicCamera | THREE.PerspectiveCamera = inspectionView?new THREE.OrthographicCamera(-50,50,43,-43,.08,30000):new THREE.PerspectiveCamera(40,1,.08,30000);
   let disposed=false, ready=false, phase: Phase=initialRoute.home?'world':'loading', selected: string|null=initialRoute.place;
-  let aspect=1, width=1,height=1, raf=0, start=0, clock=0, timeBase: number|null=null;
+  let aspect=1, width=1,height=1, raf=0, start=0, clock=0, timeBase: number|null=null, paused=false;
   let fly: FlyState|null=null, yaw=0, zoom=1, orbitDistance=8640;
   let visibility=document.visibilityState, entryFlight: EntryFlight|null=null, entrySeconds=0, retarget: RetargetState|null=null, entryRotation: THREE.Quaternion|null=null;
   let stats={frames:0,seconds:0,last:0}, labelsAt=0, yawVelocity=0, rotateBounds='';
@@ -329,7 +330,7 @@ export function createWorldEngine(canvas: HTMLCanvasElement, { onReady, onPhase,
     finally{clearTimeout(timeout);}
   }
   function tick(now: number): void {
-    if(disposed)return;raf=requestAnimationFrame(tick);
+    if(disposed||paused)return;raf=requestAnimationFrame(tick);
     if(visibility==='hidden')return;
     const elapsed=timeBase===null?0:(now-timeBase)/1000;const dt=Math.min(elapsed,.06);timeBase=now;clock+=dt;
     lighting.update();
@@ -422,7 +423,11 @@ export function createWorldEngine(canvas: HTMLCanvasElement, { onReady, onPhase,
   return {enter,navigate,rotate,reset(){yaw=0;zoom=1;yawVelocity=0;moveTo(null);},setTimeOverride(minutes){
     if(!import.meta.env.DEV)return;
     lighting.setOverride(minutes);
-  },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();if(value&&phase==='leaving')finishLeave();},dispose(){
+  },setReducedMotion(value){reducedMotion=value;yawVelocity=0;if(value&&phase==='entering')finishEntry();if(value&&phase==='leaving')finishLeave();},setPaused(value){
+    if(paused===value||disposed)return;
+    paused=value;cancelAnimationFrame(raf);timeBase=null;
+    if(!paused)raf=requestAnimationFrame(tick);
+  },dispose(){
     disposed=true;clearTimeout(timeout);loadAbort.abort();cancelAnimationFrame(raf);observer.disconnect();document.removeEventListener('visibilitychange',onVisibility);
     canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',cancel);canvas.removeEventListener('lostpointercapture',captureLost);canvas.removeEventListener('wheel',wheel);canvas.removeEventListener('webglcontextlost',lost);
     town?.dispose();entryWorld?.dispose();sun.shadow.map?.dispose();renderer.dispose();
