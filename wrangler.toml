@@ -1,7 +1,5 @@
-# 本地实际配置文件：由 wrangler.toml.example 复制而来，已被 .gitignore 忽略
-# 需要改动部署结构时，先改模板 wrangler.toml.example，再同步本文件
+# 小礼工坊 · Cloudflare Worker 全栈配置（随仓库纳入版本管理）
 # ============================================================
-# 小礼工坊 · Cloudflare Worker 全栈配置
 # 静态资产（dist/）+ Hono API（worker/index.ts）单部署单元
 # 配置约定：本文件只放「绑定」与「部署结构」；
 # 运行环境变量（ACCESS_*、R2_* 等）统一走环境变量——
@@ -19,7 +17,7 @@ compatibility_date = "2026-08-16"
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/img/*"]
+run_worker_first = ["/api", "/api/*", "/img/*"]
 
 # ---------- D1 数据库 ----------
 # 首次使用：`wrangler d1 create blog-db`
@@ -35,6 +33,14 @@ migrations_dir = "drizzle"
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "blog-images"
+
+# ---------- 浏览量限频 ----------
+# 同一 IP 对同一文章每 60 秒至多计入 10 次浏览（见 worker/routes/public.ts）
+# namespace_id 为账号内自定义编号，绑定随 wrangler.toml 在部署时一并提交
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+simple = { limit = 10, period = 60 }
 
 [observability]
 enabled = false

@@ -3,11 +3,14 @@
 # 生产环境在 Cloudflare 后台 Worker → Settings → Variables and Secrets 配置同名变量
 
 # ---------- 本地开发 ----------
-# 本地开发令牌：设置后可通过 `X-Admin-Token` 头访问 /api/admin/*（仅本地回退用）
+# 本地开发令牌：设置后可通过 `X-Admin-Token` 头访问 /api/admin/*
+# 必须同时把 ADMIN_AUTH_MODE 设为 dev-token 才生效。
+# ⚠ 生产环境不要配置 ADMIN_AUTH_MODE：漏配 Access 变量时会直接 401，而不是退回这个令牌。
+ADMIN_AUTH_MODE=dev-token
 ADMIN_DEV_TOKEN=dev-token-change-me
 
 # ---------- Cloudflare Access（P2） ----------
-# 本地不经过 Access 时可留空；为空时 admin API 依赖 ADMIN_DEV_TOKEN
+# 本地不经过 Access 时可留空；留空时 admin API 依赖上面的本地令牌回退
 # 生产：后台 Variables 添加 ACCESS_TEAM_DOMAIN（如 xiaoli）与 ACCESS_AUD
 ACCESS_TEAM_DOMAIN=
 ACCESS_AUD=

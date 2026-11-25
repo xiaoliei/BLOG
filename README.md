@@ -19,6 +19,8 @@ npm run deploy        # 构建并部署到 Cloudflare Workers
 
 本地开发 admin API：复制 `.dev.vars.example` 为 `.dev.vars`，
 按需修改 `ADMIN_DEV_TOKEN`；后台页面在 `/admin` 首次 401 时粘贴该令牌。
+本地令牌回退只在显式配置 `ADMIN_AUTH_MODE=dev-token` 时生效；
+生产环境**不要**配置该变量——漏配 Access 变量时会直接 401，而不是退回开发令牌。
 
 ## 架构
 
@@ -37,11 +39,17 @@ Cloudflare Worker（单部署单元：静态资产 + API）
 ```
 
 - **鉴权**：Cloudflare Access（邮箱 OTP）保护 `/admin` 与 `/api/admin/*`；
-  Worker 内 `worker/middleware/access.ts` 验 `Cf-Access-Jwt-Assertion`（RS256 JWKS）
+  Worker 内 `worker/middleware/access.ts` 验 `Cf-Access-Jwt-Assertion`（RS256 JWKS），
+  遇到未知 `kid` 会强制刷新公钥；浏览器发起的写请求必须同源（CSRF 防护）
+- **安全响应头**：页面的 CSP、`nosniff`、禁止 iframe 嵌套写在 `public/_headers`
+  （构建后原样进入 `dist/`；编辑器内联脚本的内容哈希由 `scripts/csp-hashes.ts` 在构建时填入）；
+  `worker/lib/headers.ts` 给 `/img/*` 响应加 `nosniff` 与 `sandbox` CSP。
+  前端新增外部脚本/字体/接口域名时需同步 CSP
 - **可移植性**：Hono 路由 + Drizzle ORM + 单鉴权中间件，
   平台耦合面收敛在上述四点，迁移换 driver 即可
-- **评论反垃圾**：蜜罐字段 + IP 30s 限频（ip_hash 截断哈希）+ 后台人工审核
-- **浏览量**：D1 原子 +1，客户端 60s sessionStorage 去重
+- **评论反垃圾**：蜜罐字段 + IP 30s 限频（ip_hash 截断哈希，条件 INSERT 原子落库）+ 后台人工审核
+- **浏览量**：D1 原子 +1，客户端 60s sessionStorage 去重，
+  服务端经 Rate Limit 绑定限频（同 IP 同文章每分钟 10 次）
 - **前台缓存**：SWR（内存 + localStorage，TTL 5min）+ API 边缘缓存 60s，
   admin 写操作后 Cache API 主动失效
 
@@ -55,9 +63,11 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 3. Cloudflare 后台 Worker → Settings → **Bindings** 添加绑定：
    - D1：`DB` → `blog-db`
    - R2：`IMAGES` → `blog-images`
+   - Rate Limit：`RATE_LIMITER` 已在 `wrangler.toml` 声明，随 `npm run deploy` 一并提交，无需在后台添加
+     缺省时该接口不限频但不影响功能）
 4. Cloudflare 后台 Worker → Settings → **Variables and Secrets** 配置：
    - **Variables**：`ACCESS_TEAM_DOMAIN`、`ACCESS_AUD`
-   （图片存储走 R2 原生绑定，无需 S3 密钥）
+   （图片存储走 R2 原生绑定，无需 S3 密钥。**不要**添加 `ADMIN_AUTH_MODE`）
 5. `npm run db:migrate:remote && npm run seed:remote`
 6. Zero Trust 控制台 → Access → Applications，建**一个** Access 应用，
    Include 规则同时覆盖两个路径：
@@ -126,7 +136,7 @@ Worker 名、自定义域名、D1/R2 资源绑定与全部环境变量都在 Clo
 - `src/lib/api.ts`：公开内容 API 与静态示例回退
 - `src/admin/`、`worker/`、`drizzle/`：保留的后台和数据服务
 - `public/models/mc_head.glb`：启动页与进入过场共用的原版地球资源
-- `public/world/harbor-preview.png`：WebGL 降级预览
+- `public/world/harbor-preview.webp`：WebGL 降级预览
 
 ## 验证
 

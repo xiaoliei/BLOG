@@ -11,6 +11,11 @@ export type Env = {
 	ACCESS_TEAM_DOMAIN: string;
 	/** Access 应用 AUD */
 	ACCESS_AUD: string;
-	/** 本地开发 admin 令牌（仅本地回退） */
+	/** 本地开发 admin 令牌（仅 ADMIN_AUTH_MODE=dev-token 时生效） */
 	ADMIN_DEV_TOKEN?: string;
+	/** 鉴权模式：显式设为 "dev-token" 才允许本地令牌回退；缺省走 Cloudflare Access。
+	 *  开启后只认开发令牌、不再走 Access 鉴权，生产环境不要配置。 */
+	ADMIN_AUTH_MODE?: string;
+	/** 浏览量限频（wrangler.toml [[ratelimits]]；未绑定时跳过限频） */
+	RATE_LIMITER?: RateLimit;
 };
