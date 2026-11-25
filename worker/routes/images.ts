@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "../env";
 import { makeObjectName, r2Get, r2Put } from "../lib/r2";
+import { IMAGE_HEADERS } from "../lib/headers";
 import adminApi from "./admin";
 
 /* ============================================================
@@ -46,6 +47,7 @@ images.get("/img/*", async (c) => {
 				"Content-Type": obj.httpMetadata?.contentType ?? EXT_TYPES[ext],
 				"Cache-Control": "public, max-age=31536000, immutable",
 				ETag: obj.httpEtag ?? "",
+				...IMAGE_HEADERS,
 			},
 		});
 	} catch (err) {

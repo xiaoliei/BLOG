@@ -1,0 +1,23 @@
+# Workers 静态资源的安全响应头（随构建原样进入 dist/）。
+# 页面请求不经过 Worker（wrangler.toml 的 run_worker_first 只列了 /api/* 与 /img/*），
+# 所以文档类的头必须写在这里；/img/* 的头在 worker/routes/images.ts。
+#
+# CSP 与前端实际用到的资源强相关，改动前端资源加载方式后需同步：
+#   - script-src 'self' 'wasm-unsafe-eval'：同源脚本；后台 Vditor 的 Lute 依赖 WebAssembly
+#   - 占位符（__VDITOR_INLINE_SHA256__，两侧带单引号）：构建时由 scripts/csp-hashes.ts 替换为一组内容哈希，对应
+#     Vditor 以「内联 script」方式执行的几个文件（public/vditor/dist/js/icons/*.js 图标表、
+#     js/mathjax/tex-svg-full.js 公式库；编辑器当前默认用 KaTeX 渲染公式，MathJax 哈希
+#     只在把公式引擎切到 MathJax 时才用得上)。不放行则后台编辑器图标缺失；
+#     用哈希逐一放行，不开 unsafe-inline。
+#   - style-src 'unsafe-inline'：React 行内 style 属性；Google Fonts 的样式表
+#   - img-src https:：文章 Markdown 里可引用外站图片
+#   - connect-src 'self' blob:：API 与同源静态资源；地球模型读取内嵌贴图时 fetch blob: 地址
+#   - frame-src https: / media-src：后台编辑器预览会把视频链接转成 iframe、把音视频标签直接渲染；
+#     前台文章经 rehype-sanitize 过滤，不含 iframe
+#   - frame-ancestors 'none'：不允许被任何站点 iframe 嵌套
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' '__VDITOR_INLINE_SHA256__'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' blob:; worker-src blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src https:; media-src 'self' https:; frame-ancestors 'none'

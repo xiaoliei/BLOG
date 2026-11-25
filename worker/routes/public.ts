@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../lib/db";
@@ -13,7 +14,7 @@ import type { Env } from "../env";
    - GET 响应 s-maxage=60（CF 边缘缓存）
    - 404 / POST / 错误一律 no-store
    - 浏览量计数：D1 原子 +1（客户端 60s sessionStorage 去重，设计 D5）
-   - 评论：蜜罐 + IP 限频（30s/条）+ 默认 pending（设计 D6）
+   - 评论：蜜罐 + IP 限频（30s/条，条件 INSERT 原子落库）+ 默认 pending（设计 D6）
    ============================================================ */
 
 /** 文章列表选择列（不含正文 bodyMd） */
@@ -146,7 +147,7 @@ publicApi.get("/posts/:slug", async (c) => {
 async function findPublishedPost(env: Env, slug: string) {
 	return (
 		await db(env)
-			.select({ id: posts.id, slug: posts.slug })
+			.select({ id: posts.id, slug: posts.slug, views: posts.views })
 			.from(posts)
 			.where(and(eq(posts.slug, slug), eq(posts.status, "published")))
 			.limit(1)
@@ -163,6 +164,18 @@ async function hashIp(req: Request): Promise<string> {
 		.join("");
 }
 
+/** 浏览量限频：绑定缺失或调用出错时放行（只影响计数准确性，不能阻断阅读） */
+async function overViewLimit(c: Context<{ Bindings: Env }>, postId: number): Promise<boolean> {
+	if (!c.env.RATE_LIMITER) return false;
+	try {
+		const key = `${postId}:${await hashIp(c.req.raw)}`;
+		return !(await c.env.RATE_LIMITER.limit({ key })).success;
+	} catch (err) {
+		console.error("[views] rate limiter error:", err);
+		return false;
+	}
+}
+
 /* ---------- 浏览量自增：原子 +1（draft 404），不缓存 ---------- */
 publicApi.post("/posts/:slug/views", async (c) => {
 	const slug = c.req.param("slug");
@@ -171,6 +184,11 @@ publicApi.post("/posts/:slug/views", async (c) => {
 		return c.json({ error: "not_found", message: "文章不存在或未发布" }, 404, {
 			"Cache-Control": NO_STORE,
 		});
+	}
+	/* 限频：同 IP 对同文章每分钟至多 10 次（wrangler.toml [[ratelimits]]）。
+	   超限不报错，直接回当前计数，客户端无感。 */
+	if (await overViewLimit(c, post.id)) {
+		return c.json({ views: post.views }, 200, { "Cache-Control": NO_STORE });
 	}
 	const [row] = await db(c.env)
 		.update(posts)
@@ -237,30 +255,28 @@ publicApi.post("/posts/:slug/comments", async (c) => {
 		});
 	}
 
-	/* IP 限频：同 IP 30 秒 1 条 */
 	const ipHash = await hashIp(c.req.raw);
-	const [last] = await db(c.env)
-		.select({ createdAt: comments.createdAt })
-		.from(comments)
-		.where(eq(comments.ipHash, ipHash))
-		.orderBy(desc(comments.createdAt))
-		.limit(1);
-	if (last && Date.now() - Date.parse(last.createdAt) < 30_000) {
+
+	/* 落库与限频合并为一条带条件的 INSERT，不单独做"先查后插"的预检查：
+	   "该 ip_hash 最近 30 秒没有记录"才插入。单条语句在 D1 内原子执行，
+	   并发请求不会同时穿过"先查后插"的空隙。
+	   changes 为 0 即视为超限。 */
+	const ts = new Date().toISOString();
+	const cutoff = new Date(Date.now() - 30_000).toISOString();
+	const inserted = await c.env.DB.prepare(
+		`INSERT INTO comments (post_id, author, body, status, ip_hash, created_at)
+		 SELECT ?, ?, ?, 'pending', ?, ?
+		 WHERE NOT EXISTS (SELECT 1 FROM comments WHERE ip_hash = ? AND created_at > ?)`,
+	)
+		.bind(post.id, input.author, input.body, ipHash, ts, ipHash, cutoff)
+		.run();
+	if (inserted.meta.changes === 0) {
 		return c.json(
 			{ error: "rate_limited", message: "评论太频繁了，请 30 秒后再试" },
 			429,
 			{ "Cache-Control": NO_STORE, "Retry-After": "30" },
 		);
 	}
-
-	await db(c.env).insert(comments).values({
-		postId: post.id,
-		author: input.author,
-		body: input.body,
-		status: "pending",
-		ipHash,
-		createdAt: new Date().toISOString(),
-	});
 
 	return c.json({ ok: true, message: "提交成功，审核通过后会展示" }, 201, {
 		"Cache-Control": NO_STORE,

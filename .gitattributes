@@ -1,0 +1,2 @@
+# Workers 静态资源的响应头文件：保持 LF（本地验证过的是 LF 版本）
+public/_headers text eol=lf
