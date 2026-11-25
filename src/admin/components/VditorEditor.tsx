@@ -78,13 +78,33 @@ export default function VditorEditor({ value, onFlash, apiRef }: {
 				if (!payload.url) throw new Error("上传响应缺少 url");
 				return payload.url;
 			};
-			Promise.all([...files].map(uploadOne))
-				.then((urls) => {
-					const md = urls.map((u) => `![](${u})`).join("\n");
-					vdRef.current?.insertValue(md);
+			/* 逐张结算：一张失败不能把其余已上传成功的地址一起丢掉
+			   （它们已经进了 R2，丢了就是孤儿对象）。 */
+			const run = async (): Promise<void> => {
+				try {
+					await settle();
+				} catch (e: unknown) {
+					onFlash("err", e instanceof Error ? e.message : String(e ?? "图片上传失败"));
+				}
+			};
+			const settle = async (): Promise<void> => {
+				const results = await Promise.allSettled([...files].map(uploadOne));
+				const urls: string[] = [];
+				let failure: unknown;
+				for (const r of results) {
+					if (r.status === "fulfilled") urls.push(r.value);
+					else failure ??= r.reason;
+				}
+				if (urls.length) vdRef.current?.insertValue(urls.map((u) => `![](${u})`).join("\n"));
+				const failed = results.length - urls.length;
+				if (!failed) {
 					onFlash("ok", "图片已上传并插入");
-				})
-				.catch((e: unknown) => onFlash("err", (e as Error).message));
+					return;
+				}
+				const reason = failure instanceof Error ? failure.message : String(failure ?? "未知错误");
+				onFlash("err", `${failed} 张图片上传失败：${reason}${urls.length ? `（其余 ${urls.length} 张已插入）` : ""}`);
+			};
+			void run();
 			return true; // 阻止默认上传行为
 		},
 	};

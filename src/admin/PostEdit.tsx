@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "vditor/dist/index.css";
 import { adminFetch } from "./api.ts";
+import { ApiError } from "../lib/http.ts";
 import { localDate } from "../lib/local-time.ts";
 import { useFlash } from "../hooks/useFlash.ts";
 import { Button } from "./components/Button.tsx";
@@ -54,6 +55,10 @@ export default function PostEdit({ initial, onBack, guard }: PostEditProps) {
 	const [modules, setModules] = useState<ModuleSummary[]>([]);
 	const [saving, setSaving] = useState(false);
 	const [notFound, setNotFound] = useState(false);
+	/* 非 404 的加载失败（401 / 网络）：不能当成"文章不存在"，也不能留在空表单上——
+	   此时点保存会把线上文章覆盖成空白。单独进错误态，只给重试和返回。 */
+	const [loadFailed, setLoadFailed] = useState<string | null>(null);
+	const [loadRetry, setLoadRetry] = useState(0);
 	const { toast, flash } = useFlash();
 
 	const editorApi = useRef<VditorApi | null>(null); // VditorEditor 暴露的 getValue/insertValue
@@ -83,10 +88,10 @@ export default function PostEdit({ initial, onBack, guard }: PostEditProps) {
 				editorApi.current?.onReady?.((vd) => vd.setValue(post.bodyMd ?? ""));
 			})
 			.catch((e: Error) => {
-				setNotFound(true);
-				flash("err", e.message);
+				if (e instanceof ApiError && e.status === 404) setNotFound(true);
+				else setLoadFailed(e.message || "文章加载失败");
 			});
-	}, [isNew, initial.id, guard, flash]);
+	}, [isNew, initial.id, guard, flash, loadRetry]);
 
 	const setField = (k: keyof PostFormState, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -181,6 +186,25 @@ export default function PostEdit({ initial, onBack, guard }: PostEditProps) {
 			<section className="admin-page">
 				<HintText>文章不存在或已删除。</HintText>
 				<Button onClick={onBack}>返回列表</Button>
+			</section>
+		);
+	}
+
+	if (loadFailed) {
+		return (
+			<section className="admin-page">
+				<HintText>文章加载失败：{loadFailed}</HintText>
+				<div className="admin-edit__foot">
+					<Button
+						onClick={() => {
+							setLoadFailed(null);
+							setLoadRetry((n) => n + 1);
+						}}
+					>
+						重新载入
+					</Button>
+					<Button onClick={onBack}>返回列表</Button>
+				</div>
 			</section>
 		);
 	}
