@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import type { Options } from 'react-markdown';
 import { getPost, getPosts, submitViewOnce } from '../lib/api.ts';
+import { ApiError } from '../lib/http.ts';
 import { placeForModule } from './places.ts';
 import type { PlaceInfo } from './places.ts';
 import ArticleComments from './ArticleComments.tsx';
@@ -25,7 +26,12 @@ interface ArticleReaderProps {
   onHome: () => void;
 }
 
-export default function ArticleReader({ slug, siteName, islandName, onResolvedPlace, onReturn, onNavigatePost, onHome }: ArticleReaderProps) {
+/* 阅读页不随 WorldApp 的每秒时钟刷新重渲染：props 里只有 slug / 两个站名 /
+   四个引用稳定的回调，其余状态都在组件内部。改 props 时确认它们是稳定值，
+   否则 memo 失效，正文会每秒重新走一遍 Markdown 转换。 */
+export default memo(ArticleReader);
+
+function ArticleReader({ slug, siteName, islandName, onResolvedPlace, onReturn, onNavigatePost, onHome }: ArticleReaderProps) {
   const [article, setArticle] = useState<ArticleState>({ status: 'loading', post: null });
   const [retry, setRetry] = useState(0);
   const [neighbors, setNeighbors] = useState<ApiPostListItem[]>([]);
@@ -66,7 +72,7 @@ export default function ArticleReader({ slug, siteName, islandName, onResolvedPl
         }).catch(() => {});
       }
     }).catch((error: unknown) => {
-      if (alive) setArticle({ status: /HTTP 404/.test((error as Error)?.message || '') ? 'missing' : 'error', post: null });
+      if (alive) setArticle({ status: error instanceof ApiError && error.status === 404 ? 'missing' : 'error', post: null });
     });
     return () => { alive = false; };
   }, [slug, retry, onResolvedPlace]);

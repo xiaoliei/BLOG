@@ -4,6 +4,9 @@ import type { BlockState, Box, Direction, StateInput, Vec3 } from './models.ts';
 export type { Vec3, Box, BlockState, StateInput, Direction, Props, PropValue } from './models.ts';
 
 export const CELL_SIZE=.5, CHUNK_SIZE=16, FORMAT_VERSION=1;
+/* 铁路总长上限（格；rail.left/right 是世界单位，比较时除以 cellSize）。现有存档约 324 格；
+   渲染层按每 60 格一个实例向西延伸，封顶后最多约 94 个实例。超出即判定存档无效，整张世界不会加载。 */
+export const MAX_RAIL_LENGTH=4000;
 export const keyOf=(p: readonly number[]): string=>p.join(',');
 export const worldToCell=(p: readonly number[],size: number=CELL_SIZE): Vec3=>p.map(v=>Math.floor(v/size)) as Vec3;
 export const cellToWorld=(p: readonly number[],size: number=CELL_SIZE): number[]=>p.map(v=>v*size);
@@ -180,7 +183,8 @@ export function validateWorld(world: World): ValidationReport{
   if(!['train','boat','cat','gear','smoke'].includes(e.type)||!vec(e.position)||entityIds.has(e.id)||typeof e.id!=='string'||e.place&&!placeIds.has(e.place))errors.push(`Invalid entity: ${e.id}`);entityIds.add(e.id);
   if(e.type==='train'){
    const r=e.rail,fields: (keyof RailRoute)[]=['left','right','centerMin','centerMax','travel','dwell','cars','spacing','carLength','z','top'];
-   if(!r||fields.some(k=>!Number.isFinite(r[k]))||r.left>=r.right||r.centerMin>=r.centerMax||r.travel<=0||r.dwell<0||!Number.isInteger(r.cars)||r.cars<1||r.cars>16||r.spacing<r.carLength||r.carLength<=0)errors.push(`Invalid train route: ${e.id}`);
+   /* 路线长度封顶：rail-horizon 按长度实例化延伸段，不封顶时一个离谱的 left 就能拖垮页面 */
+   if(!r||fields.some(k=>!Number.isFinite(r[k]))||r.left>=r.right||(r.right-r.left)/world.cellSize>MAX_RAIL_LENGTH||r.centerMin>=r.centerMax||r.travel<=0||r.dwell<0||!Number.isInteger(r.cars)||r.cars<1||r.cars>16||r.spacing<r.carLength||r.carLength<=0)errors.push(`Invalid train route: ${e.id}`);
   }
  }
  for(const {cell,state} of world.blocks.values()){

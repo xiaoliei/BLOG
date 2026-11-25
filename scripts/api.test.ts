@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getStaticPosts } from '../src/lib/api.ts';
+import { getStaticPosts, swr } from '../src/lib/api.ts';
+import { ApiError } from '../src/lib/http.ts';
 import { ALL_POSTS, MODULES } from '../src/config/blog.ts';
 
 /* 静态回退的契约测试。
@@ -42,5 +43,43 @@ test('静态行字段与类型声明一致（避免调用方读到 undefined）'
 		}
 		assert.equal(typeof row.readTime, 'number');
 		assert.ok(Array.isArray(row.tags));
+	}
+});
+/* SWR 缓存失效契约（src/lib/api.ts）。
+   旧实现里后台刷新拿到 404 时错误被吞掉、localStorage 里的旧正文永不删除，
+   文章下架后读过它的读者仍能一直看到正文。 */
+
+test('SWR：后台刷新遇到 404 时清除过期缓存，404 不重试，过旧的缓存不再直接返回', async () => {
+	const g = globalThis as unknown as { localStorage?: unknown };
+	const previous = g.localStorage;
+	const store = new Map<string, string>();
+	g.localStorage = {
+		getItem: (k: string) => store.get(k) ?? null,
+		setItem: (k: string, v: string) => void store.set(k, v),
+		removeItem: (k: string) => void store.delete(k),
+	};
+	try {
+		let calls = 0;
+		const notFound = () => {
+			calls += 1;
+			return Promise.reject(new ApiError(404, null, 'HTTP 404'));
+		};
+
+		/* 无缓存时直接联网：404 只请求一次（不重试） */
+		await assert.rejects(swr('test:missing', notFound), /HTTP 404/);
+		assert.equal(calls, 1, '404 不应重试');
+
+		/* 10 分钟前的缓存：先返回旧值，后台刷新发现 404 后必须清除 */
+		store.set('swr:test:stale', JSON.stringify({ data: { ok: true }, at: Date.now() - 10 * 60_000 }));
+		assert.deepEqual(await swr('test:stale', notFound), { ok: true });
+		await new Promise((r) => setTimeout(r, 20));
+		assert.equal(store.has('swr:test:stale'), false, '404 后旧缓存必须被删除');
+
+		/* 1 小时前的缓存：不再直接返回，联网失败就报错，且同样清掉 */
+		store.set('swr:test:ancient', JSON.stringify({ data: { ok: true }, at: Date.now() - 60 * 60_000 }));
+		await assert.rejects(swr('test:ancient', notFound), /HTTP 404/);
+		assert.equal(store.has('swr:test:ancient'), false, '超过上限的缓存应被清除');
+	} finally {
+		g.localStorage = previous;
 	}
 });

@@ -3,7 +3,8 @@
    ------------------------------------------------------------
    - getPosts / getPost：前台唯一数据入口
    - SWR：内存 + localStorage 双层缓存，TTL 5 分钟
-     （命中新鲜缓存直接返回；过期则先返回旧值并后台刷新）
+     （命中新鲜缓存直接返回；过期则先返回旧值并后台刷新，
+     刷新遇到 404 即清除缓存；缓存超过 30 分钟不再直接返回）
    - fetch 失败自动重试（最多 2 次，递增退避）
    - resolveDataSource：blog.ts 静态数据的 feature flag 回退开关
      localStorage.setItem("blog:data-source", "static") 可即时切回
@@ -12,12 +13,14 @@
 import { ALL_POSTS, MODULES } from "../config/blog.ts";
 import type { StaticPost } from "../config/blog.ts";
 import { DEFAULT_SETTINGS } from "../config/site-settings.ts";
-import { buildQuery, firstPayloadMessage } from "./http.ts";
+import { ApiError, buildQuery, firstPayloadMessage } from "./http.ts";
 import type { ErrorPayload, QueryParams } from "./http.ts";
 import type { PostListItem as ApiPostListItem, PostDetail, PublicComment, SiteSettingsWithMeta } from "../types/api.ts";
 
 const API_BASE = "/api/public";
 const TTL_MS = 5 * 60 * 1000;
+/* 过期缓存的最高可用时长：超出后不再"先给旧值"，改为直接联网（失败就报错） */
+const STALE_MAX = 30 * 60 * 1000;
 const LS_PREFIX = "swr:";
 
 /* ---------- SWR 缓存 ---------- */
@@ -53,29 +56,56 @@ function cache<T>(key: string, data: T): T {
 	return data;
 }
 
-/** stale-while-revalidate：新鲜直接返回；过期先给旧值再后台刷新；无缓存则联网 */
+/** 清掉某键的两层缓存：后台刷新发现资源已不存在（404）时调用。
+ *  不清的话 localStorage 里的旧正文永远不会被删，文章下架后旧读者仍能读到。 */
+function evict(key: string): void {
+	memo.delete(key);
+	try {
+		localStorage.removeItem(LS_PREFIX + key);
+	} catch {
+		/* ignore */
+	}
+}
+
+/** stale-while-revalidate：新鲜直接返回；过期先给旧值再后台刷新；无缓存则联网。
+ *  超过 STALE_MAX 的缓存不再直接返回（否则被下架的文章旧值会无限期顶着用），改为联网取最新；
+ *  联网失败时旧缓存保留在本地，但不拿出来展示。 */
 export function swr<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
 	const entry = memo.get(key) ?? readLS(key);
 	if (entry) {
 		if (Date.now() - entry.at < TTL_MS) return Promise.resolve(entry.data as T);
-		fetcher()
-			.then((data) => cache(key, data))
-			.catch(() => {});
-		return Promise.resolve(entry.data as T);
+		if (Date.now() - entry.at < STALE_MAX) {
+			fetcher()
+				.then((data) => cache(key, data))
+				.catch((err: unknown) => {
+					if (err instanceof ApiError && err.status === 404) evict(key);
+				});
+			return Promise.resolve(entry.data as T);
+		}
 	}
-	return fetcher().then((data) => cache(key, data));
+	/* 超龄缓存不再直接返回，但联网失败时保留它：只有 404（资源已不存在）才清除。 */
+	return fetcher()
+		.then((data) => cache(key, data))
+		.catch((err: unknown) => {
+			if (err instanceof ApiError && err.status === 404) evict(key);
+			throw err;
+		});
 }
 
-/** 失败重试的 JSON fetch */
+/** 失败重试的 JSON fetch；带状态码的 ApiError 供调用方区分 404 与网络错误 */
 async function fetchJSON<T>(path: string, { retries = 2 }: { retries?: number } = {}): Promise<T> {
 	let lastErr: unknown;
 	for (let attempt = 0; attempt <= retries; attempt += 1) {
 		try {
 			const res = await fetch(API_BASE + path);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			return await res.json() as T;
+			if (!res.ok) {
+				const payload: unknown = await res.json().catch(() => null);
+				throw new ApiError(res.status, payload, `HTTP ${res.status}`);
+			}
+			return (await res.json()) as T;
 		} catch (err) {
 			lastErr = err;
+			if (err instanceof ApiError && err.status === 404) throw err;
 			if (attempt < retries) {
 				await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
 			}
