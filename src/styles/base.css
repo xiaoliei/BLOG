@@ -19,7 +19,7 @@ body {
 
 body {
   background-color: var(--wool);
-  background-image: url('/wool/bg-wool-light.png');
+  background-image: url('../assets/bg-wool-light.png');
   background-repeat: repeat;
   color: var(--text);
   font-family: var(--font-sans);

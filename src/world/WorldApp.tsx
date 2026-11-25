@@ -40,7 +40,8 @@ export default function WorldApp(){
   const [settings,setSettings]=useState<SiteSettingsWithMeta>(getStaticSettings);
   const islandNameRef=useRef(settings.islandName);
   islandNameRef.current=settings.islandName;
-  const debug=new URLSearchParams(location.search).has('worldDebug');
+  /* 调试面板只在开发环境响应 ?worldDebug；生产环境带该参数也不显示 */
+  const debug=import.meta.env.DEV&&new URLSearchParams(location.search).has('worldDebug');
   const entryPreview=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('entryFrame');
   const liveClock=useSystemClock(),previewClock=useRef<SystemClock>(liveClock);
   const clock=entryPreview?previewClock.current:liveClock;
@@ -56,19 +57,21 @@ export default function WorldApp(){
   const inspection=import.meta.env.DEV&&debug&&new URLSearchParams(location.search).has('view');
   function visit(id: string|null): void{location.hash=id?`home/${id}`:'home';}
   function close(): void{visit(null);requestAnimationFrame(()=>nav.current?.querySelector<HTMLElement>(`[data-place="${route.place}"]`)?.focus());}
-  function goHome(): void{location.hash='home';requestAnimationFrame(()=>nav.current?.querySelector<HTMLElement>('button')?.focus({preventScroll:true}));}
+  /* 传给 ArticleReader 的三个回调必须引用稳定：ArticleReader 用 memo 跳过重渲染，
+     而本组件因系统时钟每秒重渲染一次。它们只读写 ref 与 location，无状态依赖。 */
+  const goHome=useCallback((): void=>{location.hash='home';requestAnimationFrame(()=>nav.current?.querySelector<HTMLElement>('button')?.focus({preventScroll:true}));},[]);
   function openPost(slug: string,placeId: string): void{
     returnPostSlug.current=slug;
     setFocusPostSlug(null);
     location.hash=`post/${slug}`;
     history.replaceState({...((history.state||{}) as ArticleHistoryState),articleSlug:slug,articleOrigin:placeId,articleDepth:1},'');
   }
-  function navigatePost(slug: string,placeId: string|null): void{
+  const navigatePost=useCallback((slug: string,placeId: string|null): void=>{
     const current=(history.state||{}) as ArticleHistoryState;
     location.hash=`post/${slug}`;
     history.replaceState({...((history.state||{}) as ArticleHistoryState),articleSlug:slug,articleOrigin:current.articleOrigin||null,articleDepth:current.articleOrigin?(current.articleDepth||1)+1:0,articlePlace:placeId},'');
-  }
-  function returnFromPost(placeId: string|null): void{
+  },[]);
+  const returnFromPost=useCallback((placeId: string|null): void=>{
     const state=(history.state||{}) as ArticleHistoryState;
     if(state.articleSlug===routeRef.current.post&&state.articleOrigin&&state.articleDepth){
       setFocusPostSlug(returnPostSlug.current);
@@ -77,7 +80,7 @@ export default function WorldApp(){
       returnPostSlug.current=null;
       location.replace(`#home/${placeId||articlePlaceRef.current||state.articlePlace||''}`.replace(/\/$/,''));
     }
-  }
+  },[]);
   const resolvedArticlePlace=useCallback((id: string|null)=>{articlePlaceRef.current=id;if(id)engine.current?.navigate({home:true,place:id});},[]);
   const focusRestored=useCallback(()=>{returnPostSlug.current=null;setFocusPostSlug(null);},[]);
   const updateEntryVisuals=useCallback((visuals: EntryVisuals)=>{
@@ -133,7 +136,7 @@ export default function WorldApp(){
   function enter(event?: { detail?: number } | MouseEvent){keyboardEntry.current=(event as CustomEvent | undefined)?.detail===0;if(fallback||skipEarth){visit(null);return;}engine.current?.enter();}
   const chromeStyle: CustomCSS={'--world-scene-text':shownWorldTime.ink};
   return <main ref={root} className={`world-app ${sceneVisible?'is-world':'is-landing'} ${selected?'has-place':''} ${route.post?'has-article':''} ${inspection?'is-inspecting':''} ${timeDebugEnabled?'has-time-debug':''}`} data-phase={phase} data-entry-preview={entryPreview||undefined} data-time-phase={shownWorldTime.phase} style={chromeStyle}>
-    {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.png`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
+    {fallback&&sceneVisible&&<img className="world-fallback" src={`${import.meta.env.BASE_URL}world/harbor-preview.webp`} alt={`卡通${settings.islandName}概念预览：书店、工坊、车站与天文台沿海岸展开`}/>}
     <canvas ref={canvas} className="world-canvas" aria-label={`${settings.islandName}三维场景，可使用地点目录探索`} aria-hidden={route.post?'true':undefined} inert={!!route.post} style={{visibility:fallback?'hidden':'visible'}}/>
     <LandingView active={!sceneVisible} leaving={phase==='leaving'} entering={entering} entryPreview={entryPreview} clock={clock} ready={ready} skipEarth={skipEarth} fallback={fallback} islandName={settings.islandName} covered={!!route.post} onEnter={enter}/>
     {(sceneVisible||entering)&&<div className="world-chrome" inert={!!route.post||entering} aria-hidden={route.post||entering?'true':undefined}>
